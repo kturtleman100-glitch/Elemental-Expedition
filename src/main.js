@@ -37,15 +37,16 @@ async function boot() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, device.tier.pixelRatioCap));
   renderer.shadowMap.enabled = device.tier.shadows;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 500);
+  const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 600);
 
   setLoadingProgress(55, "아스티온 대륙을 그리는 중...");
   const world = new World(scene, device);
 
   setLoadingProgress(75, "플레이어 준비 중...");
-  const player = new Player(world.spawnPoint, world.collision);
+  const player = new Player(world.spawnPoint, world.collision, { outlines: device.tierName !== "low" });
   scene.add(player.mesh);
 
   const cameraRig = new CameraRig(camera, player);
@@ -67,6 +68,7 @@ async function boot() {
 
   game.addRenderable({
     render(alpha) {
+      player.syncMesh(alpha);
       cameraRig.render(alpha);
     },
   });

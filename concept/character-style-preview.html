@@ -1,0 +1,1002 @@
+<title>Astion Character Foundry</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,500;6..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap">
+
+<style>
+  /* 3D 모델 리뷰용 다크 스튜디오. 렌더 비교가 목적이므로 배경을 고정한다 —
+     테마에 따라 지면 밝기가 바뀌면 셰이딩 비교 자체가 흔들린다. */
+  :root {
+    --ground:      #0E1219;
+    --surface:     #161C26;
+    --surface-hi:  #1D2530;
+    --line:        #26303E;
+    --line-soft:   #1C242F;
+    --text:        #E4E7EC;
+    --muted:       #8A94A6;
+    --muted-dim:   #5C6577;
+    --gold:        #E8B84B;
+    --cyan:        #5BC8D8;
+
+    --fe: #C0392B;
+    --o:  #E8C86A;
+    --cl: #A8D145;
+
+    --step: clamp(0.9rem, 0.6rem + 0.7vw, 1.35rem);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--text);
+    font-family: "Noto Sans KR", system-ui, sans-serif;
+    font-weight: 300;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1rem, 4vw, 2.5rem) 4rem;
+  }
+
+  /* ---------- 헤더 ---------- */
+  header { margin-bottom: 2.5rem; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted-dim);
+    margin: 0 0 0.9rem;
+  }
+
+  h1 {
+    font-family: "Bodoni Moda", Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(2rem, 1.1rem + 3.6vw, 3.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    margin: 0 0 0.75rem;
+    text-wrap: balance;
+  }
+
+  h1 .accent { color: var(--gold); font-style: italic; }
+
+  .lede {
+    max-width: 62ch;
+    color: var(--muted);
+    font-size: 1.02rem;
+    margin: 0;
+  }
+
+  /* ---------- 캐릭터 탭 ---------- */
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 2rem 0 1.25rem;
+  }
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 1.1rem 0.6rem 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.18s, color 0.18s, background 0.18s;
+  }
+  .tab:hover { border-color: var(--muted-dim); color: var(--text); }
+  .tab:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .tab[aria-selected="true"] {
+    background: var(--surface-hi);
+    border-color: var(--elcolor, var(--gold));
+    color: var(--text);
+  }
+
+  .tab .sym {
+    font-family: "Bodoni Moda", Georgia, serif;
+    font-weight: 700;
+    font-size: 1.35rem;
+    line-height: 1;
+    width: 2.1rem;
+    height: 2.1rem;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    color: var(--elcolor, var(--gold));
+    background: #0B0F15;
+  }
+  .tab .who { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
+  .tab .who b { font-weight: 500; }
+  .tab .who span {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    color: var(--muted-dim);
+  }
+
+  /* ---------- 뷰포트 ---------- */
+  .stage {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  @media (max-width: 720px) {
+    .stage { grid-template-columns: 1fr; }
+  }
+
+  .pane { background: var(--surface); position: relative; display: flex; flex-direction: column; }
+
+  .pane-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .pane-title {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .pane-a .pane-title { color: var(--gold); }
+  .pane-b .pane-title { color: var(--cyan); }
+
+  .pane-note { font-size: 0.72rem; color: var(--muted-dim); }
+
+  canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+
+  /* ---------- 조작 바 ---------- */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+
+  .hint {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    color: var(--muted-dim);
+    letter-spacing: 0.03em;
+  }
+
+  .ctrl-btn {
+    padding: 0.4rem 0.85rem;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    color: var(--muted);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color 0.18s, color 0.18s;
+  }
+  .ctrl-btn:hover { border-color: var(--muted-dim); color: var(--text); }
+  .ctrl-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .ctrl-btn[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+
+  .spacer { flex: 1; }
+
+  /* ---------- 제원 스트립 ---------- */
+  .specs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+    gap: 1px;
+    margin-top: 1rem;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .spec { background: var(--surface); padding: 0.85rem 1rem; }
+
+  .spec dt {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.63rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-dim);
+    margin: 0 0 0.3rem;
+  }
+
+  .spec dd {
+    margin: 0;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.98rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  /* ---------- 캐릭터 설명 ---------- */
+  .bio {
+    margin-top: 1.75rem;
+    padding: 1.4rem 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--elcolor, var(--gold));
+    border-radius: 0 4px 4px 0;
+  }
+
+  .bio h2 {
+    font-family: "Bodoni Moda", Georgia, serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin: 0 0 0.5rem;
+    letter-spacing: -0.01em;
+  }
+  .bio h2 em { color: var(--elcolor, var(--gold)); font-style: italic; }
+
+  .bio p { margin: 0 0 0.8rem; max-width: 68ch; color: var(--muted); font-size: 0.95rem; }
+  .bio p:last-child { margin-bottom: 0; }
+
+  .bio .quote {
+    font-style: italic;
+    color: var(--text);
+    padding-left: 0.9rem;
+    border-left: 1px solid var(--line);
+  }
+
+  /* ---------- 판단 기준 ---------- */
+  .verdict { margin-top: 3rem; }
+
+  .verdict h2 {
+    font-family: "Bodoni Moda", Georgia, serif;
+    font-size: 1.55rem;
+    font-weight: 500;
+    margin: 0 0 0.5rem;
+  }
+
+  .verdict > p { color: var(--muted); max-width: 66ch; margin: 0 0 1.5rem; font-size: 0.95rem; }
+
+  .compare {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .col { background: var(--surface); padding: 1.3rem 1.4rem; }
+
+  .col h3 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 0 0 1rem;
+  }
+  .col-a h3 { color: var(--gold); }
+  .col-b h3 { color: var(--cyan); }
+
+  .col ul { margin: 0; padding: 0; list-style: none; }
+  .col li {
+    position: relative;
+    padding-left: 1.1rem;
+    margin-bottom: 0.65rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .col li:last-child { margin-bottom: 0; }
+  .col li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.62em;
+    width: 5px;
+    height: 1px;
+    background: var(--muted-dim);
+  }
+  .col li b { color: var(--text); font-weight: 500; }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line-soft);
+    font-size: 0.82rem;
+    color: var(--muted-dim);
+    max-width: 70ch;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Elemental Expedition · 아트 디렉션 검토</p>
+    <h1>어느 쪽이 <span class="accent">아스티온</span>처럼 보이나</h1>
+    <p class="lede">
+      같은 지오메트리, 같은 3점 조명. 머티리얼과 외곽선 처리만 다릅니다.
+      왼쪽은 셀셰이딩, 오른쪽은 PBR입니다. 두 뷰는 회전과 줌을 공유하므로
+      어느 각도에서도 나란히 비교됩니다.
+    </p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="캐릭터 선택"></div>
+
+  <div class="stage">
+    <div class="pane pane-a">
+      <div class="pane-head">
+        <span class="pane-title">Cel — 셀셰이딩</span>
+        <span class="pane-note">3단 계조 + 외곽선</span>
+      </div>
+      <canvas id="cv-cel"></canvas>
+    </div>
+    <div class="pane pane-b">
+      <div class="pane-head">
+        <span class="pane-title">PBR — 물리 기반</span>
+        <span class="pane-note">금속도 · 거칠기</span>
+      </div>
+      <canvas id="cv-pbr"></canvas>
+    </div>
+  </div>
+
+  <div class="controls">
+    <span class="hint">드래그 회전 · 휠 확대</span>
+    <button class="ctrl-btn" id="btn-spin" aria-pressed="true">자동 회전</button>
+    <button class="ctrl-btn" id="btn-reset">각도 초기화</button>
+    <span class="spacer"></span>
+    <span class="hint" id="poly-count"></span>
+  </div>
+
+  <dl class="specs" id="specs"></dl>
+
+  <div class="bio" id="bio"></div>
+
+  <section class="verdict">
+    <h2>고를 때 볼 것</h2>
+    <p>
+      둘 다 저폴리라 폴리곤 수는 거의 같습니다. 차이는 인상과 유지비에서 납니다.
+      아래는 이 프로젝트 조건(모바일 지원, 38명 캐릭터, 직접 제작)에서 실제로 갈리는 지점입니다.
+    </p>
+    <div class="compare">
+      <div class="col col-a">
+        <h3>셀셰이딩을 고른다면</h3>
+        <ul>
+          <li><b>참고자료와 결이 맞습니다.</b> 원본 설정집이 애니메이션 일러스트라 톤이 이어집니다.</li>
+          <li><b>외곽선이 실루엣을 지킵니다.</b> 캐릭터가 배경에 묻히지 않아 38명을 구분하기 쉽습니다.</li>
+          <li><b>모바일에 유리합니다.</b> 조명 연산이 가벼워 저사양 등급에서 여유가 생깁니다.</li>
+          <li><b>저폴리를 감춰줍니다.</b> 면이 적어도 계조가 뚜렷하면 의도된 스타일로 읽힙니다.</li>
+          <li>대신 금속의 광택감은 포기해야 합니다. 철·금·은의 질감 차이를 색으로만 표현하게 됩니다.</li>
+        </ul>
+      </div>
+      <div class="col col-b">
+        <h3>PBR을 고른다면</h3>
+        <ul>
+          <li><b>금속 표현이 살아납니다.</b> 전이 금속·귀금속 세력의 질감 차이가 그대로 드러납니다.</li>
+          <li><b>조명으로 분위기를 만듭니다.</b> 지역마다 광원을 바꾸면 같은 모델이 다르게 보입니다.</li>
+          <li>다만 <b>저폴리와 충돌합니다.</b> 사실적 반사가 각진 면을 오히려 강조해 미완성으로 보일 수 있습니다.</li>
+          <li>모바일에서 <b>비용이 큽니다.</b> 환경맵과 그림자를 끄면 특유의 장점이 대부분 사라집니다.</li>
+          <li>38명을 일관되게 뽑으려면 재질 값을 캐릭터마다 조율해야 해 손이 더 갑니다.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    캐릭터 형태·색상은 참고자료의 소속 족과 직업 설정만 참고해 three.js 기본 도형으로 새로 만든 것입니다.
+    원본 일러스트는 사용하지 않았습니다. 이 페이지는 스타일 결정용 검토본이며 게임 코드와 분리되어 있습니다.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ------------------------------------------------------------------
+  // 캐릭터 정의 — 참고자료의 족·직업·색 설정에서 가져온 값들
+  // ------------------------------------------------------------------
+  var CHARACTERS = [
+    {
+      id: "fe", sym: "Fe", ko: "철", en: "Iron", color: "#C0392B",
+      role: "전이 금속 군단 대장",
+      specs: [
+        ["원자번호", "26"], ["원자량", "55.8"], ["족", "철족"],
+        ["전기음성도", "1.83"], ["전투 유형", "무기형"], ["녹는점", "1536°C"]
+      ],
+      bio: [
+        "흔들리지 않는 굳은 신념과 정의감을 가지고 있어 많은 금속으로부터 지지를 얻고 있다. 정의의 철퇴를 귀금속과 비금속의 평등한 사회를 실현하는 데 쓰고자 한다.",
+      ],
+      quote: "평화… 정말 좋지. 근데 팔이 둔해지고…",
+      note: "각진 갑옷과 군모, 대검. 실루엣이 넓고 무겁게 잡혀 무기형임이 한눈에 읽히도록 했습니다."
+    },
+    {
+      id: "o", sym: "O", ko: "산소", en: "Oxygen", color: "#E8C86A",
+      role: "윤회를 관장하는 대주교",
+      specs: [
+        ["원자번호", "8"], ["원자량", "16.0"], ["족", "16족"],
+        ["전기음성도", "3.44"], ["전투 유형", "마법형"], ["녹는점", "-218°C"]
+      ],
+      bio: [
+        "아스티온 대륙에서 윤회를 관장하는 대주교. 영원한 생명을 가진 원소의 눈에 끊임없이 변화하는 생명은 어떻게 보일까?",
+      ],
+      quote: "세계는 끝없이 순환하지, 생명도 순환해. 물론 모든 것은 자연의 섭리에 따라 돌고 돌아.",
+      note: "발이 지면에 닿지 않는 부유 실루엣. 광배와 궤도를 도는 두 개의 산소 원자로 마법형임을 드러냅니다."
+    },
+    {
+      id: "cl", sym: "Cl", ko: "염소", en: "Chlorine", color: "#A8D145",
+      role: "전자 친화팀 팀장",
+      specs: [
+        ["원자번호", "17"], ["원자량", "35.4"], ["족", "17족"],
+        ["전기음성도", "3.16"], ["전투 유형", "하이브리드"], ["녹는점", "-101°C"]
+      ],
+      bio: [
+        "위험한 조직 '전자 친화팀'의 팀장. 동경하는 아르곤과 똑같은 전자 배치를 가지기 위해서라면 수단과 방법을 가리지 않는다. 강한 독성 기체를 내뿜어 적은 물론 내 편까지 무차별적으로 공격하는 위험한 원소.",
+      ],
+      quote: "두 눈 크게 뜨고 잘 봐! 아르곤에 대한 사랑으로 가득한 나의 마음을!",
+      note: "왼쪽에만 어깨 보호구를 둔 비대칭 구성. 총기와 가스통으로 하이브리드(근접·원거리 겸용)임을 표시했습니다."
+    }
+  ];
+
+  var C = {
+    skin:      0xE8C4A0,
+    darkCloth: 0x22262E,
+    steel:     0xB9C0CB,
+    gold:      0xC9A227,
+    crimson:   0x8E2230,
+    crimsonHi: 0xB13040,
+    cream:     0xF0E6D2,
+    creamSh:   0xD8CBB0,
+    hairGold:  0xE8C86A,
+    olive:     0x39412C,
+    oliveHi:   0x4C5739,
+    chartreuse:0xA8D145,
+    gunmetal:  0x2B3138,
+    hairDark:  0x1A1D24
+  };
+
+  // ------------------------------------------------------------------
+  // 셰이딩 — 두 방식 모두 같은 지오메트리를 받는다
+  // ------------------------------------------------------------------
+  function makeGradientMap() {
+    // 3단 계조. 그림자 쪽을 충분히 낮춰야 셀셰이딩 특유의 경계가 생긴다.
+    var data = new Uint8Array([70, 160, 255]);
+    var tex = new THREE.DataTexture(data, 3, 1, THREE.RedFormat);
+    tex.minFilter = THREE.NearestFilter;
+    tex.magFilter = THREE.NearestFilter;
+    tex.generateMipmaps = false;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  var GRADIENT = makeGradientMap();
+
+  // 재질별 PBR 값. 금속류는 metalness를 올려 반사를 살린다.
+  var PBR_TUNING = {};
+  PBR_TUNING[C.steel]    = { metalness: 0.95, roughness: 0.25 };
+  PBR_TUNING[C.gold]     = { metalness: 0.9,  roughness: 0.3  };
+  PBR_TUNING[C.gunmetal] = { metalness: 0.8,  roughness: 0.45 };
+  PBR_TUNING[C.crimson]  = { metalness: 0.15, roughness: 0.6  };
+  PBR_TUNING[C.cream]    = { metalness: 0.0,  roughness: 0.85 };
+  PBR_TUNING[C.skin]     = { metalness: 0.0,  roughness: 0.9  };
+
+  function material(style, color, opts) {
+    opts = opts || {};
+    if (style === "cel") {
+      return new THREE.MeshToonMaterial({
+        color: color,
+        gradientMap: GRADIENT,
+        transparent: !!opts.transparent,
+        opacity: opts.opacity === undefined ? 1 : opts.opacity,
+        emissive: opts.emissive || 0x000000
+      });
+    }
+    var tune = PBR_TUNING[color] || { metalness: 0.1, roughness: 0.7 };
+    return new THREE.MeshStandardMaterial({
+      color: color,
+      metalness: opts.metalness === undefined ? tune.metalness : opts.metalness,
+      roughness: opts.roughness === undefined ? tune.roughness : opts.roughness,
+      transparent: !!opts.transparent,
+      opacity: opts.opacity === undefined ? 1 : opts.opacity,
+      emissive: opts.emissive || 0x000000
+    });
+  }
+
+  // 외곽선 — 백페이스를 살짝 부풀려 겹친다. 셀셰이딩에서만 사용.
+  var OUTLINE_MAT = new THREE.MeshBasicMaterial({ color: 0x0A0C10, side: THREE.BackSide });
+
+  function addOutline(mesh, thickness) {
+    var o = new THREE.Mesh(mesh.geometry, OUTLINE_MAT);
+    o.position.copy(mesh.position);
+    o.rotation.copy(mesh.rotation);
+    o.scale.copy(mesh.scale).multiplyScalar(1 + (thickness || 0.055));
+    return o;
+  }
+
+  // ------------------------------------------------------------------
+  // 도형 헬퍼 — 모든 캐릭터가 공유
+  // ------------------------------------------------------------------
+  function Builder(style) {
+    this.style = style;
+    this.group = new THREE.Group();
+    this.tris = 0;
+  }
+
+  Builder.prototype._add = function (geo, color, x, y, z, opts) {
+    opts = opts || {};
+    var mesh = new THREE.Mesh(geo, material(this.style, color, opts));
+    mesh.position.set(x, y, z);
+    if (opts.rot) mesh.rotation.set(opts.rot[0] || 0, opts.rot[1] || 0, opts.rot[2] || 0);
+    if (opts.scale) mesh.scale.set(opts.scale[0], opts.scale[1], opts.scale[2]);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    this.group.add(mesh);
+    if (this.style === "cel" && !opts.noOutline) {
+      this.group.add(addOutline(mesh, opts.outline));
+    }
+    if (geo.index) this.tris += geo.index.count / 3;
+    else if (geo.attributes.position) this.tris += geo.attributes.position.count / 3;
+    return mesh;
+  };
+
+  Builder.prototype.box = function (w, h, d, color, x, y, z, opts) {
+    return this._add(new THREE.BoxGeometry(w, h, d), color, x, y, z, opts);
+  };
+
+  Builder.prototype.cyl = function (rt, rb, h, seg, color, x, y, z, opts) {
+    return this._add(new THREE.CylinderGeometry(rt, rb, h, seg), color, x, y, z, opts);
+  };
+
+  Builder.prototype.sphere = function (r, color, x, y, z, opts) {
+    return this._add(new THREE.SphereGeometry(r, 14, 10), color, x, y, z, opts);
+  };
+
+  Builder.prototype.cone = function (r, h, seg, color, x, y, z, opts) {
+    return this._add(new THREE.ConeGeometry(r, h, seg), color, x, y, z, opts);
+  };
+
+  Builder.prototype.torus = function (r, tube, color, x, y, z, opts) {
+    return this._add(new THREE.TorusGeometry(r, tube, 8, 20), color, x, y, z, opts);
+  };
+
+  // ------------------------------------------------------------------
+  // 철(Fe) — 각진 갑옷, 군모, 대검. 무겁고 넓은 실루엣.
+  // ------------------------------------------------------------------
+  function buildIron(style) {
+    var b = new Builder(style);
+
+    // 다리와 부츠
+    [-0.17, 0.17].forEach(function (x) {
+      b.box(0.21, 0.62, 0.22, C.darkCloth, x, 0.46, 0);
+      b.box(0.25, 0.20, 0.30, 0x15181D, x, 0.10, 0.03);
+    });
+
+    // 몸통 — 붉은 군복 코트
+    b.box(0.60, 0.60, 0.33, C.crimson, 0, 1.06, 0);
+    // 코트 앞자락 (금색 여밈)
+    b.box(0.10, 0.56, 0.02, C.gold, 0, 1.06, 0.175, { noOutline: true });
+    // 벨트
+    b.box(0.64, 0.10, 0.36, 0x1A1D22, 0, 0.79, 0);
+    b.box(0.14, 0.13, 0.04, C.gold, 0, 0.79, 0.19, { noOutline: true });
+
+    // 코트 뒷자락 — 실루엣을 아래로 늘려 무게를 준다
+    b.box(0.54, 0.52, 0.06, C.crimson, 0, 0.60, -0.19, { rot: [0.12, 0, 0] });
+
+    // 어깨 보호구 — 각지게, 바깥으로 벌려 어깨선을 넓힌다
+    [-1, 1].forEach(function (s) {
+      b.box(0.30, 0.24, 0.38, 0x2E1418, s * 0.41, 1.32, 0, { rot: [0, 0, s * -0.22] });
+      b.box(0.32, 0.05, 0.40, C.gold, s * 0.42, 1.21, 0, { rot: [0, 0, s * -0.22], noOutline: true });
+    });
+
+    // 팔
+    [-1, 1].forEach(function (s) {
+      b.box(0.15, 0.50, 0.16, C.crimsonHi, s * 0.40, 0.98, 0);
+      b.box(0.17, 0.14, 0.18, 0x15181D, s * 0.40, 0.68, 0);
+    });
+
+    // 목·머리
+    b.cyl(0.09, 0.10, 0.10, 8, C.skin, 0, 1.42, 0);
+    b.box(0.27, 0.30, 0.26, C.skin, 0, 1.61, 0);
+    // 머리카락
+    b.box(0.29, 0.14, 0.28, C.hairDark, 0, 1.75, 0);
+    b.box(0.30, 0.16, 0.06, C.hairDark, 0, 1.66, -0.13);
+
+    // 군모 — 챙 + 크라운 + 금색 배지
+    b.cyl(0.19, 0.17, 0.13, 12, 0x1A1D22, 0, 1.88, 0);
+    b.cyl(0.26, 0.26, 0.02, 12, 0x15181D, 0, 1.81, 0.05, { scale: [1, 1, 1.25] });
+    b.box(0.07, 0.07, 0.02, C.gold, 0, 1.88, 0.17, { noOutline: true });
+
+    // 대검 — 오른손
+    var sx = 0.56, sy = 1.02;
+    b.box(0.10, 1.05, 0.025, C.steel, sx, sy + 0.20, 0.14, { rot: [0, 0, 0.06] });
+    b.cone(0.07, 0.16, 4, C.steel, sx + 0.05, sy + 0.78, 0.14, { rot: [0, 0.79, 0.06] });
+    b.box(0.30, 0.05, 0.06, C.gold, sx - 0.02, sy - 0.32, 0.14);
+    b.box(0.05, 0.22, 0.05, 0x2A1E18, sx - 0.03, sy - 0.45, 0.14);
+    b.sphere(0.045, C.gold, sx - 0.04, sy - 0.58, 0.14);
+
+    return b;
+  }
+
+  // ------------------------------------------------------------------
+  // 산소(O) — 부유하는 대주교. 광배와 궤도 원자.
+  // ------------------------------------------------------------------
+  function buildOxygen(style) {
+    var b = new Builder(style);
+    var LIFT = 0.18; // 발이 지면에 닿지 않음
+
+    // 로브 — 아래로 넓어지는 원뿔. 발이 없다.
+    b.cyl(0.16, 0.52, 1.00, 14, C.cream, 0, LIFT + 0.50, 0);
+    // 로브 밑단 그림자층
+    b.cyl(0.52, 0.56, 0.10, 14, C.creamSh, 0, LIFT + 0.05, 0);
+    // 로브 앞면 붉은 띠
+    b.box(0.13, 0.90, 0.02, 0xB0304A, 0, LIFT + 0.52, 0.34, { rot: [0.14, 0, 0], noOutline: true });
+
+    // 상체
+    b.cyl(0.19, 0.17, 0.44, 12, C.cream, 0, LIFT + 1.19, 0);
+    // 어깨 망토
+    b.cyl(0.30, 0.24, 0.20, 14, C.creamSh, 0, LIFT + 1.36, 0);
+    b.torus(0.24, 0.028, C.gold, 0, LIFT + 1.44, 0, { rot: [Math.PI / 2, 0, 0], noOutline: true });
+
+    // 팔 — 소매가 넓은 로브형
+    [-1, 1].forEach(function (s) {
+      b.cyl(0.07, 0.13, 0.50, 10, C.cream, s * 0.27, LIFT + 1.10, 0, { rot: [0, 0, s * 0.16] });
+      b.sphere(0.06, C.skin, s * 0.33, LIFT + 0.85, 0);
+    });
+
+    // 목·머리
+    b.cyl(0.07, 0.08, 0.08, 8, C.skin, 0, LIFT + 1.45, 0);
+    b.sphere(0.155, C.skin, 0, LIFT + 1.62, 0, { scale: [1, 1.08, 1] });
+
+    // 금발 — 뒤로 길게
+    b.sphere(0.175, C.hairGold, 0, LIFT + 1.66, -0.02, { scale: [1, 0.95, 1] });
+    b.box(0.26, 0.42, 0.12, C.hairGold, 0, LIFT + 1.44, -0.13);
+    [-1, 1].forEach(function (s) {
+      b.box(0.07, 0.34, 0.08, C.hairGold, s * 0.15, LIFT + 1.50, 0.06);
+    });
+
+    // 광배 — 머리 뒤 금빛 고리
+    b.torus(0.27, 0.022, C.gold, 0, LIFT + 1.70, -0.16, {
+      noOutline: true, emissive: 0x4A3A10
+    });
+
+    // 궤도를 도는 산소 원자 두 개 (O₂)
+    var orbit = new THREE.Group();
+    orbit.position.set(0, LIFT + 1.15, 0);
+    [[0.62, 0], [-0.62, 0]].forEach(function (p) {
+      var m = new THREE.Mesh(
+        new THREE.SphereGeometry(0.075, 12, 9),
+        material(style, 0xE07A6A, { emissive: 0x3A1410 })
+      );
+      m.position.set(p[0], p[1], 0);
+      orbit.add(m);
+    });
+    b.group.add(orbit);
+    b.group.userData.orbit = orbit;
+
+    return b;
+  }
+
+  // ------------------------------------------------------------------
+  // 염소(Cl) — 비대칭 전술 복장, 총기, 가스통.
+  // ------------------------------------------------------------------
+  function buildChlorine(style) {
+    var b = new Builder(style);
+
+    // 다리 — 한쪽만 무릎 보호대 (비대칭)
+    [-0.16, 0.16].forEach(function (x) {
+      b.box(0.19, 0.64, 0.20, C.olive, x, 0.47, 0);
+      b.box(0.23, 0.22, 0.28, 0x14170F, x, 0.11, 0.02);
+    });
+    b.box(0.22, 0.16, 0.06, C.gunmetal, -0.16, 0.58, 0.12);
+
+    // 몸통 — 전술 조끼
+    b.box(0.54, 0.58, 0.30, C.olive, 0, 1.05, 0);
+    b.box(0.56, 0.26, 0.33, C.oliveHi, 0, 1.18, 0);
+    // 가슴 스트랩 (사선, 비대칭)
+    b.box(0.06, 0.68, 0.02, 0x14170F, 0.02, 1.05, 0.17, { rot: [0, 0, 0.42], noOutline: true });
+    // 형광 녹색 포인트
+    b.box(0.14, 0.05, 0.03, C.chartreuse, -0.14, 1.24, 0.16, { noOutline: true });
+    b.box(0.08, 0.05, 0.03, C.chartreuse, -0.14, 1.14, 0.16, { noOutline: true });
+
+    // 벨트와 파우치
+    b.box(0.58, 0.09, 0.33, 0x14170F, 0, 0.76, 0);
+    b.box(0.13, 0.15, 0.10, C.gunmetal, 0.24, 0.72, 0.16);
+
+    // 왼쪽에만 큰 어깨 보호구 — 비대칭의 핵심
+    b.box(0.32, 0.30, 0.36, C.gunmetal, -0.42, 1.30, 0, { rot: [0, 0, 0.26] });
+    b.box(0.30, 0.04, 0.34, C.chartreuse, -0.44, 1.15, 0, { rot: [0, 0, 0.26], noOutline: true });
+    // 오른쪽은 얇은 밴드만
+    b.box(0.13, 0.13, 0.22, C.oliveHi, 0.34, 1.28, 0);
+
+    // 팔
+    [-1, 1].forEach(function (s) {
+      b.box(0.14, 0.48, 0.15, C.oliveHi, s * 0.36, 0.99, 0);
+      b.box(0.16, 0.13, 0.17, 0x14170F, s * 0.36, 0.70, 0.02);
+    });
+
+    // 등의 가스통 두 개
+    [-0.13, 0.13].forEach(function (x) {
+      b.cyl(0.075, 0.075, 0.44, 10, 0x3A4A22, x, 1.10, -0.24);
+      b.cyl(0.035, 0.035, 0.07, 8, C.gunmetal, x, 1.36, -0.24);
+    });
+
+    // 목·머리
+    b.cyl(0.08, 0.09, 0.09, 8, C.skin, 0, 1.40, 0);
+    b.sphere(0.16, C.skin, 0, 1.58, 0, { scale: [1, 1.05, 1] });
+
+    // 뾰족한 형광 녹색 머리 — 날카로운 실루엣
+    b.sphere(0.175, C.chartreuse, 0, 1.62, -0.01, { scale: [1, 0.9, 1] });
+    var spikes = [
+      [0.00, 1.82, -0.02, -0.15, 0.00],
+      [-0.13, 1.78, 0.02, -0.10, -0.45],
+      [0.14, 1.77, -0.03, -0.20, 0.50],
+      [-0.06, 1.76, -0.15, 0.55, -0.15],
+      [0.09, 1.74, 0.13, -0.60, 0.20]
+    ];
+    spikes.forEach(function (s) {
+      b.cone(0.065, 0.28, 5, C.chartreuse, s[0], s[1], s[2], { rot: [s[3], 0, s[4]] });
+    });
+
+    // 소총 — 오른손 앞으로
+    var gx = 0.44, gy = 0.78, gz = 0.26;
+    b.box(0.075, 0.075, 0.86, C.gunmetal, gx, gy + 0.06, gz, { rot: [0.10, 0, 0] });
+    b.box(0.09, 0.20, 0.24, 0x14170F, gx, gy - 0.04, gz - 0.26);
+    b.box(0.06, 0.17, 0.07, 0x14170F, gx, gy - 0.14, gz - 0.02, { rot: [0.2, 0, 0] });
+    b.box(0.05, 0.09, 0.16, C.chartreuse, gx, gy + 0.16, gz + 0.08, { noOutline: true });
+    b.cyl(0.045, 0.045, 0.14, 8, C.gunmetal, gx, gy + 0.10, gz + 0.46, { rot: [Math.PI / 2 + 0.10, 0, 0] });
+
+    return b;
+  }
+
+  var BUILDERS = { fe: buildIron, o: buildOxygen, cl: buildChlorine };
+
+  // ------------------------------------------------------------------
+  // 씬 — 두 뷰포트가 같은 조명·같은 카메라 상태를 쓴다
+  // ------------------------------------------------------------------
+  function Viewport(canvas, style) {
+    this.style = style;
+    this.canvas = canvas;
+
+    this.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+    this.renderer.setClearColor(style === "cel" ? 0x141A22 : 0x12171E, 1);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.outputEncoding = THREE.sRGBEncoding;
+
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 60);
+
+    // 3점 조명 — 두 뷰포트에서 완전히 동일하게 구성한다.
+    // 키: 주광 / 필: 그림자를 열어주는 보조광 / 림: 윤곽을 살리는 역광
+    var key = new THREE.DirectionalLight(0xFFF4E2, style === "cel" ? 1.5 : 2.1);
+    key.position.set(3.2, 5.0, 3.6);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.camera.left = -2.2;
+    key.shadow.camera.right = 2.2;
+    key.shadow.camera.top = 3.2;
+    key.shadow.camera.bottom = -0.6;
+    key.shadow.camera.far = 20;
+    key.shadow.bias = -0.002;
+    this.scene.add(key);
+
+    var fill = new THREE.DirectionalLight(0x93B4D6, style === "cel" ? 0.55 : 0.75);
+    fill.position.set(-3.6, 1.8, 2.4);
+    this.scene.add(fill);
+
+    var rim = new THREE.DirectionalLight(0xBFD8FF, style === "cel" ? 0.9 : 1.5);
+    rim.position.set(-1.4, 2.6, -4.2);
+    this.scene.add(rim);
+
+    this.scene.add(new THREE.AmbientLight(0x4A5566, style === "cel" ? 0.55 : 0.35));
+
+    // 바닥 — 그림자를 받아 캐릭터가 공중에 뜬 느낌을 없앤다
+    var groundMat = style === "cel"
+      ? new THREE.MeshToonMaterial({ color: 0x1B222C, gradientMap: GRADIENT })
+      : new THREE.MeshStandardMaterial({ color: 0x1B222C, roughness: 0.95, metalness: 0.0 });
+    var ground = new THREE.Mesh(new THREE.CircleGeometry(2.6, 40), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    this.scene.add(ground);
+
+    this.pivot = new THREE.Group();
+    this.scene.add(this.pivot);
+    this.model = null;
+  }
+
+  Viewport.prototype.setCharacter = function (id) {
+    if (this.model) {
+      this.pivot.remove(this.model.group);
+    }
+    var built = BUILDERS[id](this.style);
+    this.model = built;
+    this.pivot.add(built.group);
+    return built.tris;
+  };
+
+  Viewport.prototype.resize = function () {
+    var w = this.canvas.clientWidth;
+    if (!w) return;
+    var h = Math.round(w * 1.15);
+    this.canvas.style.height = h + "px";
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+  };
+
+  Viewport.prototype.render = function (state, t) {
+    this.pivot.rotation.y = state.yaw;
+    this.pivot.rotation.x = state.pitch;
+
+    var d = state.dist;
+    this.camera.position.set(0, 1.35 + d * 0.16, d);
+    this.camera.lookAt(0, 0.95, 0);
+
+    if (this.model && this.model.group.userData.orbit) {
+      this.model.group.userData.orbit.rotation.y = t * 0.0009;
+      this.model.group.userData.orbit.rotation.z = Math.sin(t * 0.0007) * 0.35;
+    }
+
+    this.renderer.render(this.scene, this.camera);
+  };
+
+  // ------------------------------------------------------------------
+  // 상태와 조작 — 두 뷰포트가 공유해야 공정한 비교가 된다
+  // ------------------------------------------------------------------
+  var DEFAULT_STATE = { yaw: 0.5, pitch: 0, dist: 5.4 };
+  var state = { yaw: DEFAULT_STATE.yaw, pitch: DEFAULT_STATE.pitch, dist: DEFAULT_STATE.dist };
+  var autoSpin = true;
+  var current = CHARACTERS[0];
+
+  var celView = new Viewport(document.getElementById("cv-cel"), "cel");
+  var pbrView = new Viewport(document.getElementById("cv-pbr"), "pbr");
+  var views = [celView, pbrView];
+
+  function bindDrag(canvas) {
+    var dragging = false, lastX = 0, lastY = 0;
+
+    canvas.addEventListener("pointerdown", function (e) {
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      canvas.setPointerCapture(e.pointerId);
+      autoSpin = false;
+      syncSpinButton();
+    });
+
+    canvas.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      state.yaw += (e.clientX - lastX) * 0.008;
+      state.pitch += (e.clientY - lastY) * 0.005;
+      state.pitch = Math.max(-0.5, Math.min(0.5, state.pitch));
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    function end(e) {
+      dragging = false;
+      if (canvas.hasPointerCapture && e.pointerId !== undefined && canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+    }
+    canvas.addEventListener("pointerup", end);
+    canvas.addEventListener("pointercancel", end);
+
+    canvas.addEventListener("wheel", function (e) {
+      e.preventDefault();
+      state.dist = Math.max(3.0, Math.min(9.0, state.dist + e.deltaY * 0.0035));
+    }, { passive: false });
+  }
+
+  views.forEach(function (v) { bindDrag(v.canvas); });
+
+  // ------------------------------------------------------------------
+  // UI 구성
+  // ------------------------------------------------------------------
+  var tabsEl = document.querySelector(".tabs");
+  var specsEl = document.getElementById("specs");
+  var bioEl = document.getElementById("bio");
+  var polyEl = document.getElementById("poly-count");
+  var spinBtn = document.getElementById("btn-spin");
+  var resetBtn = document.getElementById("btn-reset");
+
+  CHARACTERS.forEach(function (ch, i) {
+    var btn = document.createElement("button");
+    btn.className = "tab";
+    btn.type = "button";
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-selected", i === 0 ? "true" : "false");
+    btn.style.setProperty("--elcolor", ch.color);
+    btn.innerHTML =
+      '<span class="sym">' + ch.sym + '</span>' +
+      '<span class="who"><b>' + ch.ko + '</b><span>' + ch.en.toUpperCase() + '</span></span>';
+    btn.addEventListener("click", function () { select(ch); });
+    tabsEl.appendChild(btn);
+  });
+
+  function select(ch) {
+    current = ch;
+
+    Array.prototype.forEach.call(tabsEl.children, function (el, i) {
+      el.setAttribute("aria-selected", CHARACTERS[i].id === ch.id ? "true" : "false");
+    });
+
+    var tris = 0;
+    views.forEach(function (v) { tris = v.setCharacter(ch.id); });
+    polyEl.textContent = "삼각형 약 " + Math.round(tris).toLocaleString() + "개 · 양쪽 동일";
+
+    specsEl.innerHTML = ch.specs.map(function (s) {
+      return '<div class="spec"><dt>' + s[0] + '</dt><dd>' + s[1] + '</dd></div>';
+    }).join("");
+
+    bioEl.style.setProperty("--elcolor", ch.color);
+    bioEl.innerHTML =
+      '<h2>' + ch.ko + ' <em>' + ch.en + '</em> — ' + ch.role + '</h2>' +
+      ch.bio.map(function (p) { return '<p>' + p + '</p>'; }).join("") +
+      '<p class="quote">' + ch.quote + '</p>' +
+      '<p>' + ch.note + '</p>';
+  }
+
+  function syncSpinButton() {
+    spinBtn.setAttribute("aria-pressed", autoSpin ? "true" : "false");
+  }
+
+  spinBtn.addEventListener("click", function () {
+    autoSpin = !autoSpin;
+    syncSpinButton();
+  });
+
+  resetBtn.addEventListener("click", function () {
+    state.yaw = DEFAULT_STATE.yaw;
+    state.pitch = DEFAULT_STATE.pitch;
+    state.dist = DEFAULT_STATE.dist;
+  });
+
+  function resizeAll() { views.forEach(function (v) { v.resize(); }); }
+  window.addEventListener("resize", resizeAll);
+
+  select(CHARACTERS[0]);
+  resizeAll();
+
+  var prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (prefersReduced) { autoSpin = false; syncSpinButton(); }
+
+  var last = performance.now();
+  function frame(now) {
+    var dt = now - last;
+    last = now;
+    if (autoSpin) state.yaw += dt * 0.00035;
+    views.forEach(function (v) { v.render(state, now); });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>

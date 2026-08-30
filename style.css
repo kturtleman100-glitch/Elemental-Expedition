@@ -6,6 +6,12 @@
   user-select: none;
 }
 
+/* JS가 el.hidden = true/false로 화면을 전환하므로, 다른 규칙이 display를
+   지정해도(#loading-screen { display: flex } 등) hidden이 항상 이긴다. */
+[hidden] {
+  display: none !important;
+}
+
 html, body {
   width: 100%;
   height: 100dvh;
