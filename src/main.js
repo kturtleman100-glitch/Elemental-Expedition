@@ -102,8 +102,13 @@ async function boot() {
     debugAccum++;
     if (debugAccum % 10 !== 0) return; // 과도한 DOM 갱신 방지
     const info = loop.getDebugInfo();
+    const r = renderer.info.render;
+    // 드로우콜이 모바일 성능의 실제 병목이다. 150회를 넘으면 경고 색으로 표시한다.
+    const heavy = r.calls > 150;
+    debugOverlay.style.color = heavy ? "#e8a05a" : "";
     debugOverlay.textContent =
       `FPS ${info.fps.toFixed(0)}  틱 ${info.tickHz}Hz  등급 ${info.tier}  부하 ${(info.loadRatio * 100).toFixed(0)}%\n` +
+      `드로우콜 ${r.calls}  삼각형 ${(r.triangles / 1000).toFixed(0)}k  텍스처 ${renderer.info.memory.textures}\n` +
       `${device.isTouch ? "터치" : "마우스/키보드"} 입력`;
   }
 

@@ -20,23 +20,48 @@ export function getToonGradient() {
 }
 
 const materialCache = new Map();
+let matSeq = 0;
+const texKeys = new WeakMap();
+
+/** 텍스처마다 안정된 캐시 키를 붙인다 — 객체를 키로 문자열화할 수 없어서다 */
+function texKey(tex) {
+  if (!tex) return "0";
+  let k = texKeys.get(tex);
+  if (!k) { k = "t" + ++matSeq; texKeys.set(tex, k); }
+  return k;
+}
 
 /**
- * 셀셰이딩 머티리얼. 같은 색은 재사용해 드로우콜과 메모리를 아낀다.
- * @param {number} color 16진 색상
- * @param {{emissive?:number, transparent?:boolean, opacity?:number}} [opts]
+ * 셀셰이딩 머티리얼. 같은 조합은 재사용해 드로우콜과 메모리를 아낀다.
+ *
+ * 머티리얼이 같아야 three.js가 배치를 묶을 수 있으므로, 색·텍스처가 같으면
+ * 반드시 같은 인스턴스를 돌려주는 것이 중요하다.
+ *
+ * @param {number} color 16진 색상 (텍스처가 있으면 곱해지는 색조)
+ * @param {{emissive?:number, opacity?:number, map?:THREE.Texture,
+ *          repeat?:[number,number], side?:number}} [opts]
  */
 export function toonMaterial(color, opts = {}) {
-  const key = `${color}|${opts.emissive || 0}|${opts.opacity ?? 1}`;
+  const key = `${color}|${opts.emissive || 0}|${opts.opacity ?? 1}|${texKey(opts.map)}|${opts.repeat || ""}|${opts.side || 0}`;
   const cached = materialCache.get(key);
   if (cached) return cached;
 
+  let map = opts.map || null;
+  // 같은 텍스처를 다른 반복 횟수로 쓰려면 복제해야 한다 (repeat은 텍스처가 들고 있다)
+  if (map && opts.repeat) {
+    map = map.clone();
+    map.needsUpdate = true;
+    map.repeat.set(opts.repeat[0], opts.repeat[1]);
+  }
+
   const mat = new THREE.MeshToonMaterial({
     color,
+    map,
     gradientMap: getToonGradient(),
     emissive: opts.emissive || 0x000000,
     transparent: opts.transparent || (opts.opacity !== undefined && opts.opacity < 1),
     opacity: opts.opacity ?? 1,
+    side: opts.side || THREE.FrontSide,
   });
   materialCache.set(key, mat);
   return mat;
@@ -69,6 +94,74 @@ export function makeOutline(mesh, thickness = 0.05, enabled = true) {
   outline.castShadow = false;
   outline.receiveShadow = false;
   return outline;
+}
+
+/**
+ * 같은 모양을 여러 곳에 놓을 때 쓰는 배치기.
+ *
+ * 풀 500포기를 개별 메시로 두면 드로우콜 500회지만, InstancedMesh로 묶으면 1회다.
+ * 모바일에서 드로우콜은 150회 안쪽으로 유지해야 하므로 잔풀·돌·꽃처럼
+ * 수가 많은 것은 반드시 이걸 거친다.
+ *
+ * 사용법:
+ *   const b = new InstancedBatch();
+ *   b.add(geo, mat, pos, rot, scale);   // 여러 번
+ *   b.build(scene);                      // 한 번
+ */
+export class InstancedBatch {
+  constructor() {
+    this.groups = new Map();
+    this._m = new THREE.Matrix4();
+    this._q = new THREE.Quaternion();
+    this._e = new THREE.Euler();
+    this._v = new THREE.Vector3();
+    this._s = new THREE.Vector3();
+  }
+
+  /**
+   * @param {THREE.BufferGeometry} geo 인스턴스끼리 공유되는 지오메트리
+   * @param {THREE.Material} mat toonMaterial()의 반환값
+   * @param {[number,number,number]} pos
+   * @param {[number,number,number]} [rot] 오일러 라디안
+   * @param {[number,number,number]|number} [scale]
+   */
+  add(geo, mat, pos, rot = [0, 0, 0], scale = 1) {
+    if (!geo.userData._batchId) geo.userData._batchId = "g" + ++matSeq;
+    if (!mat.userData._batchId) mat.userData._batchId = "m" + ++matSeq;
+    const key = geo.userData._batchId + "|" + mat.userData._batchId;
+
+    let g = this.groups.get(key);
+    if (!g) { g = { geo, mat, items: [] }; this.groups.set(key, g); }
+
+    const s = typeof scale === "number" ? [scale, scale, scale] : scale;
+    g.items.push([pos, rot, s]);
+  }
+
+  /** 모아둔 것을 InstancedMesh로 만들어 씬에 붙인다. 만들어진 개수를 반환. */
+  build(scene, { castShadow = true, receiveShadow = true } = {}) {
+    let meshes = 0;
+    for (const { geo, mat, items } of this.groups.values()) {
+      const inst = new THREE.InstancedMesh(geo, mat, items.length);
+      inst.castShadow = castShadow;
+      inst.receiveShadow = receiveShadow;
+
+      items.forEach(([pos, rot, s], i) => {
+        this._e.set(rot[0], rot[1], rot[2]);
+        this._q.setFromEuler(this._e);
+        this._v.set(pos[0], pos[1], pos[2]);
+        this._s.set(s[0], s[1], s[2]);
+        this._m.compose(this._v, this._q, this._s);
+        inst.setMatrixAt(i, this._m);
+      });
+
+      inst.instanceMatrix.needsUpdate = true;
+      scene.add(inst);
+      meshes++;
+    }
+    const total = [...this.groups.values()].reduce((n, g) => n + g.items.length, 0);
+    this.groups.clear();
+    return { drawCalls: meshes, instances: total };
+  }
 }
 
 /**

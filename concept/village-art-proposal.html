@@ -1,0 +1,849 @@
+<title>토룡마을 배경 개선안</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500&display=swap">
+
+<style>
+  :root {
+    --bg:        #0E1116;
+    --panel:     #161A21;
+    --panel-2:   #1D222B;
+    --line:      #2A313C;
+    --text:      #E8E4DC;
+    --text-2:    #B8B3A9;
+    --muted:     #7C766C;
+    --accent:    #8AC46A;
+    --accent-2:  #E8A0B8;
+    --warn:      #E0A15E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Noto Sans KR", system-ui, sans-serif;
+    font-weight: 300;
+    overflow: hidden;
+    height: 100dvh;
+  }
+
+  #stage { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* ---------- 상단 바 ---------- */
+  header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.75rem clamp(0.8rem, 3vw, 1.6rem);
+    background: linear-gradient(to bottom, rgba(14,17,22,0.95), rgba(14,17,22,0));
+    pointer-events: none;
+  }
+
+  header > * { pointer-events: auto; }
+
+  h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(0.98rem, 0.8rem + 0.9vw, 1.3rem);
+    margin: 0;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .toggle {
+    display: flex;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-left: auto;
+  }
+
+  .toggle button {
+    background: transparent;
+    border: 0;
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 400;
+    padding: 0.42rem 0.95rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .toggle button:hover { color: var(--text); }
+  .toggle button[aria-pressed="true"] { background: var(--accent); color: #12180E; font-weight: 500; }
+  .toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* ---------- 정보 패널 ---------- */
+  #info {
+    position: fixed;
+    left: clamp(0.6rem, 2vw, 1.4rem);
+    bottom: clamp(0.6rem, 2vw, 1.4rem);
+    z-index: 10;
+    width: min(340px, calc(100vw - 1.6rem));
+    max-height: min(58dvh, 520px);
+    overflow-y: auto;
+    background: rgba(22,26,33,0.93);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 0.95rem 1.05rem;
+  }
+
+  #info h2 {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 0.7rem;
+    font-weight: 500;
+  }
+
+  #info .row {
+    display: grid;
+    grid-template-columns: 4.6rem 1fr;
+    gap: 0.5rem;
+    padding: 0.42rem 0;
+    border-top: 1px solid var(--line);
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+  #info .row:first-of-type { border-top: 0; }
+  #info .row dt { color: var(--muted); font-size: 0.74rem; padding-top: 0.08rem; }
+  #info .row dd { margin: 0; color: var(--text-2); }
+  #info .row dd b { color: var(--text); font-weight: 500; }
+
+  #info .note {
+    margin: 0.8rem 0 0;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.74rem;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  /* ---------- 조작 안내 ---------- */
+  #hint {
+    position: fixed;
+    right: clamp(0.6rem, 2vw, 1.4rem);
+    bottom: clamp(0.6rem, 2vw, 1.4rem);
+    z-index: 10;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.7;
+    pointer-events: none;
+  }
+
+  #loading {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: grid;
+    place-content: center;
+    gap: 0.9rem;
+    justify-items: center;
+    background: var(--bg);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.76rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  #loading .spin {
+    width: 26px; height: 26px;
+    border: 2px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 640px) {
+    #info { width: calc(100vw - 1.2rem); max-height: 40dvh; }
+    #hint { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spin { animation: none; }
+  }
+</style>
+
+<div id="stage"><canvas id="c"></canvas></div>
+
+<header>
+  <h1>토룡마을 — 배경 개선안</h1>
+  <div class="toggle" role="group" aria-label="비교 전환">
+    <button id="btn-before" type="button" aria-pressed="false">현재</button>
+    <button id="btn-after" type="button" aria-pressed="true">개선안</button>
+  </div>
+</header>
+
+<div id="info">
+  <h2 id="info-title">개선안</h2>
+  <dl id="info-body"></dl>
+  <p class="note" id="vrm-status">mg.vrm 불러오는 중…</p>
+</div>
+
+<div id="hint">
+  드래그 · 회전<br>
+  휠 · 확대<br>
+  우클릭 드래그 · 이동
+</div>
+
+<div id="loading"><div class="spin"></div><span>장면 구성 중</span></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+    "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.4.1/lib/three-vrm.module.min.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
+
+// ---------------------------------------------------------------
+// 셀셰이딩 공용 (게임의 src/fx/Style.js 와 같은 방식)
+// ---------------------------------------------------------------
+const ramp = new THREE.DataTexture(new Uint8Array([72, 158, 255]), 3, 1, THREE.RedFormat);
+ramp.minFilter = ramp.magFilter = THREE.NearestFilter;
+ramp.needsUpdate = true;
+
+const matCache = new Map();
+function M(color, opts = {}) {
+  const k = `${color}|${opts.emissive || 0}|${opts.opacity ?? 1}`;
+  if (matCache.has(k)) return matCache.get(k);
+  const m = new THREE.MeshToonMaterial({
+    color, gradientMap: ramp,
+    emissive: opts.emissive || 0,
+    transparent: (opts.opacity ?? 1) < 1,
+    opacity: opts.opacity ?? 1,
+  });
+  matCache.set(k, m);
+  return m;
+}
+
+const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x0b0e14, side: THREE.BackSide });
+function outline(mesh, t = 0.03) {
+  const o = new THREE.Mesh(mesh.geometry, OUTLINE);
+  o.position.copy(mesh.position);
+  o.rotation.copy(mesh.rotation);
+  o.scale.copy(mesh.scale).multiplyScalar(1 + t);
+  return o;
+}
+
+/** 메시 + 외곽선을 한 번에 부모에 붙인다 */
+function add(parent, geo, color, pos, opts = {}) {
+  const m = new THREE.Mesh(geo, M(color, opts));
+  m.position.set(pos[0], pos[1], pos[2]);
+  if (opts.rot) m.rotation.set(opts.rot[0] || 0, opts.rot[1] || 0, opts.rot[2] || 0);
+  if (opts.scale) m.scale.set(opts.scale[0], opts.scale[1], opts.scale[2]);
+  m.castShadow = opts.cast !== false;
+  m.receiveShadow = true;
+  parent.add(m);
+  if (!opts.noOutline) parent.add(outline(m, opts.outline ?? 0.03));
+  return m;
+}
+
+// ---------------------------------------------------------------
+// 팔레트
+// ---------------------------------------------------------------
+const OLD = {
+  grass: 0x6e8f52, soil: 0xa08a63, plaza: 0xc4b391,
+  wall: 0xd9cdb4, wood: 0x7a5a3c, roof: 0x8c4a3a,
+  trunk: 0x5a3f2c, leaf: 0x4b7a42, leafDark: 0x3d6437,
+  sky: 0xbcd4e0,
+};
+
+// 개선안 — 채도를 낮추고 명도 폭을 넓혔다.
+// 지붕에 청록을 넣어 초록 대지와 보색 대비를 만든다.
+const NEW = {
+  grass: 0x7d9455, grassLit: 0x94a865, grassDark: 0x5d7342,
+  soil: 0xb09a72, path: 0xc9bb9c, pathEdge: 0x9c8f76,
+  stone: 0x9a958a, stoneDark: 0x6f6b62,
+  plaster: 0xe6dcc6, plasterShade: 0xcabfa6,
+  timber: 0x6b4f37, timberDark: 0x4a3626,
+  roof: 0x4a6b6e, roofDark: 0x35504f, roofRidge: 0x2a3f3f,
+  trunk: 0x6a4d34, trunkDark: 0x4a3524,
+  leafA: 0x5f8a4a, leafB: 0x4d7540, leafC: 0x74a05a,
+  accent: 0xc98a3a,
+  skyTop: 0x5a86b8, skyHorizon: 0xd8e4e2, fog: 0xd8e4e2,
+};
+
+// ---------------------------------------------------------------
+// 장면 기본
+// ---------------------------------------------------------------
+const canvas = document.getElementById("c");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
+camera.position.set(13, 7.5, 15);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.target.set(0, 1.5, 0);
+controls.minDistance = 5;
+controls.maxDistance = 48;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+const groupBefore = new THREE.Group();
+const groupAfter = new THREE.Group();
+scene.add(groupBefore, groupAfter);
+
+// ---------------------------------------------------------------
+// 하늘
+// ---------------------------------------------------------------
+const skyMat = new THREE.ShaderMaterial({
+  uniforms: {
+    top: { value: new THREE.Color(NEW.skyTop) },
+    horizon: { value: new THREE.Color(NEW.skyHorizon) },
+  },
+  vertexShader: `varying vec3 wp; void main(){ wp=(modelMatrix*vec4(position,1.0)).xyz; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `uniform vec3 top; uniform vec3 horizon; varying vec3 wp;
+    void main(){ float h=normalize(wp+8.0).y; gl_FragColor=vec4(mix(horizon,top,pow(max(h,0.0),0.7)),1.0); }`,
+  side: THREE.BackSide, depthWrite: false, fog: false,
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(200, 24, 16), skyMat));
+scene.fog = new THREE.Fog(NEW.fog, 45, 130);
+
+// 조명 — 따뜻한 키, 차가운 필, 뒤에서 오는 림
+const key = new THREE.DirectionalLight(0xfff0d8, 1.5);
+key.position.set(20, 30, 16);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+Object.assign(key.shadow.camera, { left: -28, right: 28, top: 28, bottom: -28, far: 90 });
+key.shadow.bias = -0.0015;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0x9dbdd8, 0.5);
+fill.position.set(-22, 14, 12);
+scene.add(fill);
+
+const rim = new THREE.DirectionalLight(0xcfe4ff, 0.7);
+rim.position.set(-8, 18, -26);
+scene.add(rim);
+
+scene.add(new THREE.AmbientLight(0x5b6a80, 0.55));
+
+// ===============================================================
+// 현재 버전 — 지금 게임에 들어가 있는 것
+// ===============================================================
+function buildBefore() {
+  const g = groupBefore;
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), M(OLD.grass));
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  g.add(ground);
+
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(9, 32), M(OLD.plaza));
+  plaza.rotation.x = -Math.PI / 2;
+  plaza.position.y = 0.01;
+  plaza.receiveShadow = true;
+  g.add(plaza);
+
+  // 집 — 상자 + 원뿔 지붕
+  function oldHouse(x, z, w, h, d, ry) {
+    const p = new THREE.Group();
+    p.position.set(x, 0, z);
+    p.rotation.y = ry;
+    add(p, new THREE.BoxGeometry(w, h, d), OLD.wall, [0, h / 2, 0], { outline: 0.02 });
+    for (const s of [-1, 1])
+      add(p, new THREE.BoxGeometry(0.16, h, 0.16), OLD.wood, [s * (w / 2 - 0.08), h / 2, d / 2 - 0.08], { noOutline: true });
+    add(p, new THREE.ConeGeometry(Math.max(w, d) * 0.82, h * 0.55, 4), OLD.roof,
+      [0, h + h * 0.275, 0], { rot: [0, Math.PI / 4, 0] });
+    add(p, new THREE.BoxGeometry(0.8, 1.5, 0.06), 0x6e3a2e, [0, 0.75, d / 2 + 0.01], { noOutline: true });
+    add(p, new THREE.BoxGeometry(0.6, 0.6, 0.06), 0x6a8fa8, [w * 0.28, h * 0.6, d / 2 + 0.01], { noOutline: true });
+    g.add(p);
+  }
+
+  oldHouse(0, -12, 6.4, 4.2, 5.2, 0);
+  oldHouse(-10, -4, 4.2, 3.2, 4.0, 0.35);
+  oldHouse(10, -6, 4.4, 3.4, 4.2, -0.3);
+
+  // 나무 — 원기둥 + 정이십면체 덩어리
+  function oldTree(x, z) {
+    const p = new THREE.Group();
+    p.position.set(x, 0, z);
+    const h = 2.4 + Math.random() * 0.9;
+    add(p, new THREE.CylinderGeometry(0.19, 0.28, h, 7), OLD.trunk, [0, h / 2, 0], { outline: 0.04 });
+    const r = 1.25 + Math.random() * 0.3;
+    add(p, new THREE.IcosahedronGeometry(r, 0), OLD.leaf, [0, h + r * 0.45, 0],
+      { rot: [Math.random(), Math.random(), Math.random()], outline: 0.035 });
+    add(p, new THREE.IcosahedronGeometry(r * 0.68, 0), OLD.leafDark,
+      [r * 0.42, h + r * 0.95, -r * 0.28], { rot: [Math.random(), Math.random(), Math.random()], noOutline: true });
+    g.add(p);
+  }
+
+  for (const [x, z] of [[-14, 3], [13, 4], [-6, 12], [7, 13], [-16, -10], [16, -12]]) oldTree(x, z);
+}
+
+// ===============================================================
+// 개선안
+// ===============================================================
+function buildAfter() {
+  const g = groupAfter;
+
+  // ---- 지면: 색이 다른 판을 겹쳐 단조로움을 깬다 ----
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(140, 140), M(NEW.grass));
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  g.add(ground);
+
+  // 잔디 색 얼룩
+  for (let i = 0; i < 22; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 11 + Math.random() * 26;
+    const patch = new THREE.Mesh(
+      new THREE.CircleGeometry(2 + Math.random() * 3.4, 7),
+      M(Math.random() > 0.5 ? NEW.grassLit : NEW.grassDark)
+    );
+    patch.rotation.x = -Math.PI / 2;
+    patch.rotation.z = Math.random() * Math.PI;
+    patch.position.set(Math.sin(a) * r, 0.008 + Math.random() * 0.004, Math.cos(a) * r);
+    patch.receiveShadow = true;
+    g.add(patch);
+  }
+
+  // 광장 — 흙바닥 + 돌 테두리 + 포석
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(9, 36), M(NEW.path));
+  plaza.rotation.x = -Math.PI / 2;
+  plaza.position.y = 0.02;
+  plaza.receiveShadow = true;
+  g.add(plaza);
+
+  const ringEdge = new THREE.Mesh(new THREE.RingGeometry(8.8, 9.5, 36), M(NEW.pathEdge));
+  ringEdge.rotation.x = -Math.PI / 2;
+  ringEdge.position.y = 0.024;
+  ringEdge.receiveShadow = true;
+  g.add(ringEdge);
+
+  // 광장을 두르는 경계석 — 인공물의 손길
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2;
+    const s = 0.3 + Math.random() * 0.16;
+    add(g, new THREE.DodecahedronGeometry(s, 0), i % 3 === 0 ? NEW.stoneDark : NEW.stone,
+      [Math.sin(a) * 9.15, s * 0.42, Math.cos(a) * 9.15],
+      { rot: [Math.random(), Math.random(), Math.random()], outline: 0.04 });
+  }
+
+  // 포석 — 광장 안쪽에 불규칙하게
+  for (let i = 0; i < 30; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.random() * 8;
+    const st = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.28 + Math.random() * 0.2, 0.3, 0.05, 6),
+      M(Math.random() > 0.5 ? NEW.stone : NEW.pathEdge)
+    );
+    st.position.set(Math.sin(a) * r, 0.045, Math.cos(a) * r);
+    st.rotation.y = Math.random() * Math.PI;
+    st.receiveShadow = true;
+    g.add(st);
+  }
+
+  buildNewHouse(g, 0, -12, 6.4, 3.4, 5.2, 0, true);
+  buildNewHouse(g, -10.5, -4, 4.4, 2.9, 4.0, 0.35, false);
+  buildNewHouse(g, 10.5, -6, 4.6, 3.0, 4.2, -0.3, false);
+
+  for (const [x, z, s] of [[-14, 3, 1.15], [13.5, 4, 1.0], [-6.5, 12, 1.25],
+                            [7, 13, 0.92], [-16.5, -10, 1.05], [16.5, -12, 1.1]])
+    buildNewTree(g, x, z, s);
+
+  // 풀 포기 — 바닥과 물체 사이의 빈 곳을 메운다
+  for (let i = 0; i < 90; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 9.6 + Math.random() * 26;
+    const x = Math.sin(a) * r, z = Math.cos(a) * r;
+    const tuft = new THREE.Group();
+    tuft.position.set(x, 0, z);
+    for (let b = 0; b < 3; b++) {
+      const bl = new THREE.Mesh(
+        new THREE.ConeGeometry(0.055, 0.34 + Math.random() * 0.2, 3),
+        M(Math.random() > 0.5 ? NEW.leafC : NEW.leafA)
+      );
+      bl.position.set((Math.random() - 0.5) * 0.24, 0.17, (Math.random() - 0.5) * 0.24);
+      bl.rotation.z = (Math.random() - 0.5) * 0.55;
+      bl.castShadow = true;
+      tuft.add(bl);
+    }
+    g.add(tuft);
+  }
+
+  buildWell(g, 0, 2.5);
+}
+
+/**
+ * 개선된 가옥.
+ * 핵심은 세 가지 — 석재 기단으로 바닥에 앉히고, 목재 골조로 벽면을 분할하고,
+ * 처마가 깊은 2단 지붕을 얹는다. 원뿔 지붕이 고깔모자처럼 보이던 문제를 없앤다.
+ */
+function buildNewHouse(g, x, z, w, h, d, ry, big) {
+  const p = new THREE.Group();
+  p.position.set(x, 0, z);
+  p.rotation.y = ry;
+
+  // 석재 기단 — 건물이 땅에 박혀 보이지 않게 받쳐준다
+  add(p, new THREE.BoxGeometry(w + 0.5, 0.34, d + 0.5), NEW.stone, [0, 0.17, 0], { outline: 0.02 });
+  add(p, new THREE.BoxGeometry(w + 0.26, 0.42, d + 0.26), NEW.stoneDark, [0, 0.5, 0], { outline: 0.02 });
+
+  // 벽 — 아래는 어둡게, 위는 밝게. 명도 차가 층을 만든다
+  add(p, new THREE.BoxGeometry(w, h * 0.42, d), NEW.plasterShade, [0, 0.71 + h * 0.21, 0], { outline: 0.018 });
+  add(p, new THREE.BoxGeometry(w - 0.04, h * 0.6, d - 0.04), NEW.plaster, [0, 0.71 + h * 0.71, 0], { outline: 0.018 });
+
+  // 목재 골조 — 네 모서리 기둥 + 수평 인방. 판판한 벽면을 나눈다
+  const wy = 0.71 + h * 0.5;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1])
+    add(p, new THREE.BoxGeometry(0.15, h, 0.15), NEW.timber,
+      [sx * (w / 2 - 0.06), wy, sz * (d / 2 - 0.06)], { noOutline: true });
+
+  for (const sz of [-1, 1]) {
+    add(p, new THREE.BoxGeometry(w, 0.14, 0.13), NEW.timber, [0, 0.71 + h * 0.44, sz * (d / 2 - 0.02)], { noOutline: true });
+    add(p, new THREE.BoxGeometry(w, 0.16, 0.13), NEW.timberDark, [0, 0.71 + h - 0.06, sz * (d / 2 - 0.02)], { noOutline: true });
+  }
+  for (const sx of [-1, 1]) {
+    add(p, new THREE.BoxGeometry(0.13, 0.14, d), NEW.timber, [sx * (w / 2 - 0.02), 0.71 + h * 0.44, 0], { noOutline: true });
+    add(p, new THREE.BoxGeometry(0.13, 0.16, d), NEW.timberDark, [sx * (w / 2 - 0.02), 0.71 + h - 0.06, 0], { noOutline: true });
+  }
+
+  // 사선 가새 — 목조 건물다운 결
+  for (const sx of [-1, 1])
+    add(p, new THREE.BoxGeometry(0.11, h * 0.62, 0.1), NEW.timber,
+      [sx * w * 0.26, 0.71 + h * 0.62, d / 2 - 0.02], { rot: [0, 0, sx * 0.42], noOutline: true });
+
+  // 지붕 — 2단. 아래 단이 처마로 크게 튀어나온다
+  const roofY = 0.71 + h;
+  const eave = Math.max(w, d) * 0.5 + 0.85;
+
+  add(p, new THREE.BoxGeometry(w + 0.5, 0.15, d + 0.5), NEW.timberDark, [0, roofY + 0.04, 0], { outline: 0.02 });
+  add(p, new THREE.ConeGeometry(eave, h * 0.34, 4), NEW.roof,
+    [0, roofY + h * 0.17 + 0.1, 0], { rot: [0, Math.PI / 4, 0], outline: 0.022 });
+  add(p, new THREE.ConeGeometry(eave * 0.68, h * 0.32, 4), NEW.roofDark,
+    [0, roofY + h * 0.44 + 0.1, 0], { rot: [0, Math.PI / 4, 0], outline: 0.025 });
+
+  // 용마루 장식
+  add(p, new THREE.BoxGeometry(0.2, 0.2, eave * 0.9), NEW.roofRidge, [0, roofY + h * 0.6 + 0.1, 0],
+    { rot: [0, Math.PI / 4, 0], noOutline: true });
+  add(p, new THREE.SphereGeometry(0.16, 8, 6), NEW.accent, [0, roofY + h * 0.66 + 0.1, 0], { outline: 0.05 });
+
+  // 문 — 틀과 문짝을 분리
+  add(p, new THREE.BoxGeometry(1.16, 1.85, 0.1), NEW.timberDark, [0, 1.62, d / 2 + 0.02], { noOutline: true });
+  add(p, new THREE.BoxGeometry(0.92, 1.62, 0.06), NEW.timber, [0, 1.55, d / 2 + 0.06], { noOutline: true });
+  add(p, new THREE.SphereGeometry(0.06, 8, 6), NEW.accent, [0.3, 1.5, d / 2 + 0.1], { noOutline: true });
+
+  // 창 — 십자 창살이 들어가야 창처럼 읽힌다
+  for (const sx of big ? [-1, 1] : [1]) {
+    const cx = sx * w * 0.29;
+    const cy = 0.71 + h * 0.72;
+    add(p, new THREE.BoxGeometry(0.92, 0.86, 0.09), NEW.timberDark, [cx, cy, d / 2 + 0.02], { noOutline: true });
+    add(p, new THREE.BoxGeometry(0.76, 0.7, 0.05), 0x86a8b8, [cx, cy, d / 2 + 0.06], { noOutline: true, cast: false });
+    add(p, new THREE.BoxGeometry(0.08, 0.7, 0.03), NEW.timber, [cx, cy, d / 2 + 0.09], { noOutline: true });
+    add(p, new THREE.BoxGeometry(0.76, 0.08, 0.03), NEW.timber, [cx, cy, d / 2 + 0.09], { noOutline: true });
+  }
+
+  // 소품 — 사람이 사는 흔적
+  add(p, new THREE.CylinderGeometry(0.3, 0.28, 0.6, 8), NEW.timber, [w / 2 + 0.5, 0.3, d / 2 - 0.5], { outline: 0.04 });
+  add(p, new THREE.TorusGeometry(0.3, 0.035, 5, 10), NEW.timberDark,
+    [w / 2 + 0.5, 0.45, d / 2 - 0.5], { rot: [Math.PI / 2, 0, 0], noOutline: true });
+
+  if (big) {
+    // 처마 밑 등불
+    add(p, new THREE.BoxGeometry(0.06, 0.4, 0.06), NEW.timberDark, [-w * 0.34, roofY - 0.1, d / 2 + 0.5], { noOutline: true });
+    add(p, new THREE.CylinderGeometry(0.16, 0.13, 0.3, 8), NEW.accent,
+      [-w * 0.34, roofY - 0.42, d / 2 + 0.5], { emissive: 0x7a4e10, outline: 0.05 });
+  }
+
+  g.add(p);
+}
+
+/**
+ * 개선된 나무.
+ * 잎을 공 하나로 두면 저폴리 티가 가장 크게 난다. 가지를 뻗고
+ * 잎 덩어리를 크기·높이·색을 달리해 4~5개 얹으면 실루엣이 살아난다.
+ */
+function buildNewTree(g, x, z, scale) {
+  const p = new THREE.Group();
+  p.position.set(x, 0, z);
+  p.rotation.y = Math.random() * Math.PI * 2;
+  p.scale.setScalar(scale);
+
+  const h = 2.9 + Math.random() * 0.7;
+
+  // 뿌리 — 밑동을 벌려 땅을 붙잡게
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + Math.random() * 0.4;
+    add(p, new THREE.ConeGeometry(0.17, 0.55, 5), NEW.trunkDark,
+      [Math.sin(a) * 0.28, 0.2, Math.cos(a) * 0.28],
+      { rot: [Math.cos(a) * 0.5, 0, -Math.sin(a) * 0.5], noOutline: true });
+  }
+
+  add(p, new THREE.CylinderGeometry(0.17, 0.34, h, 8), NEW.trunk, [0, h / 2, 0], { outline: 0.035 });
+
+  // 가지
+  const branches = [];
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + Math.random() * 0.7;
+    const by = h * (0.55 + i * 0.13);
+    const bl = 0.75 + Math.random() * 0.35;
+    const bx = Math.sin(a) * bl * 0.6, bz = Math.cos(a) * bl * 0.6;
+    add(p, new THREE.CylinderGeometry(0.07, 0.12, bl, 6), NEW.trunk,
+      [bx, by + bl * 0.22, bz], { rot: [Math.cos(a) * 0.72, 0, -Math.sin(a) * 0.72], outline: 0.05 });
+    branches.push([bx * 1.5, by + bl * 0.6, bz * 1.5]);
+  }
+
+  // 잎 덩어리 — 큰 것 하나에 작은 것들을 붙여 뭉게구름 실루엣을 만든다
+  const crownY = h + 0.55;
+  const clusters = [
+    [0, crownY, 0, 1.45, NEW.leafA],
+    [0.85, crownY + 0.42, -0.35, 0.95, NEW.leafC],
+    [-0.72, crownY + 0.2, 0.55, 1.02, NEW.leafB],
+    [0.25, crownY + 0.85, 0.45, 0.78, NEW.leafC],
+    [-0.45, crownY - 0.32, -0.72, 0.85, NEW.leafB],
+  ];
+  for (const [cx, cy, cz, r, col] of clusters) {
+    add(p, new THREE.IcosahedronGeometry(r, 1), col, [cx, cy, cz],
+      { rot: [Math.random(), Math.random(), Math.random()],
+        scale: [1, 0.82, 1], outline: 0.028 });
+  }
+
+  // 가지 끝 작은 잎
+  for (const [bx, by, bz] of branches)
+    add(p, new THREE.IcosahedronGeometry(0.5, 0), NEW.leafB, [bx, by, bz],
+      { rot: [Math.random(), Math.random(), Math.random()], noOutline: true });
+
+  g.add(p);
+}
+
+/** 우물 — 광장의 초점 */
+function buildWell(g, x, z) {
+  const p = new THREE.Group();
+  p.position.set(x, 0, z);
+
+  add(p, new THREE.CylinderGeometry(1.25, 1.35, 0.2, 14), NEW.stoneDark, [0, 0.1, 0], { outline: 0.025 });
+  add(p, new THREE.CylinderGeometry(1.0, 1.08, 0.75, 14), NEW.stone, [0, 0.55, 0], { outline: 0.025 });
+  add(p, new THREE.TorusGeometry(1.0, 0.08, 6, 16), NEW.stoneDark, [0, 0.92, 0], { rot: [Math.PI / 2, 0, 0], noOutline: true });
+
+  const water = new THREE.Mesh(new THREE.CircleGeometry(0.9, 16), M(0x35708c));
+  water.rotation.x = -Math.PI / 2;
+  water.position.y = 0.72;
+  p.add(water);
+
+  for (const s of [-1, 1]) {
+    add(p, new THREE.BoxGeometry(0.16, 1.7, 0.16), NEW.timber, [s * 0.85, 1.75, 0], { outline: 0.04 });
+    add(p, new THREE.BoxGeometry(0.1, 0.75, 0.1), NEW.timberDark, [s * 0.6, 2.2, 0], { rot: [0, 0, s * 0.62], noOutline: true });
+  }
+  add(p, new THREE.CylinderGeometry(0.12, 0.12, 1.9, 8), NEW.timberDark, [0, 2.6, 0], { rot: [0, 0, Math.PI / 2], outline: 0.05 });
+
+  // 지붕 — 집과 같은 2단 규칙을 작게 반복해 마을의 통일감을 만든다
+  add(p, new THREE.ConeGeometry(1.85, 0.55, 4), NEW.roof, [0, 2.95, 0], { rot: [0, Math.PI / 4, 0], outline: 0.025 });
+  add(p, new THREE.ConeGeometry(1.25, 0.5, 4), NEW.roofDark, [0, 3.32, 0], { rot: [0, Math.PI / 4, 0], outline: 0.03 });
+  add(p, new THREE.SphereGeometry(0.14, 8, 6), NEW.accent, [0, 3.62, 0], { outline: 0.06 });
+
+  add(p, new THREE.CylinderGeometry(0.22, 0.2, 0.32, 8), NEW.timber, [0, 1.55, 0], { outline: 0.05 });
+  g.add(p);
+}
+
+// ---------------------------------------------------------------
+// 마그네슘 대역 — 배경과의 비율·톤 비교용
+// ---------------------------------------------------------------
+function buildStandIn() {
+  const p = new THREE.Group();
+  const skin = 0xf5dcc4, hair = 0x2f5245, dressA = 0x7fae5e, dressB = 0xf2d3dc, trim = 0xc9a961;
+
+  add(p, new THREE.CylinderGeometry(0.052, 0.06, 0.08, 8), skin, [0, 1.335, 0], { outline: 0.04 });
+  add(p, new THREE.SphereGeometry(0.115, 16, 12), skin, [0, 1.47, 0], { scale: [0.92, 1.08, 0.95], outline: 0.035 });
+  add(p, new THREE.SphereGeometry(0.128, 14, 10), hair, [0, 1.492, -0.006], { scale: [1, 0.95, 1], outline: 0.035 });
+  add(p, new THREE.BoxGeometry(0.19, 0.52, 0.1), hair, [0, 1.24, -0.095], { outline: 0.03 });
+  add(p, new THREE.BoxGeometry(0.055, 0.34, 0.07), hair, [-0.108, 1.32, 0.03], { outline: 0.04 });
+  add(p, new THREE.BoxGeometry(0.055, 0.34, 0.07), hair, [0.108, 1.32, 0.03], { outline: 0.04 });
+  add(p, new THREE.BoxGeometry(0.2, 0.055, 0.05), hair, [0, 1.548, 0.088], { noOutline: true });
+
+  add(p, new THREE.CylinderGeometry(0.125, 0.145, 0.34, 12), dressB, [0, 1.09, 0], { outline: 0.03 });
+  add(p, new THREE.CylinderGeometry(0.148, 0.16, 0.13, 12), dressA, [0, 0.985, 0], { outline: 0.03 });
+  add(p, new THREE.BoxGeometry(0.26, 0.07, 0.17), trim, [0, 0.93, 0], { noOutline: true });
+  add(p, new THREE.CylinderGeometry(0.16, 0.42, 0.42, 14), dressB, [0, 0.72, 0], { outline: 0.028 });
+  add(p, new THREE.CylinderGeometry(0.17, 0.36, 0.3, 14), dressA, [0, 0.8, 0], { outline: 0.03 });
+
+  for (const s of [-1, 1]) {
+    add(p, new THREE.CylinderGeometry(0.042, 0.036, 0.42, 8), skin, [s * 0.175, 1.06, 0],
+      { rot: [0, 0, s * 0.12], outline: 0.045 });
+    add(p, new THREE.SphereGeometry(0.04, 10, 8), skin, [s * 0.222, 0.845, 0], { outline: 0.05 });
+    add(p, new THREE.TorusGeometry(0.045, 0.012, 5, 10), trim, [s * 0.2, 0.94, 0], { rot: [Math.PI / 2, 0, 0], noOutline: true });
+    add(p, new THREE.CylinderGeometry(0.052, 0.044, 0.52, 8), skin, [s * 0.075, 0.3, 0], { outline: 0.04 });
+    add(p, new THREE.BoxGeometry(0.1, 0.09, 0.15), dressA, [s * 0.075, 0.045, 0.02], { outline: 0.04 });
+  }
+
+  p.position.set(2.6, 0, 5.2);
+  p.rotation.y = -0.5;
+  return p;
+}
+
+// 대역을 먼저 세워두고, 실제 VRM이 도착하면 교체한다.
+// 17MB짜리를 기다리는 동안 화면이 비어 있지 않게 하려는 것.
+const standIn = buildStandIn();
+groupAfter.add(standIn);
+const standInB = standIn.clone();
+groupBefore.add(standInB);
+
+// ---------------------------------------------------------------
+// 실제 mg.vrm 로드
+// ---------------------------------------------------------------
+const CHAR_POS = [2.6, 0, 5.2];
+const CHAR_ROT = -0.5;
+
+const loader = new GLTFLoader();
+loader.register((parser) => new VRMLoaderPlugin(parser));
+
+let vrmA = null, vrmB = null;
+const status = document.getElementById("vrm-status");
+
+loader.load(
+  "../assets/models/mg.vrm",
+  (gltf) => {
+    const vrm = gltf.userData.vrm;
+    if (!vrm) { status.textContent = "VRM 데이터 없음 — 대역 유지"; return; }
+
+    // 안 보이는 조인트를 제거하고 스키닝을 최적화한다. 없으면 프레임이 떨어진다.
+    VRMUtils.removeUnnecessaryVertices(gltf.scene);
+    VRMUtils.combineSkeletons(gltf.scene);
+
+    // VRM 0.0은 뒤를 보고 서 있다. 1.0이면 이 호출이 아무 일도 하지 않는다.
+    VRMUtils.rotateVRM0(vrm);
+
+    vrm.scene.traverse((o) => {
+      o.frustumCulled = false;
+      if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    });
+
+    vrm.scene.position.set(...CHAR_POS);
+    vrm.scene.rotation.y = CHAR_ROT;
+
+    vrmA = vrm;
+    groupAfter.remove(standIn);
+    groupAfter.add(vrm.scene);
+
+    // 비교 화면에도 같은 모델을 세워야 배경 차이만 보인다
+    vrmB = vrm.scene.clone(true);
+    groupBefore.remove(standInB);
+    groupBefore.add(vrmB);
+
+    const h = new THREE.Box3().setFromObject(vrm.scene).getSize(new THREE.Vector3()).y;
+    status.innerHTML = `<b style="color:#8AC46A">mg.vrm</b> 로드 완료 · 키 ${h.toFixed(2)}m`;
+  },
+  (e) => {
+    if (e.total) status.textContent = `mg.vrm 불러오는 중 ${Math.round((e.loaded / e.total) * 100)}%`;
+    else status.textContent = `mg.vrm 불러오는 중 ${(e.loaded / 1048576).toFixed(1)}MB`;
+  },
+  (err) => {
+    console.error(err);
+    status.innerHTML = `<b style="color:#E0A15E">mg.vrm을 못 읽었습니다</b> — 대역으로 대신 표시 중.
+      이 페이지는 <code>npx serve</code>로 띄운 서버에서 열어야 합니다.`;
+  }
+);
+
+// ---------------------------------------------------------------
+// 구성 · 전환
+// ---------------------------------------------------------------
+buildBefore();
+buildAfter();
+
+const INFO = {
+  before: {
+    title: "현재",
+    rows: [
+      ["집", "상자 + 4면 원뿔 지붕. 벽이 단색 한 판이라 <b>고깔모자</b>처럼 읽힌다"],
+      ["나무", "원기둥 + 공 하나. 가지가 없어 <b>막대에 꽂힌 구슬</b>로 보인다"],
+      ["바닥", "단색 평면 두 장. 물체와 땅이 만나는 곳이 비어 있다"],
+      ["색", "채도가 높고 명도 폭이 좁아 형태가 뭉개진다"],
+    ],
+  },
+  after: {
+    title: "개선안",
+    rows: [
+      ["집", "<b>석재 기단</b>으로 땅에 앉히고, <b>목재 골조·가새</b>로 벽을 분할. <b>처마 깊은 2단 지붕</b>과 용마루 장식"],
+      ["창·문", "틀과 문짝을 분리하고 <b>십자 창살</b>을 넣어야 창으로 읽힌다"],
+      ["나무", "뿌리 → 줄기 → <b>가지 3개</b> → 크기·색이 다른 <b>잎 덩어리 5개</b>. 뭉게구름 실루엣"],
+      ["바닥", "잔디 얼룩 22개 · 포석 30개 · <b>풀 포기 90개</b>로 빈 곳을 메운다"],
+      ["색", "채도를 낮추고 명도 폭을 넓힘. 지붕에 <b>청록</b>을 넣어 초록 대지와 보색 대비"],
+      ["소품", "물통 · 처마 등불 · 경계석 — 사람이 사는 흔적"],
+    ],
+  },
+};
+
+const btnBefore = document.getElementById("btn-before");
+const btnAfter = document.getElementById("btn-after");
+const infoTitle = document.getElementById("info-title");
+const infoBody = document.getElementById("info-body");
+
+function show(which) {
+  const isAfter = which === "after";
+  groupAfter.visible = isAfter;
+  groupBefore.visible = !isAfter;
+  btnAfter.setAttribute("aria-pressed", String(isAfter));
+  btnBefore.setAttribute("aria-pressed", String(!isAfter));
+
+  const d = INFO[which];
+  infoTitle.textContent = d.title;
+  infoBody.innerHTML = d.rows
+    .map(([k, v]) => `<div class="row"><dt>${k}</dt><dd>${v}</dd></div>`)
+    .join("");
+}
+
+btnBefore.addEventListener("click", () => show("before"));
+btnAfter.addEventListener("click", () => show("after"));
+show("after");
+
+// ---------------------------------------------------------------
+// 루프
+// ---------------------------------------------------------------
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+addEventListener("resize", resize);
+resize();
+
+const clock = new THREE.Clock();
+let t = 0;
+
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  t += dt;
+
+  // 캐릭터를 아주 느리게 좌우로 돌려 실루엣을 여러 각도에서 보이게 한다
+  const sway = CHAR_ROT + Math.sin(t * 0.35) * 0.35;
+  const target = vrmA ? vrmA.scene : standIn;
+  target.rotation.y = sway;
+  if (vrmB) vrmB.rotation.y = sway; else standInB.rotation.y = sway;
+
+  // 스프링본(머리카락·치맛자락) 물리. 이게 없으면 캐릭터가 뻣뻣하다
+  if (vrmA) vrmA.update(dt);
+
+  controls.update();
+  renderer.render(scene, camera);
+});
+
+requestAnimationFrame(() => document.getElementById("loading").remove());
+</script>

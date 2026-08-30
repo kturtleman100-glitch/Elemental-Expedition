@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>아스티온 대륙 — 10개 지역 컨셉</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;700&display=swap">
+<style>
+  :root {
+    --bg:       #0F1216;
+    --surface:  #171C22;
+    --surface2: #1F252D;
+    --line:     #2B333D;
+    --line-dim: #222932;
+    --text:     #EAE6DE;
+    --text2:    #BEB8AD;
+    --muted:    #837C72;
+    --dim:      #5E584F;
+    --gold:     #D9A441;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Noto Sans KR", system-ui, sans-serif; font-weight: 300;
+    line-height: 1.7; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: clamp(2rem,5vw,4rem) clamp(1rem,3vw,2rem) 6rem; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace; font-size: .68rem;
+    letter-spacing: .22em; text-transform: uppercase; color: var(--dim); margin: 0 0 .9rem;
+  }
+  h1 {
+    font-family: "Fraunces", Georgia, serif; font-weight: 600;
+    font-size: clamp(1.9rem,1.1rem+3vw,3rem); line-height: 1.1;
+    letter-spacing: -.02em; margin: 0 0 .9rem;
+  }
+  .lede { color: var(--muted); max-width: 62ch; margin: 0 0 3rem; font-size: 1.02rem; }
+
+  h2 {
+    font-family: "Fraunces", Georgia, serif; font-weight: 600;
+    font-size: clamp(1.3rem,1rem+1.3vw,1.75rem); margin: 0 0 .3rem; letter-spacing: -.015em;
+  }
+  .section-note { color: var(--muted); font-size: .92rem; margin: 0 0 1.8rem; }
+
+  hr.div { border: 0; border-top: 1px solid var(--line); margin: 4rem 0 2.6rem; }
+
+  /* ---- 토룡마을 상세 ---- */
+  .hero {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden; margin-bottom: 1.4rem;
+  }
+  .hero-head {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: .6rem 1rem;
+    padding: 1.1rem 1.3rem; border-bottom: 1px solid var(--line);
+  }
+  .hero-head h3 { font-family: "Fraunces", Georgia, serif; font-size: 1.35rem; font-weight: 600; margin: 0; }
+  .badge {
+    font-family: "IBM Plex Mono", monospace; font-size: .63rem; letter-spacing: .1em;
+    text-transform: uppercase; padding: .2rem .55rem; border-radius: 3px;
+    background: #2A3A22; color: #9FD17A;
+  }
+  .badge.next { background: var(--gold); color: #241a06; }
+  .hero-head .owner { margin-left: auto; font-size: .85rem; color: var(--muted); }
+
+  .hero-body { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); gap: 0; }
+  @media (max-width: 860px) { .hero-body { grid-template-columns: 1fr; } }
+  .hero-map { padding: 1.2rem; border-right: 1px solid var(--line); background: #12161B; }
+  @media (max-width: 860px) { .hero-map { border-right: 0; border-bottom: 1px solid var(--line); } }
+  .hero-info { padding: 1.2rem 1.3rem; }
+
+  svg { display: block; width: 100%; height: auto; }
+
+  .kv { display: grid; grid-template-columns: 5.2rem 1fr; gap: .45rem .7rem; font-size: .86rem; margin-bottom: 1.1rem; }
+  .kv dt { color: var(--dim); font-size: .76rem; padding-top: .1rem; }
+  .kv dd { margin: 0; color: var(--text2); }
+  .kv dd b { color: var(--text); font-weight: 500; }
+
+  .sub { font-family: "IBM Plex Mono", monospace; font-size: .62rem; letter-spacing: .13em;
+         text-transform: uppercase; color: var(--dim); margin: 1.2rem 0 .5rem; }
+
+  ul.marks { list-style: none; padding: 0; margin: 0; }
+  ul.marks li {
+    font-size: .85rem; color: var(--text2); padding: .32rem 0 .32rem .95rem;
+    position: relative; border-top: 1px solid var(--line-dim);
+  }
+  ul.marks li:first-child { border-top: 0; }
+  ul.marks li::before { content: "◆"; position: absolute; left: 0; top: .34rem; font-size: .5rem; color: var(--gold); }
+  ul.marks li b { color: var(--text); font-weight: 500; }
+
+  .pal { display: flex; gap: 0; border-radius: 5px; overflow: hidden; border: 1px solid var(--line); }
+  .pal div { flex: 1; height: 42px; position: relative; }
+  .pal div span {
+    position: absolute; inset: auto 0 0 0; font-family: "IBM Plex Mono", monospace;
+    font-size: .52rem; text-align: center; padding: 1px 0;
+    background: rgba(0,0,0,.55); color: #fff; letter-spacing: .02em;
+  }
+
+  /* ---- 지역 카드 격자 ---- */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px,1fr)); gap: 1.1rem; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 9px; overflow: hidden; display: flex; flex-direction: column;
+  }
+  .card-head { padding: .85rem 1rem .7rem; border-bottom: 1px solid var(--line-dim); }
+  .card-head .top { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+  .card-head h3 { font-family: "Fraunces", Georgia, serif; font-size: 1.05rem; font-weight: 600; margin: 0; }
+  .card-head .ch {
+    font-family: "IBM Plex Mono", monospace; font-size: .6rem; letter-spacing: .1em;
+    color: var(--dim); margin-left: auto;
+  }
+  .card-head .tag { font-size: .78rem; color: var(--muted); margin: .25rem 0 0; }
+  .card-map { background: #12161B; padding: .8rem; border-bottom: 1px solid var(--line-dim); }
+  .card-body { padding: .85rem 1rem 1rem; flex: 1; }
+  .card-body .atmo { font-size: .82rem; color: var(--text2); margin: 0 0 .8rem; line-height: 1.65; }
+  .card-body ul.marks li { font-size: .8rem; }
+
+  footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+           font-size: .82rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Elemental Expedition · Zone Concepts</p>
+  <h1>아스티온 대륙 — 10개 지역 컨셉</h1>
+  <p class="lede">
+    제작 전 컨셉 확인용입니다. 각 지역은 <b>그곳을 다스리는 원소의 화학적 성질</b>에서 형태와 색을 끌어냈습니다.
+    배치도는 위에서 내려다본 구조이고, 팔레트는 실제 코드에 들어갈 색입니다.
+  </p>
+
+  <h2>다음 제작 대상 — 토룡마을 확장</h2>
+  <p class="section-note">지름 50m · 9채 → <b style="color:var(--gold)">지름 130m · 22채 · 5개 구역</b></p>
+
+  <div class="hero">
+    <div class="hero-head">
+      <h3>토룡마을</h3>
+      <span class="badge next">다음 작업</span>
+      <span class="owner">칼슘 (Ca) · 촌장</span>
+    </div>
+    <div class="hero-body">
+      <div class="hero-map">
+        <svg viewBox="0 0 560 440" role="img" aria-label="토룡마을 확장 배치도">
+          <defs>
+            <pattern id="grass" width="8" height="8" patternUnits="userSpaceOnUse">
+              <rect width="8" height="8" fill="#2A3524"/>
+              <path d="M2 7 L2 4 M5 8 L5 5" stroke="#374428" stroke-width=".8"/>
+            </pattern>
+            <pattern id="field" width="10" height="10" patternUnits="userSpaceOnUse">
+              <rect width="10" height="10" fill="#3A3520"/>
+              <path d="M0 3 H10 M0 7 H10" stroke="#4C452A" stroke-width="1.2"/>
+            </pattern>
+          </defs>
+
+          <rect width="560" height="440" fill="url(#grass)"/>
+
+          <!-- 경계 -->
+          <circle cx="280" cy="220" r="205" fill="none" stroke="#3E4A38" stroke-width="1.5" stroke-dasharray="6 6"/>
+          <text x="280" y="30" fill="#5E584F" font-size="10" font-family="IBM Plex Mono" text-anchor="middle">마을 경계 · 지름 130m</text>
+
+          <!-- 길 -->
+          <g stroke="#8A7A5C" stroke-width="16" stroke-linecap="round" opacity=".85">
+            <path d="M280 220 L280 90"/><path d="M280 220 L430 300"/>
+            <path d="M280 220 L130 300"/><path d="M280 220 L120 150"/>
+          </g>
+
+          <!-- 농경지 -->
+          <rect x="330" y="300" width="150" height="95" rx="4" fill="url(#field)" stroke="#5A5030" stroke-width="1"/>
+          <text x="405" y="352" fill="#C9B98A" font-size="12" text-anchor="middle" font-weight="500">농경지</text>
+          <g fill="#6B5A34">
+            <rect x="440" y="255" width="34" height="26" rx="2"/><rect x="486" y="278" width="26" height="22" rx="2"/>
+          </g>
+
+          <!-- 공방 구역 -->
+          <g fill="#6B4A3A" stroke="#2A1C16" stroke-width="1.2">
+            <rect x="88" y="272" width="46" height="40" rx="3"/>
+            <rect x="142" y="296" width="40" height="34" rx="3"/>
+            <rect x="76" y="326" width="42" height="34" rx="3"/>
+          </g>
+          <text x="128" y="356" fill="#D9B08A" font-size="12" text-anchor="middle" font-weight="500">공방 구역</text>
+          <text x="128" y="371" fill="#837C72" font-size="9" text-anchor="middle">대안통운 · 대장간</text>
+
+          <!-- 주거 구역 -->
+          <g fill="#4A6B6E" stroke="#1E3032" stroke-width="1.2">
+            <rect x="248" y="56" width="66" height="52" rx="3"/>
+            <rect x="180" y="88" width="46" height="40" rx="3"/>
+            <rect x="336" y="84" width="46" height="40" rx="3"/>
+            <rect x="196" y="146" width="42" height="36" rx="3"/>
+            <rect x="330" y="148" width="42" height="36" rx="3"/>
+          </g>
+          <text x="281" y="86" fill="#0F1216" font-size="11" text-anchor="middle" font-weight="700">촌장</text>
+          <text x="281" y="46" fill="#9FD1D4" font-size="12" text-anchor="middle" font-weight="500">주거 구역</text>
+
+          <!-- 석회암 동굴 -->
+          <g>
+            <path d="M60 120 Q75 92 108 96 Q142 100 150 128 Q156 156 128 168 Q92 178 70 158 Q52 142 60 120Z"
+                  fill="#B8AE96" stroke="#7A7260" stroke-width="1.4"/>
+            <ellipse cx="106" cy="140" rx="17" ry="13" fill="#12161B"/>
+            <path d="M106 140 L120 150" stroke="#D9A441" stroke-width="2"/>
+          </g>
+          <text x="104" y="192" fill="#D8CFB8" font-size="12" text-anchor="middle" font-weight="500">석회암 동굴</text>
+          <text x="104" y="206" fill="#837C72" font-size="9" text-anchor="middle">칼슘의 기도처</text>
+
+          <!-- 중앙 광장 -->
+          <circle cx="280" cy="220" r="62" fill="#8A7A5C" stroke="#6B5C42" stroke-width="2"/>
+          <circle cx="280" cy="220" r="62" fill="none" stroke="#A89878" stroke-width="1" stroke-dasharray="3 5"/>
+          <circle cx="280" cy="220" r="13" fill="#9A958A" stroke="#4A4640" stroke-width="2"/>
+          <circle cx="280" cy="220" r="6" fill="#2F6A86"/>
+          <text x="280" y="252" fill="#2A2318" font-size="11" text-anchor="middle" font-weight="700">우물</text>
+          <g fill="#B85C4A" stroke="#5A2A22" stroke-width="1">
+            <rect x="224" y="182" width="30" height="20" rx="2"/><rect x="308" y="184" width="30" height="20" rx="2"/>
+          </g>
+          <text x="280" y="176" fill="#E8C08A" font-size="12" text-anchor="middle" font-weight="500">중앙 광장 · 장터</text>
+
+          <!-- 나무 -->
+          <g fill="#3F6634">
+            <circle cx="170" cy="230" r="11"/><circle cx="392" cy="212" r="10"/><circle cx="214" cy="340" r="10"/>
+            <circle cx="360" cy="392" r="11"/><circle cx="452" cy="150" r="10"/><circle cx="150" cy="212" r="8"/>
+            <circle cx="418" cy="180" r="8"/><circle cx="248" cy="392" r="9"/>
+          </g>
+
+          <!-- 범례 -->
+          <g font-family="IBM Plex Mono" font-size="9" fill="#837C72">
+            <rect x="14" y="396" width="10" height="10" fill="#4A6B6E"/><text x="30" y="405">주거</text>
+            <rect x="76" y="396" width="10" height="10" fill="#6B4A3A"/><text x="92" y="405">공방</text>
+            <rect x="138" y="396" width="10" height="10" fill="url(#field)"/><text x="154" y="405">농경</text>
+            <rect x="200" y="396" width="10" height="10" fill="#8A7A5C"/><text x="216" y="405">광장·길</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="hero-info">
+        <dl class="kv">
+          <dt>위치</dt><dd>대륙 <b>동쪽 끝</b></dd>
+          <dt>챕터</dt><dd>1장 「이름 없는 자」 · 2장 「전자 도둑」</dd>
+          <dt>컨셉</dt><dd>석회암 절벽 아래 자리잡은 <b>소박한 농촌</b></dd>
+          <dt>퀘스트</dt><dd>메인 2 · 서브 5 · 보스 2 (브로민·비소)</dd>
+        </dl>
+
+        <p class="sub">팔레트</p>
+        <div class="pal">
+          <div style="background:#7D9455"><span>잔디</span></div>
+          <div style="background:#C9BB9C"><span>흙길</span></div>
+          <div style="background:#E6DCC6"><span>회벽</span></div>
+          <div style="background:#6A4D34"><span>목재</span></div>
+          <div style="background:#4A6B6E"><span>기와</span></div>
+          <div style="background:#D6CEBA"><span>석회암</span></div>
+        </div>
+
+        <p class="sub">5개 구역</p>
+        <ul class="marks">
+          <li><b>중앙 광장</b> — 우물·장터 좌판·게시판. 모든 길이 여기서 갈라진다</li>
+          <li><b>주거 구역</b> (북) — 촌장 집 + 주민 집 4채</li>
+          <li><b>공방 구역</b> (서남) — <b>대안통운 물류창고</b>·대장간·창고</li>
+          <li><b>농경지</b> (동남) — 밭·헛간. 인(P)이 비료라는 설정 반영</li>
+          <li><b>석회암 동굴</b> (서북) — 칼슘이 기도하는 곳. 후반 던전 입구</li>
+        </ul>
+
+        <p class="sub">왜 구역을 나누는가</p>
+        <p class="atmo" style="font-size:.82rem;color:var(--text2);margin:0">
+          인(P)의 <b>택배 배송 퀘스트</b>가 성립하려면 배송할 <b>거리와 목적지</b>가 있어야 합니다.
+          한 광장에 NPC 7명이 몰려 서 있으면 심부름이 성립하지 않습니다.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="div">
+
+  <h2>나머지 9개 지역</h2>
+  <p class="section-note">각 지역의 형태와 색은 그곳을 다스리는 원소의 실제 성질에서 끌어냈습니다.</p>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    컨셉 확인용 페이지입니다. 방향이 정해지면 토룡마을 확장부터 코드로 옮깁니다.
+    설정은 참고자료 도서의 세계관을 바탕으로 하되, 형태·배치·색은 이 프로젝트의 창작입니다.
+  </footer>
+</div>
+
+<script>
+const ZONES = [
+  {
+    name: "탄소 학교", owner: "탄소(C) · 규소(Si)", ch: "CH.1–2",
+    tag: "결합팔 4개가 만든 십자형 학사",
+    atmo: "탄소는 최대 4개까지 결합한다. 그래서 학교는 중앙 강당에서 <b>정확히 네 방향</b>으로 뻗은 십자 구조다. 흑연빛 석조에 다이아몬드 첨탑이 박혀 있고, 한쪽 끝에는 규소의 수정 예언탑이 홀로 서 있다.",
+    marks: ["<b>결합팔 4동</b> — 중앙 강당에서 네 방향", "<b>다이아몬드 첨탑</b> — 탄소의 동소체", "<b>규소의 예언탑</b> — 수정 구조, 혼자 떨어져 있다", "입학 시험장"],
+    pal: [["#3A3D42","흑연"],["#E8EAF0","다이아"],["#2E4A3A","제복"],["#C4A8D8","수정"],["#8A8F98","석조"]],
+    svg: `<rect width="300" height="200" fill="#1A1E24"/>
+      <g stroke="#5A6470" stroke-width="10" stroke-linecap="round"><path d="M150 100 V38"/><path d="M150 100 V162"/><path d="M150 100 H72"/><path d="M150 100 H228"/></g>
+      <g fill="#5A6470" stroke="#2A3038" stroke-width="1.5"><rect x="124" y="20" width="52" height="30" rx="2"/><rect x="124" y="150" width="52" height="30" rx="2"/><rect x="46" y="84" width="34" height="34" rx="2"/><rect x="220" y="84" width="34" height="34" rx="2"/></g>
+      <circle cx="150" cy="100" r="26" fill="#8A8F98" stroke="#2A3038" stroke-width="2"/>
+      <text x="150" y="104" fill="#12161B" font-size="10" text-anchor="middle" font-weight="700">강당</text>
+      <path d="M150 100 L158 74 L150 62 L142 74Z" fill="#E8EAF0" opacity=".9"/>
+      <g><rect x="252" y="30" width="26" height="46" fill="#C4A8D8" stroke="#6A5A78" stroke-width="1.5"/><text x="265" y="90" fill="#C4A8D8" font-size="8" text-anchor="middle" font-family="IBM Plex Mono">예언탑</text></g>`
+  },
+  {
+    name: "아르곤 시티 & 최고재판소", owner: "아르곤(Ar) · 네온(Ne)", ch: "CH.2–3",
+    tag: "밤이 오지 않는 네온의 지하 도시",
+    atmo: "성 아랫마을. <b>유일하게 밤 시간대</b>인 지역이다. 네온이 지하 세계의 거리를 시끌벅적하게 밝히고, 그 위 언덕에는 아르곤이 게으름을 피우는 성이 내려다본다. 최고재판소는 유리로 지어져 안이 다 비친다.",
+    marks: ["<b>아르곤 성</b> — 언덕 위, 마을을 내려다본다", "<b>네온 최고재판소</b> — 유리 법정, 첨단 시설", "<b>네온 간판 거리</b> — 밤새 꺼지지 않는다", "성 아랫마을 여관·상점"],
+    pal: [["#1A1428","밤"],["#E8506B","네온적"],["#4AC8E8","네온청"],["#A89AD8","아르곤"],["#3A2E50","석벽"]],
+    svg: `<rect width="300" height="200" fill="#140F1E"/>
+      <path d="M0 60 Q80 20 150 44 Q220 66 300 40 L300 0 L0 0Z" fill="#241A38"/>
+      <g fill="#A89AD8" stroke="#3A2E50" stroke-width="1.5"><rect x="118" y="14" width="64" height="34" rx="2"/><rect x="132" y="2" width="16" height="16"/><rect x="156" y="2" width="16" height="16"/></g>
+      <text x="150" y="36" fill="#241A38" font-size="9" text-anchor="middle" font-weight="700">아르곤 성</text>
+      <g stroke="#6A5A88" stroke-width="12" stroke-linecap="round"><path d="M30 130 H270"/><path d="M150 130 V64"/></g>
+      <g fill="#3A2E50" stroke="#5A4A78" stroke-width="1"><rect x="34" y="98" width="34" height="24" rx="2"/><rect x="84" y="98" width="30" height="24" rx="2"/><rect x="188" y="98" width="32" height="24" rx="2"/><rect x="238" y="98" width="30" height="24" rx="2"/><rect x="52" y="142" width="36" height="26" rx="2"/><rect x="210" y="142" width="36" height="26" rx="2"/></g>
+      <g fill="#E8506B"><rect x="36" y="92" width="26" height="4" rx="2"/><rect x="190" y="92" width="26" height="4" rx="2"/><rect x="54" y="136" width="28" height="4" rx="2"/></g>
+      <g fill="#4AC8E8"><rect x="86" y="92" width="24" height="4" rx="2"/><rect x="240" y="92" width="24" height="4" rx="2"/><rect x="212" y="136" width="28" height="4" rx="2"/></g>
+      <rect x="118" y="140" width="64" height="42" rx="3" fill="#2A3F58" stroke="#4AC8E8" stroke-width="2" opacity=".85"/>
+      <text x="150" y="166" fill="#9FE4F5" font-size="9" text-anchor="middle" font-weight="600">최고재판소</text>`
+  },
+  {
+    name: "철의 요새", owner: "철(Fe) · 망가니즈(Mn)", ch: "CH.3",
+    tag: "산화된 붉은 강철과 대장간의 불",
+    atmo: "전이 금속 군단의 본부. 성벽 전체가 <b>붉게 산화</b>되어 있어 멀리서도 눈에 띈다. 안쪽에는 망가니즈의 합금 대장간이 밤낮으로 연기를 뿜고, 연병장에서는 코발트와 니켈이 부대를 훈련시킨다.",
+    marks: ["<b>철의 옥좌</b> — 군단 대장의 자리", "<b>망가니즈 대장간</b> — 합금 무기 제작 해금", "연병장 — 코발트·니켈의 강철부대", "산화 성벽 — 붉은 녹"],
+    pal: [["#8E2230","산화철"],["#2A1418","강철"],["#E8863A","화로"],["#C9A227","황동"],["#5A5048","석재"]],
+    svg: `<rect width="300" height="200" fill="#1C1416"/>
+      <path d="M40 170 L40 60 L150 24 L260 60 L260 170Z" fill="none" stroke="#8E2230" stroke-width="9"/>
+      <g fill="#8E2230"><rect x="34" y="52" width="14" height="14"/><rect x="252" y="52" width="14" height="14"/><rect x="143" y="16" width="14" height="14"/></g>
+      <rect x="62" y="82" width="176" height="82" rx="3" fill="#3A2428" stroke="#5A3038" stroke-width="1.5"/>
+      <rect x="106" y="98" width="88" height="52" rx="2" fill="#5A3038" stroke="#8E2230" stroke-width="2"/>
+      <text x="150" y="128" fill="#E8A090" font-size="10" text-anchor="middle" font-weight="600">철의 옥좌</text>
+      <g fill="#2A1418" stroke="#E8863A" stroke-width="1.5"><rect x="70" y="98" width="28" height="30" rx="2"/></g>
+      <path d="M78 96 Q84 84 90 96" stroke="#E8863A" stroke-width="2.5" fill="none"/>
+      <text x="84" y="142" fill="#E8863A" font-size="8" text-anchor="middle" font-family="IBM Plex Mono">대장간</text>
+      <rect x="202" y="98" width="30" height="52" rx="2" fill="#2A1418" stroke="#5A5048" stroke-width="1.5"/>
+      <g stroke="#5A5048" stroke-width="1"><path d="M206 110 H228 M206 122 H228 M206 134 H228"/></g>
+      <text x="217" y="162" fill="#9A9088" font-size="8" text-anchor="middle" font-family="IBM Plex Mono">연병장</text>`
+  },
+  {
+    name: "거울 나라 · 황금 신전", owner: "은(Ag) · 금(Au) · 구리(Cu)", ch: "CH.4",
+    tag: "수천 년째 갈라선 11족 삼형제",
+    atmo: "한 지역 안에 <b>대칭되는 두 장소</b>가 있다. 은의 거울 나라는 차갑고 고요하며 모든 것이 반사된다. 금의 신전은 따뜻하지만 <b>스스로를 가둔 채</b> 굳게 닫혀 있다. 그 사이 마을에 구리가 사람들과 섞여 산다.",
+    marks: ["<b>거울 호수</b> — 은이 만든 반사의 나라", "<b>봉인된 황금 신전</b> — 금이 스스로 갇혔다", "구리의 마을 — 두 곳 사이 중립지대", "삼형제 재회 시 11족 합체기 해금"],
+    pal: [["#DFE3E8","은"],["#8FB4C8","거울"],["#D9A441","금"],["#6B4A12","신전"],["#B87333","구리"]],
+    svg: `<rect width="300" height="200" fill="#161A1E"/>
+      <ellipse cx="72" cy="98" rx="58" ry="46" fill="#8FB4C8" opacity=".38"/>
+      <ellipse cx="72" cy="98" rx="58" ry="46" fill="none" stroke="#DFE3E8" stroke-width="2"/>
+      <g stroke="#DFE3E8" stroke-width="1" opacity=".55"><path d="M28 88 H116"/><path d="M32 106 H112"/><path d="M40 122 H104"/></g>
+      <rect x="54" y="82" width="36" height="30" rx="2" fill="#DFE3E8" stroke="#8A929C" stroke-width="1.5"/>
+      <text x="72" y="160" fill="#DFE3E8" font-size="10" text-anchor="middle" font-weight="500">거울 나라</text>
+      <g><path d="M186 122 L186 66 L232 42 L278 66 L278 122Z" fill="#6B4A12" stroke="#D9A441" stroke-width="2.5"/>
+      <rect x="220" y="88" width="24" height="34" fill="#3A2808" stroke="#D9A441" stroke-width="2"/>
+      <path d="M226 105 H238" stroke="#D9A441" stroke-width="2.5"/></g>
+      <text x="232" y="160" fill="#D9A441" font-size="10" text-anchor="middle" font-weight="500">황금 신전</text>
+      <text x="232" y="174" fill="#837C72" font-size="8" text-anchor="middle" font-family="IBM Plex Mono">봉인됨</text>
+      <g fill="#B87333" stroke="#5C3A1A" stroke-width="1.2"><rect x="136" y="96" width="26" height="22" rx="2"/><rect x="140" y="126" width="22" height="18" rx="2"/></g>
+      <text x="150" y="164" fill="#D98C4A" font-size="9" text-anchor="middle">구리 마을</text>`
+  },
+  {
+    name: "스티비 대성당", owner: "안티모니(Sb)", ch: "CH.4–5",
+    tag: "낮에는 인쇄소, 밤에는 퇴마",
+    atmo: "대륙에서 가장 오래된 종교 시설. 안티모니는 <b>활자 인쇄</b>에 쓰이는 금속이라, 낮의 성당은 활자를 찍어내는 공방이다. 밤이 되면 그가 아무도 모르게 퇴마사로 나선다. 지하에는 납골당이 있다.",
+    marks: ["<b>활자 인쇄실</b> — 낮의 얼굴", "<b>종탑</b> — 밤의 퇴마 시작 신호", "지하 납골당 — 봉인된 무언가", "스테인드글라스 — 원소 도감 벽화"],
+    pal: [["#F0ECE0","상아"],["#2A2438","남보라"],["#C9A227","금장"],["#7A4A8A","유리"],["#4A4458","석재"]],
+    svg: `<rect width="300" height="200" fill="#15131C"/>
+      <path d="M96 178 L96 74 L150 34 L204 74 L204 178Z" fill="#F0ECE0" stroke="#4A4458" stroke-width="2"/>
+      <rect x="60" y="96" width="36" height="82" fill="#DCD6C8" stroke="#4A4458" stroke-width="1.5"/>
+      <rect x="204" y="96" width="36" height="82" fill="#DCD6C8" stroke="#4A4458" stroke-width="1.5"/>
+      <g><rect x="128" y="10" width="44" height="66" fill="#F0ECE0" stroke="#4A4458" stroke-width="2"/>
+      <path d="M128 12 L150 -4 L172 12Z" fill="#2A2438"/>
+      <circle cx="150" cy="42" r="10" fill="#2A2438" stroke="#C9A227" stroke-width="1.5"/></g>
+      <path d="M150 94 m-16 0 a16 16 0 1 0 32 0 a16 16 0 1 0 -32 0" fill="#7A4A8A" stroke="#C9A227" stroke-width="2"/>
+      <g stroke="#C9A227" stroke-width="1"><path d="M134 94 H166 M150 78 V110"/></g>
+      <g fill="#2A2438"><rect x="114" y="128" width="18" height="34" rx="9"/><rect x="168" y="128" width="18" height="34" rx="9"/><rect x="140" y="140" width="20" height="38" rx="4"/></g>
+      <text x="150" y="196" fill="#C9A227" font-size="9" text-anchor="middle" font-family="IBM Plex Mono">지하 납골당 ↓</text>`
+  },
+  {
+    name: "호르메시스 온천", owner: "라돈(Rn) · 황(S)", ch: "CH.5",
+    tag: "유황 김이 오르는 회복 거점",
+    atmo: "라돈이 운영하는 온천 리조트. 의심스러운 건강 상품을 팔지만 온천만큼은 진짜다. 가장 큰 탕에는 <b>전설 속 용의 왕인 황</b>이 늘 몸을 담그고 있다. 이 지역은 게임 전체의 <b>회복 거점</b> 역할을 한다.",
+    marks: ["<b>대탕</b> — 황(용의 왕)이 잠겨 있다", "노천탕 여러 개 — HP·전자 회복", "라돈의 기념품 가게 — 수상한 건강 상품", "유황 증기 — 지역 전체에 김이 낀다"],
+    pal: [["#D9B641","유황"],["#4A8A9A","탕물"],["#8A4A6B","라돈"],["#B85C4A","목조"],["#E8DCC0","증기"]],
+    svg: `<rect width="300" height="200" fill="#1A1A16"/>
+      <g opacity=".5" fill="#E8DCC0"><ellipse cx="90" cy="42" rx="30" ry="12"/><ellipse cx="200" cy="30" rx="36" ry="13"/><ellipse cx="146" cy="58" rx="24" ry="10"/></g>
+      <ellipse cx="150" cy="128" rx="76" ry="46" fill="#4A8A9A" stroke="#D9B641" stroke-width="3"/>
+      <g stroke="#7FC0CE" stroke-width="1.5" opacity=".7" fill="none"><path d="M104 120 Q118 112 132 120 Q146 128 160 120"/><path d="M120 142 Q134 134 148 142 Q162 150 176 142"/></g>
+      <circle cx="150" cy="124" r="15" fill="#D9B641" stroke="#8A6A10" stroke-width="2"/>
+      <text x="150" y="128" fill="#3A2C06" font-size="9" text-anchor="middle" font-weight="700">황</text>
+      <text x="150" y="188" fill="#D9B641" font-size="10" text-anchor="middle" font-weight="500">대탕</text>
+      <ellipse cx="52" cy="86" rx="30" ry="19" fill="#4A8A9A" stroke="#B85C4A" stroke-width="2"/>
+      <ellipse cx="250" cy="90" rx="28" ry="18" fill="#4A8A9A" stroke="#B85C4A" stroke-width="2"/>
+      <g fill="#8A4A6B" stroke="#4A2438" stroke-width="1.5"><rect x="212" y="140" width="52" height="34" rx="3"/></g>
+      <text x="238" y="161" fill="#F0D0E0" font-size="8" text-anchor="middle">기념품</text>`
+  },
+  {
+    name: "저승", owner: "나이오븀(Nb) · 탄탈럼(Ta)", ch: "CH.6",
+    tag: "금속이 굳어버린 잿빛 사후 세계",
+    atmo: "탄탈럼은 <b>죄의 벌로 저주받아 움직이지 못한다</b>. 그래서 이곳의 그는 이미 <b>돌처럼 굳은 조각상</b>이다. 나이오븀만이 곁에서 그를 자식처럼 돌본다. 잿빛 강이 지역을 가로지르고 창백한 인광이 유일한 빛이다.",
+    marks: ["<b>굳어버린 탄탈럼</b> — 움직이지 못하는 거대 조각", "<b>나이오븀의 오두막</b> — 유일하게 온기가 있는 곳", "잿빛 강 — 건너면 돌아올 수 없다", "저주 해제 퀘스트 → 둘 다 영입"],
+    pal: [["#3A3038","잿빛"],["#7FBFB8","인광"],["#A89A8A","굳은금속"],["#1A161C","암흑"],["#D8D0C8","탄탈럼"]],
+    svg: `<rect width="300" height="200" fill="#141118"/>
+      <path d="M0 118 Q75 100 150 118 Q225 136 300 118 L300 156 Q225 174 150 156 Q75 138 0 156Z" fill="#3A3038" opacity=".9"/>
+      <g stroke="#7FBFB8" stroke-width="1" opacity=".45" fill="none"><path d="M20 128 Q60 120 100 130"/><path d="M180 140 Q220 132 260 142"/></g>
+      <g fill="#D8D0C8" stroke="#6A6258" stroke-width="1.5">
+        <rect x="128" y="42" width="44" height="62" rx="3"/><circle cx="150" cy="32" r="15"/>
+        <rect x="106" y="54" width="18" height="42" rx="6"/><rect x="176" y="54" width="18" height="42" rx="6"/></g>
+      <g stroke="#8A8278" stroke-width="1.2"><path d="M132 60 H168 M130 76 H170 M136 92 H164"/></g>
+      <text x="150" y="118" fill="#D8D0C8" font-size="9" text-anchor="middle" font-family="IBM Plex Mono">탄탈럼 · 굳음</text>
+      <g fill="#4A4038" stroke="#7FBFB8" stroke-width="1.5"><rect x="30" y="46" width="52" height="38" rx="3"/><path d="M30 46 L56 26 L82 46Z"/></g>
+      <circle cx="56" cy="66" r="5" fill="#7FBFB8"/>
+      <text x="56" y="100" fill="#7FBFB8" font-size="8" text-anchor="middle" font-family="IBM Plex Mono">나이오븀</text>
+      <g fill="#7FBFB8" opacity=".5"><circle cx="236" cy="60" r="3"/><circle cx="256" cy="76" r="2"/><circle cx="220" cy="82" r="2.5"/><circle cx="266" cy="52" r="2"/></g>`
+  },
+  {
+    name: "추방지 — 방사성 지대", owner: "우라늄(U) · 폴로늄(Po)", ch: "CH.6",
+    tag: "대륙에서 쫓겨난 자들의 황무지",
+    atmo: "방사성 원소들이 추방되어 사는 땅. 초록 인광이 땅에서 새어 나오고 안개가 걷히지 않는다. 우라늄은 <b>발열 체질</b>이라 몸에 냉각수를 순환시키는 탑 옆에 산다. 그 너머 폴로늄의 공방에서 <b>최종 병기</b>가 만들어지고 있다.",
+    marks: ["<b>냉각탑</b> — 우라늄이 체온을 낮추는 곳", "<b>폴로늄의 공방</b> — 최종 보스전 무대", "방사능 안개 — 지속 피해 지대", "테크네튬의 인형들이 배회한다"],
+    pal: [["#2E5C3A","방사초록"],["#6EE85A","인광"],["#4A4438","재"],["#1A2018","탄흙"],["#7B8FD4","폴로늄"]],
+    svg: `<rect width="300" height="200" fill="#12180F"/>
+      <g opacity=".22" fill="#6EE85A"><ellipse cx="80" cy="140" rx="70" ry="36"/><ellipse cx="220" cy="120" rx="66" ry="34"/></g>
+      <path d="M0 176 Q60 160 120 172 Q190 186 300 168 L300 200 L0 200Z" fill="#1A2018"/>
+      <g><path d="M74 150 L86 62 L118 62 L130 150Z" fill="#3A4438" stroke="#6EE85A" stroke-width="2"/>
+      <ellipse cx="102" cy="62" rx="16" ry="6" fill="#6EE85A" opacity=".55"/></g>
+      <text x="102" y="168" fill="#6EE85A" font-size="9" text-anchor="middle" font-family="IBM Plex Mono">냉각탑</text>
+      <g fill="#2A2E48" stroke="#7B8FD4" stroke-width="2"><rect x="184" y="86" width="84" height="60" rx="3"/></g>
+      <g stroke="#7B8FD4" stroke-width="1.5"><path d="M198 100 H254 M198 114 H240"/></g>
+      <circle cx="226" cy="132" r="7" fill="#7B8FD4"/>
+      <text x="226" y="164" fill="#9FB0E8" font-size="9" text-anchor="middle" font-weight="500">폴로늄 공방</text>
+      <g fill="#6EE85A" opacity=".65"><circle cx="46" cy="96" r="2.5"/><circle cx="152" cy="76" r="2"/><circle cx="60" cy="118" r="2"/><circle cx="166" cy="128" r="2.5"/><circle cx="278" cy="70" r="2"/></g>
+      <g fill="#5A5048" stroke="#7A7268" stroke-width="1"><rect x="26" y="60" width="14" height="18" rx="2"/><rect x="150" y="140" width="12" height="16" rx="2"/></g>`
+  },
+  {
+    name: "불안정한 바다 → 안정의 섬", owner: "오가네손(Og) · 니호늄(Nh)", ch: "최종장",
+    tag: "형태가 무너지는 바다, 그 끝의 섬",
+    atmo: "초중원소가 태어나고 곧바로 붕괴하는 바다. 파도조차 형태를 유지하지 못하고 무지갯빛으로 일그러진다. 오가네손이 <b>직접 설계한 배</b>로 이곳을 건넌다. 끝에 있는 <b>안정의 섬</b>은 주기율표 모양이고, 119번 자리가 비어 있다.",
+    marks: ["<b>오가네손의 배</b> — 최종장 이동 수단", "붕괴하는 파도 — 실시간으로 형태가 바뀐다", "<b>안정의 섬</b> — 주기율표 형상, 빈 119번 칸", "니호늄이 아연·비스무트를 그리워한다"],
+    pal: [["#2A3A5C","심해"],["#C8A0E8","왜곡"],["#F0F4F8","안정백"],["#D9A441","119번"],["#5A7A9A","파도"]],
+    svg: `<rect width="300" height="200" fill="#101828"/>
+      <g opacity=".7"><path d="M0 120 Q30 104 60 120 Q90 136 120 120 Q150 104 180 120" stroke="#C8A0E8" stroke-width="2.5" fill="none"/>
+      <path d="M0 142 Q34 126 68 144 Q102 160 136 142" stroke="#5A7A9A" stroke-width="2" fill="none"/>
+      <path d="M10 96 Q40 84 70 98 Q100 112 130 96" stroke="#7A5A9A" stroke-width="1.8" fill="none" opacity=".7"/></g>
+      <g fill="#C8A0E8" opacity=".45"><circle cx="46" cy="70" r="4"/><circle cx="96" cy="58" r="3"/><circle cx="140" cy="78" r="3.5"/><circle cx="22" cy="52" r="2.5"/></g>
+      <g transform="translate(96,116) rotate(-6)">
+        <path d="M-24 0 L24 0 L18 12 L-18 12Z" fill="#6A5A4A" stroke="#D9A441" stroke-width="1.5"/>
+        <path d="M0 0 L0 -28 L18 -6Z" fill="#F0F4F8" stroke="#8A929C" stroke-width="1"/></g>
+      <g><ellipse cx="238" cy="130" rx="56" ry="30" fill="#F0F4F8" opacity=".95"/>
+      <g fill="#C8CED6" stroke="#8A929C" stroke-width=".6">
+        <rect x="200" y="116" width="11" height="11"/><rect x="213" y="116" width="11" height="11"/><rect x="226" y="116" width="11" height="11"/>
+        <rect x="239" y="116" width="11" height="11"/><rect x="252" y="116" width="11" height="11"/>
+        <rect x="200" y="129" width="11" height="11"/><rect x="213" y="129" width="11" height="11"/><rect x="226" y="129" width="11" height="11"/>
+        <rect x="252" y="129" width="11" height="11"/></g>
+      <rect x="239" y="129" width="11" height="11" fill="#D9A441" stroke="#8A6A10" stroke-width="1"/>
+      <text x="244.5" y="137" fill="#3A2C06" font-size="7" text-anchor="middle" font-weight="700">119</text></g>
+      <text x="238" y="176" fill="#F0F4F8" font-size="10" text-anchor="middle" font-weight="500">안정의 섬</text>`
+  },
+];
+
+document.getElementById("grid").innerHTML = ZONES.map(z => `
+  <article class="card">
+    <div class="card-head">
+      <div class="top"><h3>${z.name}</h3><span class="ch">${z.ch}</span></div>
+      <p class="tag">${z.tag}</p>
+    </div>
+    <div class="card-map"><svg viewBox="0 0 300 200" role="img" aria-label="${z.name} 배치도">${z.svg}</svg></div>
+    <div class="card-body">
+      <p class="atmo">${z.atmo}</p>
+      <p class="sub">랜드마크</p>
+      <ul class="marks">${z.marks.map(m => `<li>${m}</li>`).join("")}</ul>
+      <p class="sub">팔레트</p>
+      <div class="pal">${z.pal.map(([c, n]) => `<div style="background:${c}"><span>${n}</span></div>`).join("")}</div>
+      <p class="sub">주인</p>
+      <p style="margin:0;font-size:.82rem;color:var(--text2)">${z.owner}</p>
+    </div>
+  </article>`).join("");
+</script>
+</body>
+</html>
