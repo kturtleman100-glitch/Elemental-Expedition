@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Elemental Expedition</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- 로딩 화면 -->
+    <div id="loading-screen">
+      <div class="loading-title">Elemental&nbsp;Expedition</div>
+      <div class="loading-bar"><div id="loading-bar-fill"></div></div>
+      <div id="loading-text">불러오는 중...</div>
+    </div>
+
+    <!-- HUD (게임 중 표시) -->
+    <div id="hud" hidden>
+      <div id="hud-top-left">
+        <div class="bar hp-bar"><div id="hp-fill" class="bar-fill"></div><span id="hp-text" class="bar-text"></span></div>
+        <div class="bar electron-bar"><div id="electron-fill" class="bar-fill"></div><span id="electron-text" class="bar-text"></span></div>
+        <div class="bar exp-bar"><div id="exp-fill" class="bar-fill"></div></div>
+      </div>
+      <div id="hud-top-right">
+        <button id="btn-menu" class="icon-btn" aria-label="메뉴">☰</button>
+      </div>
+      <div id="crosshair"></div>
+      <div id="debug-overlay"></div>
+      <div id="rotate-notice">📱 가로 모드로 돌려주세요</div>
+    </div>
+
+    <!-- 모바일 터치 컨트롤 (core/Device.js 판별 결과에 따라 표시) -->
+    <div id="touch-controls" hidden>
+      <div id="touch-joystick-zone">
+        <div id="touch-joystick-base"><div id="touch-joystick-knob"></div></div>
+      </div>
+      <div id="touch-look-zone"></div>
+      <div id="touch-action-buttons">
+        <button id="btn-view" class="touch-btn small" aria-label="시점 전환">👁</button>
+        <button id="btn-interact" class="touch-btn small" aria-label="상호작용">✋</button>
+        <button id="btn-jump" class="touch-btn" aria-label="점프">⤴</button>
+        <button id="btn-attack" class="touch-btn large" aria-label="공격">⚔</button>
+      </div>
+    </div>
+
+    <!-- 타이틀 화면 -->
+    <div id="title-screen" hidden>
+      <div class="title-logo">Elemental&nbsp;Expedition</div>
+      <div class="title-sub">아스티온 대륙 원소기</div>
+      <div id="title-menu">
+        <button id="btn-continue" class="title-btn" disabled>이어하기</button>
+        <button id="btn-new-game" class="title-btn">새 게임</button>
+        <button id="btn-multiplayer" class="title-btn">멀티플레이</button>
+        <button id="btn-settings" class="title-btn">설정</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

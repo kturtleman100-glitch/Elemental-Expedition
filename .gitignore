@@ -1,0 +1,23 @@
+# 참고자료 — 책을 촬영한 스캔 이미지. 저작물이므로 절대 커밋하지 않는다.
+참고자료/
+참고자료/**
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# 의존성 / 빌드 (현재는 쓰지 않지만 대비)
+node_modules/
+dist/
+.vercel/
+
+# 로그
+*.log
+npm-debug.log*
