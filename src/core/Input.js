@@ -55,6 +55,16 @@ export class Input {
     return this._justPressed.has(action);
   }
 
+  /**
+   * 시선 변화량만 비운다. applyLook() 직후 프레임 앞쪽에서 호출한다.
+   * 액션 플래그를 여기서 같이 지우면 update가 읽기 전에 사라져 점프가 먹지 않는다.
+   */
+  clearLook() {
+    this.lookDelta.x = 0;
+    this.lookDelta.y = 0;
+  }
+
+  /** 액션 플래그를 비운다. 반드시 update가 모두 끝난 뒤에 호출해야 한다. */
   clearFrame() {
     this.lookDelta.x = 0;
     this.lookDelta.y = 0;

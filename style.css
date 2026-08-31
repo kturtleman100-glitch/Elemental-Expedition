@@ -315,3 +315,19 @@ html, body {
 @media (max-width: 700px) {
   #hud-top-left { width: 58vw; }
 }
+
+/* 상단 띠 나침반 — 지름 130m 마을에서 방향 감각을 잡아준다.
+   HUD 안에 있으므로 pointer-events는 상위에서 이미 none이다. */
+#compass {
+  position: absolute;
+  top: max(0.6rem, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(340px, 62vw);
+  height: 34px;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  #compass { width: min(280px, 70vw); height: 30px; top: 0.4rem; }
+}

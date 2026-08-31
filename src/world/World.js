@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { Collision } from "./Collision.js";
-import { toonMaterial, makeOutline, setupLighting, makeSky, InstancedBatch } from "../fx/Style.js";
+import { toonMaterial, makeOutline, setupLighting, makeSky, InstancedBatch, MergedBatch } from "../fx/Style.js";
 import { woodGrain, plaster, roofTile, grassField, dirtPath, stoneBlock, foliage } from "../fx/Textures.js";
 
 // 토룡마을 — 대륙 동쪽 끝, 칼슘 촌장이 다스리는 시작 지역.
@@ -45,7 +45,7 @@ export class World {
     this.device = device;
     this.outlines = device.tierName !== "low";
     this.collision = new Collision();
-    this.spawnPoint = new THREE.Vector3(0, 0, 11);
+    this.spawnPoint = new THREE.Vector3(0, 0, 13);
 
     // 저사양에서는 소품 수를 줄인다. 인스턴싱 덕에 드로우콜은 그대로지만
     // 정점 수와 그림자 계산은 여전히 개수에 비례한다.
@@ -63,8 +63,10 @@ export class World {
       leaf: foliage(PALETTE.leafA, PALETTE.leafB, PALETTE.leafC),
     };
 
-    // 인스턴싱 대상은 여기 모았다가 마지막에 한 번에 만든다
+    // 인스턴싱(같은 모양 반복)과 병합(모양은 다르나 재질이 같음)을 각각 모았다가
+    // 마지막에 한 번에 만든다. 둘 다 드로우콜을 줄이는 장치다.
     this.batch = new InstancedBatch();
+    this.merged = new MergedBatch();
 
     makeSky(scene, device, PALETTE);
     setupLighting(scene, device);
@@ -75,15 +77,21 @@ export class World {
     this._buildScatter();
     this._buildBoundary();
 
-    this.stats = this.batch.build(scene);
+    const inst = this.batch.build(scene);
+    const merge = this.merged.build(scene);
+    this.stats = {
+      drawCalls: inst.drawCalls + merge.drawCalls,
+      instances: inst.instances,
+      mergedFrom: merge.source,
+    };
   }
 
   // ================= 지형 =================
 
   _buildGround() {
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(300, 300),
-      toonMaterial(0xffffff, { map: this.tex.grass, repeat: [46, 46] })
+      new THREE.PlaneGeometry(420, 420),
+      toonMaterial(0xffffff, { map: this.tex.grass, repeat: [64, 64] })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -91,8 +99,8 @@ export class World {
 
     // 광장 — 흙바닥
     const plaza = new THREE.Mesh(
-      new THREE.CircleGeometry(12, 44),
-      toonMaterial(0xffffff, { map: this.tex.dirt, repeat: [7, 7] })
+      new THREE.CircleGeometry(16, 48),
+      toonMaterial(0xffffff, { map: this.tex.dirt, repeat: [9, 9] })
     );
     plaza.rotation.x = -Math.PI / 2;
     plaza.position.y = 0.02;
@@ -100,67 +108,141 @@ export class World {
     this.scene.add(plaza);
 
     // 길 — 광장에서 세 방향. 나중에 다른 지역으로 이어질 자리를 암시한다
-    for (const [angle, len] of [[0, 34], [Math.PI * 0.66, 30], [Math.PI * 1.34, 30]]) {
+    for (const [angle, len] of [[0, 46], [Math.PI * 0.5, 44], [Math.PI, 30], [Math.PI * 1.5, 44]]) {
       const road = new THREE.Mesh(
         new THREE.PlaneGeometry(5, len),
         toonMaterial(0xffffff, { map: this.tex.dirt, repeat: [2, len / 4] })
       );
       road.rotation.x = -Math.PI / 2;
       road.rotation.z = -angle;
-      road.position.set(Math.sin(angle) * (len / 2 + 9), 0.03, Math.cos(angle) * (len / 2 + 9));
-      road.receiveShadow = true;
-      this.scene.add(road);
+      road.position.set(Math.sin(angle) * (len / 2 + 13), 0.03, Math.cos(angle) * (len / 2 + 13));
+      road.updateMatrixWorld(true);
+      this.merged.add(road.geometry, road.material, road.matrixWorld);
+      road.geometry.dispose();
     }
 
     // 언덕 — 완전한 평지는 화면을 비어 보이게 만든다
     const hillMat = toonMaterial(0xffffff, { map: this.tex.grass, repeat: [8, 8] });
     for (const [x, z, r, h] of [
-      [-38, -34, 15, 3.6], [34, -42, 18, 4.4], [-46, 28, 17, 4.0],
-      [44, 34, 14, 3.0], [0, -58, 24, 5.6], [-20, 46, 16, 3.4],
+      [-76, -66, 21, 4.6], [70, -78, 25, 5.4], [-86, 56, 23, 5.0],
+      [80, 64, 20, 4.0], [0, -100, 31, 6.6], [-32, 90, 22, 4.4], [48, 92, 19, 3.8],
     ]) {
       const hill = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 10), hillMat);
       hill.position.set(x, -r + h, z);
-      hill.receiveShadow = true;
-      this.scene.add(hill);
+      hill.updateMatrixWorld(true);
+      this.merged.add(hill.geometry, hillMat, hill.matrixWorld);
+      hill.geometry.dispose();
     }
   }
 
   // ================= 마을 =================
 
+  /**
+   * 토룡마을 — 지름 130m, 22채, 5개 구역.
+   *
+   * 구역을 나누는 이유는 심부름에 거리와 목적지를 주기 위해서다.
+   * 광장 하나에 NPC가 몰려 서 있으면 인(P)의 택배 배송 퀘스트가 성립하지 않는다.
+   *
+   *        [석회암 동굴]           [주거 구역]
+   *         칼슘의 기도처            촌장 집·주민 집
+   *                  ╲             ╱
+   *                   ╲  [광장]   ╱
+   *                   ╱          ╲
+   *          [공방 구역]        [농경지]
+   *          대안통운·대장간      밭·헛간
+   */
   _buildVillage() {
-    // 촌장의 집 — 광장 북쪽, 가장 크고 지붕 색이 다르다
-    this._house(0, -20, 7.0, 3.8, 5.6, 0, { chief: true });
+    this._plazaDistrict();
+    this._residentialDistrict();
+    this._workshopDistrict();
+    this._farmDistrict();
+    this._limestoneDistrict();
+  }
 
-    this._house(-15, -9, 4.6, 3.0, 4.2, 0.34);
-    this._house(14, -11, 4.8, 3.1, 4.4, -0.28);
-    this._house(-17, 9, 4.4, 2.9, 4.0, -0.52);
-    this._house(16, 8, 4.6, 3.0, 4.2, 0.44);
-    this._house(-8, 22, 4.2, 2.8, 3.8, 0.16);
-    this._house(9, 24, 4.4, 2.9, 4.0, -0.2);
-    this._house(24, -2, 4.0, 2.7, 3.6, 1.3);
-    this._house(-25, -1, 4.0, 2.7, 3.6, -1.25);
-
+  // ---- 중앙 광장 (반경 0~16) ----
+  _plazaDistrict() {
     this._well(0, 0);
-    this._stall(-6.5, 6.5, 0.4, PALETTE.cloth);
-    this._stall(6.8, 5.8, -0.35, PALETTE.clothAlt);
-    this._noticeBoard(3.5, -8.5, -0.25);
 
-    // 담장 — 집들 사이를 이어 마을의 윤곽을 만든다
-    this._fence([-19, -4], [-19, 4], 0);
-    this._fence([19, -5], [19, 4], 0);
-    this._fence([-12, 16], [-3, 16], 0);
-    this._fence([4, 17], [13, 17], 0);
-    this._fence([-11, -15], [-4, -15], 0);
-    this._fence([4, -15], [11, -15], 0);
+    this._stall(-8.5, 7.5, 0.42, PALETTE.cloth);
+    this._stall(8.8, 6.6, -0.36, PALETTE.clothAlt);
+    this._stall(-7.5, 12.5, Math.PI - 0.3, PALETTE.cloth);
+    this._noticeBoard(5.0, -9.5, -0.26);
 
-    this._laundry(-15, 3.5, 0.2);
-    this._laundry(15.5, 2.6, -0.3);
+    // 광장을 둘러싼 가게 3채 — 등지고 서서 광장의 벽이 된다
+    this._house(-15, 12, 4.6, 3.0, 4.2, -0.62);
+    this._house(15, 11, 4.4, 2.9, 4.0, 0.58);
+    this._house(-10, 20, 4.8, 3.1, 4.4, Math.PI - 0.4);
 
-    // 석회암 노두 — 칼슘이 기도하러 가는 동굴이 있다는 설정의 단서
-    this._limestone(-27, -24, 3.6);
-    this._limestone(-23, -29, 2.4);
-    this._limestone(-31, -19, 2.8);
-    this._limestone(-25, -20, 1.7);
+    this._laundry(-11, 6.5, 0.22);
+  }
+
+  // ---- 주거 구역 (북, z −24 ~ −52) ----
+  _residentialDistrict() {
+    // 촌장의 집 — 가장 크고 지붕 색이 다르다
+    this._house(0, -52, 7.6, 4.1, 6.0, 0, { chief: true });
+
+    this._house(-16, -30, 4.8, 3.1, 4.4, 0.36);
+    this._house(15, -31, 4.6, 3.0, 4.2, -0.3);
+    this._house(-21, -45, 4.4, 2.9, 4.0, 0.72);
+    this._house(20, -46, 4.6, 3.0, 4.2, -0.66);
+    this._house(-15, -58, 4.2, 2.8, 3.8, 0.42);
+    this._house(15, -59, 4.4, 2.9, 4.0, -0.46);
+
+    this._fence([-11, -26], [-4, -26]);
+    this._fence([4, -26], [11, -26]);
+    this._fence([-27, -38], [-27, -30]);
+    this._fence([27, -39], [27, -31]);
+
+    this._laundry(-16, -37, 0.2);
+    this._laundry(16.5, -38, -0.28);
+  }
+
+  // ---- 공방 구역 (서남, x −26 ~ −52) ----
+  _workshopDistrict() {
+    // 대안통운 물류창고 — 인(P)의 일터. 배송 퀘스트의 출발점이다
+    this._warehouse(-40, 26, 0.3);
+
+    this._house(-30, 14, 5.0, 3.2, 4.6, 0.4);   // 대장간
+    this._house(-46, 14, 4.4, 2.9, 4.0, 0.9);
+    this._house(-33, 36, 4.6, 3.0, 4.2, -0.5);
+    this._house(-50, 30, 4.2, 2.8, 3.8, 1.15);
+
+    this._fence([-26, 20], [-26, 30]);
+    this._fence([-36, 8], [-28, 8]);
+
+    // 대장간 앞 자재 더미
+    for (const [bx, bz] of [[-26.5, 17], [-25.5, 18.6], [-27.5, 18.2]])
+      this._crate(bx, 0, bz);
+  }
+
+  // ---- 농경지 (동남, x 26 ~ 54) ----
+  _farmDistrict() {
+    this._house(30, 16, 4.6, 3.0, 4.2, -0.42);  // 농가
+    this._house(47, 24, 4.4, 2.9, 4.0, -0.95);
+    this._barn(38, 38, -0.24);
+
+    // 밭 — 이랑을 그어 농지로 읽히게 한다
+    this._field(34, 27, 12, 9, -0.24);
+    this._field(50, 38, 10, 8, -0.24);
+
+    this._fence([26, 20], [26, 32]);
+    this._fence([30, 46], [42, 46]);
+  }
+
+  // ---- 석회암 동굴 (서북, x −30 ~ −56 / z −20 ~ −44) ----
+  _limestoneDistrict() {
+    this._limestone(-40, -30, 4.4);
+    this._limestone(-34, -36, 2.8);
+    this._limestone(-47, -24, 3.2);
+    this._limestone(-36, -23, 2.0);
+    this._limestone(-52, -34, 3.6);
+    this._limestone(-44, -41, 2.4);
+
+    // 동굴 입구 — 지금은 막혀 있고, 후반 던전에서 열린다
+    this._caveMouth(-43, -34, 0.6);
+
+    // 칼슘이 기도하러 오는 곳이라는 단서
+    this._shrine(-37, -28, -0.4);
   }
 
   /**
@@ -173,8 +255,8 @@ export class World {
     p.position.set(x, 0, z);
     p.rotation.y = ry;
 
-    const stoneM = toonMaterial(0xffffff, { map: this.tex.stone, repeat: [w / 2, 0.5] });
-    const plasterM = toonMaterial(0xffffff, { map: this.tex.plaster, repeat: [w / 2.6, h / 2.6] });
+    const stoneM = toonMaterial(0xffffff, { map: this.tex.stone, repeat: [2.5, 0.5] });
+    const plasterM = toonMaterial(0xffffff, { map: this.tex.plaster, repeat: [1.8, 1.2] });
     const woodM = toonMaterial(0xffffff, { map: this.tex.wood, repeat: [1, 2] });
     const woodDarkM = toonMaterial(0xa88a6a, { map: this.tex.wood, repeat: [1, 2] });
     const roofM = toonMaterial(0xffffff, { map: opts.chief ? this.tex.roofAlt : this.tex.roof, repeat: [4, 3] });
@@ -186,7 +268,7 @@ export class World {
 
     // 벽 — 아래를 어둡게 해서 층을 만든다
     const wallBase = 0.74;
-    this._put(p, new THREE.BoxGeometry(w, h * 0.4, d), toonMaterial(0xd8cdb6, { map: this.tex.plaster, repeat: [w / 2.6, 0.7] }),
+    this._put(p, new THREE.BoxGeometry(w, h * 0.4, d), toonMaterial(0xd8cdb6, { map: this.tex.plaster, repeat: [1.8, 0.7] }),
       [0, wallBase + h * 0.2, 0], { outline: 0.016 });
     this._put(p, new THREE.BoxGeometry(w - 0.05, h * 0.62, d - 0.05), plasterM,
       [0, wallBase + h * 0.71, 0], { outline: 0.016 });
@@ -241,7 +323,7 @@ export class World {
     this._put(p, new THREE.CylinderGeometry(0.17, 0.14, 0.32, 8), toonMaterial(PALETTE.accent, { emissive: 0x6a3f08 }),
       [-w * 0.35, roofY - 0.46, d / 2 + 0.55], { outline: 0.05 });
 
-    this.scene.add(p);
+    this._mergeGroup(p);
 
     // 소품은 인스턴싱으로 — 집마다 반복되므로 묶으면 효과가 크다
     const c = Math.cos(ry), s = Math.sin(ry);
@@ -250,8 +332,10 @@ export class World {
     this._crate(...world(-w / 2 - 0.5, d / 2 - 1.0));
     if (opts.chief) this._crate(...world(-w / 2 - 0.5, d / 2 - 1.9));
 
-    const span = Math.max(w, d);
-    this.collision.addBox(x, z, span, span, 0, roofY);
+    // 충돌은 벽면(w × d)에 바짝 맞춘다. 석재 기단까지 감싸면 벽에서 0.6m나
+    // 떨어진 곳에서 막혀 답답하다. 기단에 발끝이 살짝 겹치는 편이 자연스럽다.
+    // 회전을 그대로 넘겨야 비스듬히 놓인 집의 벽과 어긋나지 않는다.
+    this.collision.addBox(x, z, w + 0.2, d + 0.2, 0, roofY, ry);
   }
 
   _well(x, z) {
@@ -280,8 +364,8 @@ export class World {
     this._put(p, new THREE.SphereGeometry(0.15, 8, 6), toonMaterial(PALETTE.accent), [0, 3.78, 0], { outline: 0.06 });
     this._put(p, new THREE.CylinderGeometry(0.23, 0.21, 0.34, 8), woodM, [0, 1.62, 0], { outline: 0.05 });
 
-    this.scene.add(p);
-    this.collision.addBox(x, z, 2.5, 2.5, 0, 2.8);
+    this._mergeGroup(p);
+    this.collision.addBox(x, z, 2.2, 2.2, 0, 2.8);
   }
 
   /** 좌판 — 천막이 있으면 광장이 장터로 읽힌다 */
@@ -307,8 +391,8 @@ export class World {
     }
     this._put(p, new THREE.BoxGeometry(0.6, 0.3, 0.5), woodM, [0.9, 1.21, 0.35], { noOutline: true });
 
-    this.scene.add(p);
-    this.collision.addBox(x, z, 3.0, 1.9, 0, 2.2);
+    this._mergeGroup(p);
+    this.collision.addBox(x, z, 2.9, 1.7, 0, 2.2, ry);
   }
 
   _noticeBoard(x, z, ry) {
@@ -324,8 +408,8 @@ export class World {
     for (const [px, py] of [[-0.4, 1.7], [0.35, 1.5], [0.1, 1.9]])
       this._put(p, new THREE.BoxGeometry(0.42, 0.34, 0.02), toonMaterial(0xf0e8d4), [px, py, 0.1], { noOutline: true, cast: false });
 
-    this.scene.add(p);
-    this.collision.addBox(x, z, 1.9, 0.5, 0, 2.2);
+    this._mergeGroup(p);
+    this.collision.addBox(x, z, 1.8, 0.4, 0, 2.2, ry);
   }
 
   /** 담장 — 두 점을 잇는 말뚝 울타리 */
@@ -348,7 +432,7 @@ export class World {
           this.batch.add(railGeo, woodM, [mx, hy, mz], [0, ang, 0], [1, 1, len / n / 1.5]);
       }
     }
-    this.collision.addBox((x1 + x2) / 2, (z1 + z2) / 2, Math.abs(dx) + 0.4, Math.abs(dz) + 0.4, 0, 1.2);
+    this.collision.addBox((x1 + x2) / 2, (z1 + z2) / 2, 0.3, len, 0, 1.15, ang);
   }
 
   /** 빨래줄 — 사람이 산다는 가장 값싼 신호 */
@@ -367,7 +451,7 @@ export class World {
       this._put(p, new THREE.BoxGeometry(0.6, 0.75, 0.03), toonMaterial(colors[i]),
         [-1.6 + i * 1.05, 1.72, 0], { rot: [0, 0, (Math.random() - 0.5) * 0.12], noOutline: true });
 
-    this.scene.add(p);
+    this._mergeGroup(p);
   }
 
   _barrel(x, y, z) {
@@ -380,6 +464,187 @@ export class World {
     this.batch.add(new THREE.BoxGeometry(0.55, 0.55, 0.55), woodM, [x, 0.28, z], [0, Math.random() * 3, 0]);
   }
 
+  /** 대안통운 물류창고 — 인(P)의 일터. 배송 퀘스트가 여기서 시작된다 */
+  _warehouse(x, z, ry) {
+    const p = new THREE.Group();
+    p.position.set(x, 0, z);
+    p.rotation.y = ry;
+
+    const w = 11, h = 4.4, d = 7;
+    const stoneM = toonMaterial(0xffffff, { map: this.tex.stone, repeat: [4, 0.5] });
+    const woodM = toonMaterial(0xffffff, { map: this.tex.wood, repeat: [1, 2] });
+    const woodDarkM = toonMaterial(0xa88a6a, { map: this.tex.wood, repeat: [1, 2] });
+    const wallM = toonMaterial(0xc9b89a, { map: this.tex.wood, repeat: [5, 2] });
+    const roofM = toonMaterial(0x8a9a9a, { map: this.tex.roof, repeat: [6, 3] });
+
+    this._put(p, new THREE.BoxGeometry(w + 0.5, 0.36, d + 0.5), stoneM, [0, 0.18, 0], { outline: 0.02 });
+    this._put(p, new THREE.BoxGeometry(w, h, d), wallM, [0, 0.36 + h / 2, 0], { outline: 0.016 });
+
+    // 창고는 가로로 길어서 기둥을 촘촘히 세워야 벽이 늘어져 보이지 않는다
+    for (let i = -2; i <= 2; i++)
+      for (const sz of [-1, 1])
+        this._put(p, new THREE.BoxGeometry(0.2, h, 0.16), woodM,
+          [i * (w / 5), 0.36 + h / 2, sz * (d / 2 - 0.05)], { noOutline: true });
+    for (const sz of [-1, 1])
+      this._put(p, new THREE.BoxGeometry(w, 0.2, 0.14), woodDarkM, [0, 0.36 + h - 0.12, sz * (d / 2 - 0.02)], { noOutline: true });
+
+    // 박공 지붕 — 살림집의 사각뿔과 달리 길게 뻗은 형태로 용도를 구분한다
+    for (const s of [-1, 1])
+      this._put(p, new THREE.BoxGeometry(w + 1.2, 0.22, d * 0.62), roofM,
+        [0, 0.36 + h + 0.62, s * d * 0.26], { rot: [s * 0.62, 0, 0], outline: 0.02 });
+    this._put(p, new THREE.BoxGeometry(w + 1.4, 0.26, 0.34), toonMaterial(PALETTE.roofRidge),
+      [0, 0.36 + h + 1.22, 0], { noOutline: true });
+
+    // 큰 짐문
+    this._put(p, new THREE.BoxGeometry(3.4, 3.0, 0.12), woodDarkM, [0, 1.86, d / 2 + 0.03], { noOutline: true });
+    this._put(p, new THREE.BoxGeometry(1.5, 2.7, 0.08), woodM, [-0.82, 1.76, d / 2 + 0.08], { noOutline: true });
+    this._put(p, new THREE.BoxGeometry(1.5, 2.7, 0.08), woodM, [0.82, 1.76, d / 2 + 0.08], { noOutline: true });
+
+    // 간판
+    this._put(p, new THREE.BoxGeometry(3.2, 0.8, 0.1), toonMaterial(0x8a5a2a, { map: this.tex.wood, repeat: [3, 1] }),
+      [0, 4.0, d / 2 + 0.1], { outline: 0.03 });
+    this._put(p, new THREE.BoxGeometry(2.4, 0.16, 0.04), toonMaterial(PALETTE.accent), [0, 4.12, d / 2 + 0.17], { noOutline: true });
+    this._put(p, new THREE.BoxGeometry(1.8, 0.14, 0.04), toonMaterial(PALETTE.accent), [0, 3.88, d / 2 + 0.17], { noOutline: true });
+
+    this._mergeGroup(p);
+
+    // 하역장 짐더미
+    const c = Math.cos(ry), s = Math.sin(ry);
+    const world = (lx, lz) => [x + lx * c + lz * s, 0, z - lx * s + lz * c];
+    for (const [lx, lz] of [[-3.2, 4.8], [-2.4, 5.6], [-3.4, 6.2], [3.0, 5.0], [3.8, 5.9]])
+      this._crate(...world(lx, lz));
+    this._barrel(...world(4.6, 4.4));
+
+    this.collision.addBox(x, z, w + 0.2, d + 0.2, 0, 0.36 + h, ry);
+  }
+
+  /** 헛간 — 농경지의 중심. 창고보다 작고 지붕이 붉다 */
+  _barn(x, z, ry) {
+    const p = new THREE.Group();
+    p.position.set(x, 0, z);
+    p.rotation.y = ry;
+
+    const w = 7, h = 3.8, d = 5.4;
+    const wallM = toonMaterial(0xb85c4a, { map: this.tex.wood, repeat: [4, 2] });
+    const woodM = toonMaterial(0xffffff, { map: this.tex.wood, repeat: [1, 2] });
+    const roofM = toonMaterial(0x7a6a58, { map: this.tex.roof, repeat: [5, 3] });
+
+    this._put(p, new THREE.BoxGeometry(w + 0.4, 0.3, d + 0.4),
+      toonMaterial(0xffffff, { map: this.tex.stone, repeat: [3, 0.5] }), [0, 0.15, 0], { outline: 0.02 });
+    this._put(p, new THREE.BoxGeometry(w, h, d), wallM, [0, 0.3 + h / 2, 0], { outline: 0.016 });
+
+    // 흰 목재 X자 — 헛간의 상징
+    for (const sx of [-1, 1])
+      this._put(p, new THREE.BoxGeometry(0.16, h * 0.9, 0.12), toonMaterial(0xe8e0d0),
+        [0, 0.3 + h / 2, d / 2 + 0.02], { rot: [0, 0, sx * 0.62], noOutline: true });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1])
+      this._put(p, new THREE.BoxGeometry(0.18, h, 0.14), woodM,
+        [sx * (w / 2 - 0.06), 0.3 + h / 2, sz * (d / 2 - 0.05)], { noOutline: true });
+
+    for (const s of [-1, 1])
+      this._put(p, new THREE.BoxGeometry(w + 0.9, 0.2, d * 0.66), roofM,
+        [0, 0.3 + h + 0.56, s * d * 0.28], { rot: [s * 0.6, 0, 0], outline: 0.02 });
+    this._put(p, new THREE.BoxGeometry(w + 1.1, 0.24, 0.3), toonMaterial(PALETTE.roofRidge),
+      [0, 0.3 + h + 1.1, 0], { noOutline: true });
+
+    this._put(p, new THREE.BoxGeometry(2.2, 2.4, 0.1), toonMaterial(0x5a3a2a, { map: this.tex.wood, repeat: [2, 2] }),
+      [0, 1.5, d / 2 + 0.03], { noOutline: true });
+
+    this._mergeGroup(p);
+
+    // 건초더미
+    const c = Math.cos(ry), s = Math.sin(ry);
+    const hayM = toonMaterial(0xc8a850);
+    for (const [lx, lz] of [[-4.4, 3.2], [-3.4, 4.2], [4.2, 3.4]])
+      this.batch.add(new THREE.CylinderGeometry(0.62, 0.62, 0.9, 10), hayM,
+        [x + lx * c + lz * s, 0.45, z - lx * s + lz * c], [Math.PI / 2, Math.random() * 3, 0]);
+
+    this.collision.addBox(x, z, w + 0.2, d + 0.2, 0, 0.3 + h, ry);
+  }
+
+  /** 밭 — 이랑을 그어야 농지로 읽힌다. 충돌은 걸지 않는다 (밟고 지나갈 수 있게) */
+  _field(x, z, w, d, ry) {
+    const p = new THREE.Group();
+    p.position.set(x, 0, z);
+    p.rotation.y = ry;
+
+    const soil = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d),
+      toonMaterial(0x6b5535, { map: this.tex.dirt, repeat: [w / 2, d / 2] })
+    );
+    soil.rotation.x = -Math.PI / 2;
+    soil.position.y = 0.04;
+    soil.receiveShadow = true;
+    p.add(soil);
+    this._mergeGroup(p);
+
+    // 이랑과 작물 — 인스턴싱이라 개수를 늘려도 드로우콜은 그대로
+    const c = Math.cos(ry), s = Math.sin(ry);
+    const ridgeGeo = new THREE.BoxGeometry(0.5, 0.16, d - 0.6);
+    const ridgeM = toonMaterial(0x7d6540, { map: this.tex.dirt, repeat: [1, 1] });
+    const cropGeo = new THREE.ConeGeometry(0.14, 0.42, 4);
+    const cropM = toonMaterial(0x6a9a4a);
+
+    const rows = Math.floor(w / 1.1);
+    for (let i = 0; i < rows; i++) {
+      const lx = -w / 2 + 0.7 + i * 1.1;
+      this.batch.add(ridgeGeo, ridgeM, [x + lx * c, 0.09, z - lx * s], [0, ry, 0]);
+      const n = Math.round((d - 1) / 0.7);
+      for (let j = 0; j < n; j++) {
+        const lz = -d / 2 + 0.6 + j * 0.7;
+        this.batch.add(cropGeo, cropM,
+          [x + lx * c + lz * s, 0.28, z - lx * s + lz * c],
+          [0, Math.random() * 3, 0], 0.8 + Math.random() * 0.5);
+      }
+    }
+  }
+
+  /** 동굴 입구 — 지금은 막혀 있다. 후반 던전에서 열린다 */
+  _caveMouth(x, z, ry) {
+    const p = new THREE.Group();
+    p.position.set(x, 0, z);
+    p.rotation.y = ry;
+
+    const rockM = toonMaterial(0xb8ae96, { map: this.tex.limestone, repeat: [2, 2] });
+    this._put(p, new THREE.DodecahedronGeometry(4.6, 0), rockM, [0, 2.2, -1.2],
+      { rot: [0.2, 0.6, 0.1], outline: 0.02 });
+
+    // 어두운 입구 — 안이 안 보이는 것이 중요하다
+    this._put(p, new THREE.CylinderGeometry(1.5, 1.7, 2.8, 10, 1, false, 0, Math.PI),
+      toonMaterial(0x0d1014), [0, 1.4, 1.9], { rot: [0, Math.PI, 0], noOutline: true, cast: false });
+    this._put(p, new THREE.BoxGeometry(3.6, 0.5, 0.7), rockM, [0, 2.9, 1.9], { outline: 0.03 });
+
+    for (const sx of [-1, 1])
+      this._put(p, new THREE.BoxGeometry(0.7, 3.0, 0.7), rockM, [sx * 1.9, 1.5, 1.9],
+        { rot: [0, 0, sx * 0.06], outline: 0.03 });
+
+    this._mergeGroup(p);
+    this.collision.addBox(x, z, 7.2, 6.0, 0, 5.0, ry);
+  }
+
+  /** 작은 제단 — 칼슘이 기도하러 오는 곳 */
+  _shrine(x, z, ry) {
+    const p = new THREE.Group();
+    p.position.set(x, 0, z);
+    p.rotation.y = ry;
+
+    const stoneM = toonMaterial(0xffffff, { map: this.tex.limestone, repeat: [1, 1] });
+    this._put(p, new THREE.CylinderGeometry(1.1, 1.3, 0.24, 8), stoneM, [0, 0.12, 0], { outline: 0.025 });
+    this._put(p, new THREE.BoxGeometry(0.9, 1.0, 0.5), stoneM, [0, 0.74, 0], { outline: 0.03 });
+    this._put(p, new THREE.BoxGeometry(1.2, 0.18, 0.7), stoneM, [0, 1.32, 0], { outline: 0.03 });
+
+    // 촛불 — 누군가 다녀갔다는 표시
+    for (const sx of [-1, 1]) {
+      this._put(p, new THREE.CylinderGeometry(0.07, 0.07, 0.22, 6), toonMaterial(0xe8e0d0),
+        [sx * 0.42, 1.52, 0.1], { noOutline: true });
+      this._put(p, new THREE.SphereGeometry(0.055, 6, 5), toonMaterial(PALETTE.accent, { emissive: 0x8a5010 }),
+        [sx * 0.42, 1.68, 0.1], { noOutline: true });
+    }
+
+    this._mergeGroup(p);
+    this.collision.addBox(x, z, 1.6, 1.0, 0, 1.6, ry);
+  }
+
   _limestone(x, z, scale) {
     const p = new THREE.Group();
     p.position.set(x, 0, z);
@@ -390,19 +655,35 @@ export class World {
     this._put(p, new THREE.DodecahedronGeometry(scale * 0.55, 0), toonMaterial(0xbdb49c, { map: this.tex.limestone, repeat: [1, 1] }),
       [scale * 0.5, scale * 0.25, scale * 0.4], { rot: [Math.random(), Math.random(), Math.random()], noOutline: true });
 
-    this.scene.add(p);
+    this._mergeGroup(p);
     this.collision.addBox(x, z, scale * 1.5, scale * 1.5, 0, scale * 1.4);
   }
 
   // ================= 자연 =================
 
   _buildNature() {
+    // 구역 경계와 길가에 심어 공간을 나눈다. 건물 사이를 그냥 비워두면
+    // 마을이 아니라 흩어진 모형처럼 보인다.
     const spots = [
-      [-22, 4, 1.15], [21, 5, 1.0], [-20, -15, 1.08], [22, -16, 1.2],
-      [-9, 30, 1.25], [10, 32, 0.95], [-30, -34, 1.05], [30, 28, 1.12],
-      [-34, 14, 1.0], [35, -26, 1.18], [-12, -34, 0.95], [13, -36, 1.06],
-      [-38, -8, 1.1], [37, 12, 0.98], [-5, 38, 1.14], [26, 20, 0.92],
-      [-28, 24, 1.02], [18, -30, 1.08],
+      // 광장 둘레
+      [-21, 5, 1.15], [20, 4, 1.0], [-19, -16, 1.08], [21, -17, 1.2],
+      [-8, 24, 1.05], [9, 25, 0.95], [22, 2, 1.1], [-23, -6, 1.02],
+      // 주거 구역
+      [-26, -34, 1.12], [25, -35, 1.05], [-12, -64, 1.18], [13, -65, 1.08],
+      [-30, -52, 1.0], [29, -53, 1.14], [-6, -30, 0.92], [7, -31, 0.98],
+      [-34, -60, 1.2], [33, -62, 1.1],
+      // 공방 구역
+      [-24, 34, 1.06], [-56, 20, 1.15], [-44, 44, 1.1], [-58, 38, 1.0],
+      [-30, 4, 0.95], [-52, 6, 1.08],
+      // 농경지
+      [24, 40, 1.12], [56, 16, 1.05], [46, 48, 1.18], [58, 34, 0.98],
+      [30, 6, 1.0], [52, 6, 1.1],
+      // 석회암 지대 — 척박해서 드물게
+      [-58, -20, 0.88], [-30, -46, 0.82], [-56, -46, 0.9],
+      // 마을 외곽 숲
+      [-68, 0, 1.25], [66, -8, 1.2], [-14, 70, 1.3], [16, 72, 1.15],
+      [-70, 62, 1.1], [70, 50, 1.22], [-46, 70, 1.05], [48, 70, 1.12],
+      [0, 78, 1.2], [-76, -40, 1.15], [74, -44, 1.1], [-64, 78, 1.0],
     ];
     for (const [x, z, s] of spots) this._tree(x, z, s);
   }
@@ -460,7 +741,7 @@ export class World {
       this._put(p, new THREE.IcosahedronGeometry(0.52, 0), leafDarkM, [bx, by, bz],
         { rot: [Math.random(), Math.random(), Math.random()], noOutline: true });
 
-    this.scene.add(p);
+    this._mergeGroup(p);
     this.collision.addBox(x, z, 0.72 * scale, 0.72 * scale, 0, h * scale);
   }
 
@@ -484,8 +765,8 @@ export class World {
     const n = (base) => Math.round(base * this.density);
 
     // 풀 포기 — 한 포기에 잎 3장
-    for (let i = 0; i < n(560); i++) {
-      const [x, z] = this._scatterPoint(13, 48);
+    for (let i = 0; i < n(1500); i++) {
+      const [x, z] = this._scatterPoint(17, 86);
       for (let b = 0; b < 3; b++)
         this.batch.add(bladeGeo, Math.random() > 0.5 ? grassA : grassB,
           [x + (Math.random() - 0.5) * 0.3, 0.2, z + (Math.random() - 0.5) * 0.3],
@@ -493,37 +774,37 @@ export class World {
           0.8 + Math.random() * 0.6);
     }
 
-    for (let i = 0; i < n(240); i++) {
-      const [x, z] = this._scatterPoint(11, 50);
+    for (let i = 0; i < n(620); i++) {
+      const [x, z] = this._scatterPoint(15, 88);
       this.batch.add(pebbleGeo, pebbleM, [x, 0.06, z],
         [Math.random() * 3, Math.random() * 3, Math.random() * 3], 0.5 + Math.random() * 0.9);
     }
 
-    for (let i = 0; i < n(150); i++) {
-      const [x, z] = this._scatterPoint(14, 44);
+    for (let i = 0; i < n(420); i++) {
+      const [x, z] = this._scatterPoint(18, 80);
       this.batch.add(flowerGeo, flowerM[i % 3], [x, 0.22, z], [0, 0, 0], 0.7 + Math.random() * 0.6);
       this.batch.add(bladeGeo, grassB, [x, 0.12, z], [0, 0, 0], [0.5, 0.6, 0.5]);
     }
 
-    for (let i = 0; i < n(90); i++) {
-      const [x, z] = this._scatterPoint(15, 50);
+    for (let i = 0; i < n(260); i++) {
+      const [x, z] = this._scatterPoint(19, 88);
       this.batch.add(bushGeo, bushM, [x, 0.3, z],
         [Math.random(), Math.random() * 3, Math.random()], 0.7 + Math.random() * 0.9);
     }
 
     // 광장 포석 — 흙바닥 위에 박힌 돌
     const slabGeo = new THREE.CylinderGeometry(0.32, 0.34, 0.06, 6);
-    for (let i = 0; i < n(70); i++) {
+    for (let i = 0; i < n(120); i++) {
       const a = Math.random() * Math.PI * 2;
-      const r = Math.random() * 11;
+      const r = Math.random() * 15;
       this.batch.add(slabGeo, pebbleM, [Math.sin(a) * r, 0.05, Math.cos(a) * r], [0, Math.random() * 3, 0],
         0.8 + Math.random() * 0.7);
     }
 
     // 광장 경계석
-    for (let i = 0; i < 34; i++) {
-      const a = (i / 34) * Math.PI * 2;
-      this.batch.add(pebbleGeo, pebbleM, [Math.sin(a) * 12.2, 0.14, Math.cos(a) * 12.2],
+    for (let i = 0; i < 46; i++) {
+      const a = (i / 46) * Math.PI * 2;
+      this.batch.add(pebbleGeo, pebbleM, [Math.sin(a) * 16.2, 0.14, Math.cos(a) * 16.2],
         [Math.random(), Math.random() * 3, Math.random()], 1.6 + Math.random() * 0.7);
     }
   }
@@ -540,14 +821,25 @@ export class World {
   _buildBoundary() {
     // 지금은 토룡마을만 있으므로 빈 평야로 나가지 않게 막는다.
     // 7단계에서 지역이 이어지면 해당 방향의 벽을 연다.
-    const R = 62, seg = 18;
+    const R = 100, seg = 28;
     for (let i = 0; i < seg; i++) {
       const a = (i / seg) * Math.PI * 2;
-      this.collision.addBox(Math.sin(a) * R, Math.cos(a) * R, 28, 28, 0, 14);
+      this.collision.addBox(Math.sin(a) * R, Math.cos(a) * R, 34, 34, 0, 16);
     }
   }
 
   // ================= 공용 =================
+
+  /**
+   * 그룹의 모든 메시를 월드 좌표로 구워 병합 배치에 넘긴다.
+   * 그룹 자체는 씬에 붙이지 않는다 — 지오메트리만 가져가고 버린다.
+   */
+  _mergeGroup(group) {
+    group.updateMatrixWorld(true);
+    group.traverse((o) => {
+      if (o.isMesh) this.merged.add(o.geometry, o.material, o.matrixWorld);
+    });
+  }
 
   /** 메시 + 외곽선을 부모에 붙인다 */
   _put(parent, geo, mat, pos, opts = {}) {

@@ -31,6 +31,10 @@ export class CameraRig {
     this._desiredCamPos = new THREE.Vector3();
     this._tmpPlayerPos = new THREE.Vector3();
 
+    // 벽에 막혔을 때 실제로 적용 중인 거리. 목표 거리와 따로 들고 있어야
+    // 벽을 벗어날 때 부드럽게 되돌아간다 (즉시 되돌리면 화면이 튄다).
+    this._camDistance = THIRD_PERSON_DISTANCE;
+
     this._applyModeVisibility();
   }
 
@@ -76,10 +80,31 @@ export class CameraRig {
     const dirZ = Math.cos(this.yaw) * cosPitch;
     const dirY = Math.sin(this.pitch);
 
+    // 카메라가 놓일 방향(플레이어 → 카메라)을 먼저 정규화해두고,
+    // 그 방향으로 광선을 쏴 벽에 막히는 거리를 구한다.
+    const backX = -dirX;
+    const backY = (THIRD_PERSON_HEIGHT - dirY * THIRD_PERSON_DISTANCE * 0.5) / THIRD_PERSON_DISTANCE;
+    const backZ = -dirZ;
+    const backLen = Math.hypot(backX, backY, backZ) || 1;
+    const nx = backX / backLen, ny = backY / backLen, nz = backZ / backLen;
+
+    let allowed = THIRD_PERSON_DISTANCE;
+    if (this._viewBlend > 0.01 && this.player.collision) {
+      allowed = this.player.collision.rayDistance(
+        eyePos.x, eyePos.y, eyePos.z, nx, ny, nz, THIRD_PERSON_DISTANCE * backLen
+      ) / backLen;
+    }
+
+    // 가까워질 땐 즉시(벽을 뚫지 않으려면 지체하면 안 된다),
+    // 멀어질 땐 서서히 — 좁은 골목을 빠져나올 때 화면이 튀지 않게.
+    if (allowed < this._camDistance) this._camDistance = allowed;
+    else this._camDistance += (allowed - this._camDistance) * 0.12;
+
+    const d = this._camDistance;
     this._thirdPersonOffset.set(
-      -dirX * THIRD_PERSON_DISTANCE,
-      THIRD_PERSON_HEIGHT - dirY * THIRD_PERSON_DISTANCE * 0.5,
-      -dirZ * THIRD_PERSON_DISTANCE
+      -dirX * d,
+      THIRD_PERSON_HEIGHT * (d / THIRD_PERSON_DISTANCE) - dirY * d * 0.5,
+      -dirZ * d
     );
     this._desiredCamPos.copy(eyePos).add(this._thirdPersonOffset);
 

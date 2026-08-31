@@ -7,6 +7,7 @@ import { World } from "./world/World.js";
 import { Player } from "./player/Player.js";
 import { CameraRig } from "./player/CameraRig.js";
 import { setupTouchControls } from "./ui/TouchControls.js";
+import { Compass } from "./ui/Compass.js";
 
 // ---------------------------------------------------------------
 // 1단계: 움직이는 3D 월드. 렌더러 세팅 → 월드/플레이어/카메라 구성 →
@@ -66,10 +67,13 @@ async function boot() {
     },
   });
 
+  const compass = new Compass(document.getElementById("compass"), player, cameraRig);
+
   game.addRenderable({
     render(alpha) {
       player.syncMesh(alpha);
       cameraRig.render(alpha);
+      compass.render();
     },
   });
 
@@ -78,6 +82,7 @@ async function boot() {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
+    compass?.resize();
   }
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", resize);
@@ -87,13 +92,14 @@ async function boot() {
     device,
     preFrame: () => {
       cameraRig.applyLook(input.lookDelta);
-      input.clearFrame();
+      input.clearLook(); // 시선만 비운다 — 액션 플래그는 update가 읽어야 하므로 남겨둔다
     },
     update: (dt) => game.update(dt),
     render: (alpha, frameDt) => {
       game.render(alpha, frameDt);
       renderer.render(scene, camera);
       updateDebugOverlay(loop, device);
+      input.clearFrame(); // update가 모두 끝난 뒤에 액션 플래그를 비운다
     },
   });
 
@@ -109,6 +115,7 @@ async function boot() {
     debugOverlay.textContent =
       `FPS ${info.fps.toFixed(0)}  틱 ${info.tickHz}Hz  등급 ${info.tier}  부하 ${(info.loadRatio * 100).toFixed(0)}%\n` +
       `드로우콜 ${r.calls}  삼각형 ${(r.triangles / 1000).toFixed(0)}k  텍스처 ${renderer.info.memory.textures}\n` +
+      `병합 ${world.stats.mergedFrom}→${world.stats.drawCalls}  인스턴스 ${world.stats.instances}\n` +
       `${device.isTouch ? "터치" : "마우스/키보드"} 입력`;
   }
 
@@ -128,6 +135,8 @@ async function boot() {
   function startGame() {
     titleScreen.hidden = true;
     hud.hidden = false;
+    // HUD가 숨겨져 있는 동안엔 캔버스 크기가 0으로 측정된다. 보인 뒤에 다시 잰다.
+    compass.resize();
     loop.start();
   }
 }

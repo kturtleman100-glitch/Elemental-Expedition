@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 // 게임 전체가 공유하는 셀셰이딩 시스템.
 // 머티리얼·외곽선·조명·하늘을 여기서만 만들어야 화면 전체의 톤이 갈리지 않는다.
@@ -161,6 +162,70 @@ export class InstancedBatch {
     const total = [...this.groups.values()].reduce((n, g) => n + g.items.length, 0);
     this.groups.clear();
     return { drawCalls: meshes, instances: total };
+  }
+}
+
+/**
+ * 모양이 제각각인 정적 물체를 재질별로 하나의 메시로 합친다.
+ *
+ * InstancedBatch는 "같은 모양의 반복"에만 쓸 수 있다. 집처럼 크기와 구성이
+ * 매번 다른 건물은 인스턴싱이 안 되는 대신, 어차피 움직이지 않으므로
+ * 지오메트리를 월드 좌표로 구워 재질별로 합쳐버릴 수 있다.
+ *
+ * 집 한 채가 메시 40여 개인데 22채면 900개가 넘는다. 재질이 7종이면
+ * 병합 후에는 7개가 된다. 외곽선은 전부 같은 재질이라 통째로 1개가 된다.
+ *
+ * 대가는 물체별 프러스텀 컬링을 잃는 것이다. 마을 하나 규모에서는
+ * 컬링으로 아끼는 것보다 드로우콜로 아끼는 쪽이 훨씬 크다.
+ */
+export class MergedBatch {
+  constructor() {
+    this.groups = new Map();
+  }
+
+  /**
+   * @param {THREE.BufferGeometry} geo
+   * @param {THREE.Material} mat
+   * @param {THREE.Matrix4} matrixWorld 이미 월드로 갱신된 행렬
+   */
+  add(geo, mat, matrixWorld) {
+    if (!mat.userData._mergeId) mat.userData._mergeId = "mm" + ++matSeq;
+    const key = mat.userData._mergeId;
+
+    let g = this.groups.get(key);
+    if (!g) { g = { mat, geos: [] }; this.groups.set(key, g); }
+
+    const baked = geo.clone();
+    baked.applyMatrix4(matrixWorld);
+    // 병합에는 없는 속성이 섞이면 실패한다. 위치·법선·UV만 남긴다.
+    for (const name of Object.keys(baked.attributes)) {
+      if (name !== "position" && name !== "normal" && name !== "uv") baked.deleteAttribute(name);
+    }
+    g.geos.push(baked);
+  }
+
+  /** 씬에 붙이고 통계를 반환한다 */
+  build(scene, { castShadow = true, receiveShadow = true } = {}) {
+    let drawCalls = 0, source = 0;
+
+    for (const { mat, geos } of this.groups.values()) {
+      source += geos.length;
+      const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
+      if (!merged) { console.warn("지오메트리 병합 실패 — 속성이 어긋났다"); continue; }
+
+      const mesh = new THREE.Mesh(merged, mat);
+      mesh.castShadow = castShadow;
+      mesh.receiveShadow = receiveShadow;
+      // 합쳐진 덩어리는 경계 상자가 마을 전체라 컬링이 의미 없다. 계산을 생략한다.
+      mesh.frustumCulled = false;
+      scene.add(mesh);
+      drawCalls++;
+
+      if (geos.length > 1) for (const g of geos) g.dispose();
+    }
+
+    this.groups.clear();
+    return { drawCalls, source };
   }
 }
 

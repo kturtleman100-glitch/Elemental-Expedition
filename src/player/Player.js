@@ -9,7 +9,7 @@ import { PLAYER_ELEMENT } from "../data/elements.js";
 const MOVE_SPEED = 5.2; // m/s
 const JUMP_SPEED = 6.0;
 const GRAVITY = -18;
-const RADIUS = 0.34;
+const RADIUS = 0.3;
 const HEIGHT = BODY.height;
 const EYE_HEIGHT = BODY.headY;
 
