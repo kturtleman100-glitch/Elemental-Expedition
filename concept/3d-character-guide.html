@@ -844,6 +844,135 @@
 </div>
 
 <script>
+  // ---------- 캐릭터 39명 목록 ----------
+  var TIERS = [
+    {
+      rank: "1순위", name: "지금 당장 필요", note: "게임 3단계에 바로 등장",
+      chars: [
+        ["uue", "119", "이름 없는 자", "플레이어"],
+        ["ca", "Ca", "칼슘", "토룡마을 촌장"],
+        ["c", "C", "탄소", "학교 교장"],
+        ["si", "Si", "규소", "예언가"],
+        ["p", "P", "인", "대안통운 기사"],
+        ["fe", "Fe", "철", "군단 대장"],
+      ],
+    },
+    {
+      rank: "2순위", name: "보스 6인", note: "전투 단계",
+      chars: [
+        ["br", "Br", "브로민", "조무래기"],
+        ["as", "As", "비소", "조무래기"],
+        ["hg", "Hg", "수은", "중급"],
+        ["pt", "Pt", "백금", "중급"],
+        ["cl", "Cl", "염소", "주적"],
+        ["po", "Po", "폴로늄", "최종 보스"],
+      ],
+    },
+    {
+      rank: "3순위", name: "세력 리더 · 주요 NPC", note: "스토리 진행에 필요",
+      chars: [
+        ["o", "O", "산소", "대주교"],
+        ["n", "N", "질소", "학자"],
+        ["au", "Au", "금", "황금 용"],
+        ["ag", "Ag", "은", "거울 나라"],
+        ["cu", "Cu", "구리", "금속 드래곤"],
+        ["ne", "Ne", "네온", "최고재판소장"],
+        ["ar", "Ar", "아르곤", "시티 촌장"],
+        ["u", "U", "우라늄", "추방된 자"],
+        ["co", "Co", "코발트", "군인"],
+        ["ni", "Ni", "니켈", "강철부대장"],
+        ["mn", "Mn", "망가니즈", "대장장이"],
+      ],
+    },
+    {
+      rank: "4순위", name: "나머지", note: "여유 있을 때",
+      chars: [
+        ["s", "S", "황", "용의 왕"],
+        ["mg", "Mg", "마그네슘", "세계수"],
+        ["be", "Be", "베릴륨", "물리학자"],
+        ["zn", "Zn", "아연", "음악가"],
+        ["bi", "Bi", "비스무트", "건축가"],
+        ["pb", "Pb", "납", "연극 배우"],
+        ["sb", "Sb", "안티모니", "수도사"],
+        ["nb", "Nb", "나이오븀", "저승"],
+        ["ta", "Ta", "탄탈럼", "저승"],
+        ["sc", "Sc", "스칸듐", "야구 선수"],
+        ["ti", "Ti", "타이타늄", "청소업체"],
+        ["tc", "Tc", "테크네튬", "인형술사"],
+        ["rn", "Rn", "라돈", "온천 주인"],
+        ["es", "Es", "아인슈타이늄", "괴짜 학자"],
+        ["og", "Og", "오가네손", "항해자"],
+        ["nh", "Nh", "니호늄", "초중원소"],
+      ],
+    },
+  ];
+
+  var STORE_KEY = "ee.characters.done";
+
+  function loadDone() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch (e) { return new Set(); }
+  }
+
+  function saveDone(set) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify([].slice.call(set))); } catch (e) {}
+  }
+
+  var done = loadDone();
+  // 이미 만든 것은 기본으로 체크해둔다
+  ["mg", "fe"].forEach(function (id) { done.add(id); });
+
+  var total = TIERS.reduce(function (n, t) { return n + t.chars.length; }, 0);
+
+  function updateProgress() {
+    var n = done.size;
+    var pct = Math.round((n / total) * 100);
+    document.getElementById("progress-fill").style.width = pct + "%";
+    document.getElementById("progress-text").textContent = n + " / " + total + " 완료  ·  " + pct + "%";
+  }
+
+  function renderRoster() {
+    var html = TIERS.map(function (tier) {
+      var chars = tier.chars.map(function (c) {
+        var id = c[0], sym = c[1], ko = c[2], role = c[3];
+        var isDone = done.has(id);
+        return '<button class="char" type="button" data-id="' + id + '" aria-pressed="' + isDone + '">' +
+          '<span class="mark">' + (isDone ? "✓" : sym) + "</span>" +
+          '<span class="label"><b>' + ko + "</b><span>" + role + " · " + id + ".vrm</span></span>" +
+          "</button>";
+      }).join("");
+
+      var doneInTier = tier.chars.filter(function (c) { return done.has(c[0]); }).length;
+
+      return '<div class="tier">' +
+        '<div class="tier-head">' +
+          '<span class="tier-rank">' + tier.rank + "</span>" +
+          '<span class="tier-name">' + tier.name + "</span>" +
+          '<span class="tier-count">' + doneInTier + "/" + tier.chars.length + "</span>" +
+        "</div>" +
+        '<div class="chars">' + chars + "</div>" +
+        "</div>";
+    }).join("");
+
+    document.getElementById("roster-list").innerHTML = html;
+
+    document.querySelectorAll(".char").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.dataset.id;
+        if (done.has(id)) done.delete(id); else done.add(id);
+        saveDone(done);
+        renderRoster();
+        updateProgress();
+      });
+    });
+  }
+
+  renderRoster();
+  updateProgress();
+
+  // ---------- 프롬프트 복사 ----------
   document.querySelectorAll(".copy-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var pre = btn.closest(".prompt").querySelector("pre");

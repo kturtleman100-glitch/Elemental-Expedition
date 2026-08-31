@@ -64,6 +64,12 @@ export function toonMaterial(color, opts = {}) {
     opacity: opts.opacity ?? 1,
     side: opts.side || THREE.FrontSide,
   });
+
+  // MergedBatch가 "같은 원본 텍스처를 쓰는 재질"끼리 묶으려면 원본과 반복 횟수를
+  // 알아야 한다. 복제된 map만 보면 반복이 다를 때 서로 다른 텍스처로 보인다.
+  mat.userData._baseMap = opts.map || null;
+  mat.userData._repeat = opts.repeat || [1, 1];
+
   materialCache.set(key, mat);
   return mat;
 }
@@ -189,18 +195,47 @@ export class MergedBatch {
    * @param {THREE.Matrix4} matrixWorld 이미 월드로 갱신된 행렬
    */
   add(geo, mat, matrixWorld) {
-    if (!mat.userData._mergeId) mat.userData._mergeId = "mm" + ++matSeq;
-    const key = mat.userData._mergeId;
+    // 재질이 색만 다르고 텍스처가 같은 경우가 대부분이다. 색은 정점에 굽고
+    // 텍스처 반복은 UV에 굽는 식으로 흡수하면, 텍스처 하나당 재질 하나로 줄어든다.
+    const baseMap = mat.userData._baseMap ?? mat.map ?? null;
+    const repeat = mat.userData._repeat ?? [1, 1];
+    // 인덱스 유무를 키에 넣는다. Icosahedron·Dodecahedron 같은 다면체는 인덱스가 없고
+    // Box·Cylinder는 있는데, mergeGeometries는 둘을 섞으면 실패한다.
+    const indexed = geo.index ? "i" : "n";
+    const key = `${texKey(baseMap)}|${mat.emissive?.getHex() ?? 0}|${mat.opacity}|${mat.side}|${mat.transparent}|${indexed}`;
 
     let g = this.groups.get(key);
-    if (!g) { g = { mat, geos: [] }; this.groups.set(key, g); }
+    if (!g) g = (this.groups.set(key, { baseMap, proto: mat, geos: [] }), this.groups.get(key));
 
     const baked = geo.clone();
     baked.applyMatrix4(matrixWorld);
-    // 병합에는 없는 속성이 섞이면 실패한다. 위치·법선·UV만 남긴다.
+
+    // 병합에는 속성 구성이 같아야 한다. 필요한 것만 남기고 색을 새로 붙인다.
     for (const name of Object.keys(baked.attributes)) {
       if (name !== "position" && name !== "normal" && name !== "uv") baked.deleteAttribute(name);
     }
+
+    const count = baked.attributes.position.count;
+    if (!baked.attributes.uv) {
+      baked.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(count * 2), 2));
+    } else if (repeat[0] !== 1 || repeat[1] !== 1) {
+      const uv = baked.attributes.uv.array;
+      for (let i = 0; i < uv.length; i += 2) {
+        uv[i] *= repeat[0];
+        uv[i + 1] *= repeat[1];
+      }
+    }
+
+    // 재질의 색조를 정점 색으로. 셰이더에서 map × vertexColor 로 곱해진다.
+    const { r, g: cg, b } = mat.color;
+    const colors = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      colors[i * 3] = r;
+      colors[i * 3 + 1] = cg;
+      colors[i * 3 + 2] = b;
+    }
+    baked.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
     g.geos.push(baked);
   }
 
@@ -208,10 +243,39 @@ export class MergedBatch {
   build(scene, { castShadow = true, receiveShadow = true } = {}) {
     let drawCalls = 0, source = 0;
 
-    for (const { mat, geos } of this.groups.values()) {
+    for (const { baseMap, proto, geos } of this.groups.values()) {
       source += geos.length;
       const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
-      if (!merged) { console.warn("지오메트리 병합 실패 — 속성이 어긋났다"); continue; }
+      if (!merged) {
+        // 합치지 못하면 조용히 사라지는 대신 개별 메시로라도 그린다
+        console.warn("지오메트리 병합 실패 — 개별 메시로 대체", geos.length);
+        for (const g of geos) {
+          const m = new THREE.Mesh(g, proto);
+          m.castShadow = castShadow;
+          m.receiveShadow = receiveShadow;
+          scene.add(m);
+          drawCalls++;
+        }
+        continue;
+      }
+
+      // 색은 정점에, 반복은 UV에 이미 구워졌으므로 재질은 흰색·반복 1로 둔다.
+      // 외곽선은 조명을 받지 않는 MeshBasicMaterial이므로 종류를 보존한다.
+      const common = {
+        color: 0xffffff,
+        map: baseMap,
+        transparent: proto.transparent,
+        opacity: proto.opacity,
+        side: proto.side,
+        vertexColors: true,
+      };
+      const mat = proto.isMeshBasicMaterial
+        ? new THREE.MeshBasicMaterial(common)
+        : new THREE.MeshToonMaterial({
+            ...common,
+            gradientMap: getToonGradient(),
+            emissive: proto.emissive?.getHex() ?? 0x000000,
+          });
 
       const mesh = new THREE.Mesh(merged, mat);
       mesh.castShadow = castShadow;
@@ -226,6 +290,58 @@ export class MergedBatch {
 
     this.groups.clear();
     return { drawCalls, source };
+  }
+}
+
+/**
+ * 그룹의 직속 메시들을 재질별로 합쳐 그 자리에 되돌려 놓는다.
+ *
+ * MergedBatch는 씬 전체를 훑어 정적 물체를 합치지만, 캐릭터는 움직이므로
+ * 그렇게 못 한다. 대신 관절 단위로는 합칠 수 있다 — 몸통·머리·머리카락은
+ * 서로 고정되어 있고, 팔 하나 안의 부품들도 서로 고정되어 있다.
+ *
+ * 하위 그룹(팔·다리 피벗)은 건드리지 않으므로 애니메이션은 그대로 작동한다.
+ * 캐릭터 하나가 메시 40여 개 + 외곽선인데, 이걸 거치면 10개 안팎이 된다.
+ * NPC를 여럿 세울 때 차이가 크다.
+ *
+ * @param {THREE.Object3D} group
+ */
+export function mergeGroupMeshes(group) {
+  const byMat = new Map();
+  const keep = [];
+
+  for (const child of group.children) {
+    // 따로 움직이는 부품(회전하는 결정 등)은 합치면 참조가 끊긴다
+    if (!child.isMesh || child.userData.noMerge) { keep.push(child); continue; }
+    if (!child.material.userData._mergeId) child.material.userData._mergeId = "cm" + ++matSeq;
+    // 인덱스 유무가 다르면 병합이 실패하므로 키를 나눈다
+    const key = child.material.userData._mergeId + (child.geometry.index ? "|i" : "|n");
+    let g = byMat.get(key);
+    if (!g) { g = { mat: child.material, geos: [], cast: false }; byMat.set(key, g); }
+
+    child.updateMatrix();
+    const baked = child.geometry.clone();
+    baked.applyMatrix4(child.matrix);
+    for (const name of Object.keys(baked.attributes)) {
+      if (name !== "position" && name !== "normal" && name !== "uv") baked.deleteAttribute(name);
+    }
+    g.geos.push(baked);
+    if (child.castShadow) g.cast = true;
+  }
+
+  if (byMat.size === 0) return;
+
+  group.clear();
+  for (const child of keep) group.add(child);
+
+  for (const { mat, geos, cast } of byMat.values()) {
+    const merged = geos.length === 1 ? geos[0] : mergeGeometries(geos, false);
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, mat);
+    mesh.castShadow = cast;
+    mesh.receiveShadow = true;
+    group.add(mesh);
+    if (geos.length > 1) for (const g of geos) g.dispose();
   }
 }
 

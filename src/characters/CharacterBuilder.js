@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { toonMaterial, makeOutline } from "../fx/Style.js";
+import { toonMaterial, makeOutline, mergeGroupMeshes } from "../fx/Style.js";
 import { getCombatType, COMBAT } from "../data/elements.js";
 
 // 절차적 캐릭터 생성기.
@@ -182,8 +182,11 @@ function buildTorso(rig, el) {
     }
     default: { // civilian
       rig.solid(new THREE.BoxGeometry(0.30, 0.42, 0.19), c.main, 0, BODY.chestY - 0.02, 0);
-      rig.solid(new THREE.BoxGeometry(0.31, 0.055, 0.20), c.sub, 0, BODY.waistY - 0.04, 0);
-      rig.solid(new THREE.BoxGeometry(0.055, 0.40, 0.015), c.accent, 0, BODY.chestY - 0.02, 0.098, { noOutline: true });
+      // 허리띠 — 튜닉과 바지를 나누는 가로선이라 실루엣에서 눈에 띈다
+      rig.solid(new THREE.BoxGeometry(0.315, 0.075, 0.205), c.accent, 0, BODY.waistY - 0.04, 0);
+      rig.solid(new THREE.BoxGeometry(0.06, 0.075, 0.03), 0xc8a860, 0, BODY.waistY - 0.04, 0.105, { noOutline: true });
+      // 늘어뜨린 벨트 끝
+      rig.solid(new THREE.BoxGeometry(0.045, 0.22, 0.02), c.accent, 0.035, BODY.waistY - 0.15, 0.1, { noOutline: true });
       break;
     }
   }
@@ -230,7 +233,7 @@ function buildLegs(rig, el) {
       c.sub, x, BODY.legTopY, 0, legLen
     );
 
-    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.11, 0.17), toonMaterial(0x2a2420));
+    const boot = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.11, 0.17), toonMaterial(c.boots ?? 0x2a2420));
     boot.position.set(0, -legLen - 0.02, 0.018);
     boot.castShadow = true;
     pivot.add(boot);
@@ -266,6 +269,7 @@ function buildWeapon(rig, el) {
       toonMaterial(c.accent, { emissive: c.accent })
     );
     orb.position.set(0, -0.60, 0.13);
+    orb.userData.noMerge = true; // 따로 회전하므로 병합에서 제외
     right.add(orb);
     rig.parts.orb = orb;
   } else {
@@ -301,6 +305,13 @@ export function buildCharacter(el, opts = {}) {
   if (el.silhouette === "floating") {
     rig.root.position.y = 0.22;
     rig.root.userData.hover = true;
+  }
+
+  // 관절 단위로 병합해 드로우콜을 줄인다. 팔다리 피벗은 하위 그룹이라
+  // 건드리지 않으므로 걷기 애니메이션은 그대로 작동한다.
+  mergeGroupMeshes(rig.root);
+  for (const part of Object.values(rig.parts)) {
+    if (part && part.isObject3D) mergeGroupMeshes(part);
   }
 
   rig.root.userData.parts = rig.parts;

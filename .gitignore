@@ -21,3 +21,6 @@ dist/
 # 로그
 *.log
 npm-debug.log*
+
+# VRoid 원본 작업 파일 — assets/models/ 에 복사본이 들어가므로 중복 커밋하지 않는다
+캐릭터 3d 모델/

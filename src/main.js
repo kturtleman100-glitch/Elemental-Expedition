@@ -8,6 +8,13 @@ import { Player } from "./player/Player.js";
 import { CameraRig } from "./player/CameraRig.js";
 import { setupTouchControls } from "./ui/TouchControls.js";
 import { Compass } from "./ui/Compass.js";
+import { CharacterLoader } from "./characters/CharacterLoader.js";
+import { NPC, NPC_PLACEMENTS } from "./characters/NPC.js";
+import { getElement } from "./data/elements.js";
+import { hasDialogue } from "./data/dialogue.js";
+import { Reputation } from "./data/factions.js";
+import { Dialogue } from "./ui/Dialogue.js";
+import { Codex } from "./ui/Codex.js";
 
 // ---------------------------------------------------------------
 // 1단계: 움직이는 3D 월드. 렌더러 세팅 → 월드/플레이어/카메라 구성 →
@@ -53,17 +60,102 @@ async function boot() {
   const cameraRig = new CameraRig(camera, player);
 
   const input = new Input({ canvas, device });
+  let uiRefs = null; // 아래에서 대화·도감이 만들어진 뒤 채운다
   input.onAction((action) => {
+    // 대화 중에는 진행/종료만 받는다
+    if (uiRefs?.dialogue.active) {
+      if (action === "interact" || action === "attack" || action === "jump") uiRefs.dialogue.advance();
+      else if (action === "menu") uiRefs.dialogue.close();
+      return;
+    }
+    if (uiRefs?.codex.open) {
+      if (action === "codex" || action === "menu") uiRefs.codex.hide();
+      return;
+    }
+
     if (action === "view") cameraRig.toggleView();
+    else if (action === "codex") {
+      document.exitPointerLock?.();
+      uiRefs?.codex.show();
+    } else if (action === "interact") {
+      const npc = uiRefs?.nearestTalkable();
+      if (npc) uiRefs.talkTo(npc);
+    }
   });
+
+  setLoadingProgress(85, "마을 사람들을 부르는 중...");
+  const charLoader = new CharacterLoader({ outlines: device.tierName !== "low" });
+  const npcs = [];
+  for (const spec of NPC_PLACEMENTS) {
+    const el = getElement(spec.elementId);
+    if (!el) continue;
+    const model = await charLoader.build(el);
+    scene.add(model);
+    npcs.push(new NPC(model, spec));
+    // NPC도 벽처럼 통과하지 못하게 막는다
+    world.collision.addBox(spec.x, spec.z, 0.8, 0.8, 0, 1.8);
+  }
+
+  // ---- 진행 상태 ----
+  // 6단계에서 SaveData가 이 셋을 그대로 직렬화한다.
+  const flags = new Set();
+  const reputation = new Reputation();
+  const codex = new Codex();
+
+  const dialogue = new Dialogue({
+    onEffect: (fx) => {
+      if (fx.flag) flags.add(fx.flag);
+      if (fx.rep) reputation.add(fx.rep[0], fx.rep[1]);
+      if (fx.codex) codex.discover(fx.codex);
+    },
+    onClose: () => {
+      // 대화가 끝나면 다시 조작을 돌려준다
+      if (!device.isTouch) canvas.requestPointerLock?.();
+    },
+  });
+
+  // 대화 상대는 도감에 자동 등록된다 — 만난 것 자체가 발견이다
+  function talkTo(npc) {
+    if (!hasDialogue(npc.element.id)) return;
+    codex.discover(npc.element.id);
+    document.exitPointerLock?.();
+    dialogue.open(npc.element.id, flags);
+  }
+
+  /** 대화 가능한 가장 가까운 NPC */
+  function nearestTalkable() {
+    let best = null;
+    for (const npc of npcs) {
+      if (!npc.inTalkRange || !hasDialogue(npc.element.id)) continue;
+      if (!best || npc.distance < best.distance) best = npc;
+    }
+    return best;
+  }
+
+  const interactHint = document.getElementById("interact-hint");
+  const interactName = document.getElementById("interact-name");
+  const interactKey = document.getElementById("interact-key");
+  interactKey.textContent = device.isTouch ? "대화" : "우클릭";
 
   const game = new Game();
   Object.assign(game.state, { scene, camera, renderer, player, world, device, input, cameraRig });
 
+  uiRefs = { dialogue, codex, talkTo, nearestTalkable };
+
   game.addSystem({
     update(dt) {
+      // 대화·도감이 열려 있으면 플레이어를 멈춘다. 카메라와 NPC는 계속 살아 있다.
+      const uiOpen = dialogue.active || codex.open;
       cameraRig.update(dt);
-      player.update(dt, input, cameraRig.yawRadians);
+      if (!uiOpen) player.update(dt, input, cameraRig.yawRadians);
+      for (const npc of npcs) npc.update(dt, player.position);
+
+      dialogue.update(dt);
+
+      // 상호작용 안내
+      const target = uiOpen ? null : nearestTalkable();
+      interactHint.hidden = !target;
+      if (target) interactName.textContent = `${target.element.ko} (${target.element.sym})`;
     },
   });
 

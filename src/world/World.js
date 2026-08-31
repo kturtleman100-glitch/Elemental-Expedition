@@ -67,6 +67,9 @@ export class World {
     // 마지막에 한 번에 만든다. 둘 다 드로우콜을 줄이는 장치다.
     this.batch = new InstancedBatch();
     this.merged = new MergedBatch();
+    // 인스턴싱은 (지오메트리, 재질)이 같은 것만 묶는다. 호출할 때마다 새 지오메트리를
+    // 만들면 모양이 같아도 따로 그려지므로, 반복되는 소품은 여기서 공유한다.
+    this._geoCache = new Map();
 
     makeSky(scene, device, PALETTE);
     setupLighting(scene, device);
@@ -419,8 +422,8 @@ export class World {
     const ang = Math.atan2(dx, dz);
     const n = Math.max(2, Math.round(len / 1.5));
     const woodM = toonMaterial(0xffffff, { map: this.tex.wood, repeat: [1, 1] });
-    const postGeo = new THREE.BoxGeometry(0.13, 1.15, 0.13);
-    const railGeo = new THREE.BoxGeometry(0.08, 0.09, 1.5);
+    const postGeo = this._geo("fencePost", () => new THREE.BoxGeometry(0.13, 1.15, 0.13));
+    const railGeo = this._geo("fenceRail", () => new THREE.BoxGeometry(0.08, 0.09, 1.5));
 
     for (let i = 0; i <= n; i++) {
       const t = i / n;
@@ -456,12 +459,14 @@ export class World {
 
   _barrel(x, y, z) {
     const woodM = toonMaterial(0xffffff, { map: this.tex.wood, repeat: [1, 1] });
-    this.batch.add(new THREE.CylinderGeometry(0.32, 0.29, 0.66, 10), woodM, [x, 0.33, z], [0, Math.random() * 3, 0]);
+    const geo = this._geo("barrel", () => new THREE.CylinderGeometry(0.32, 0.29, 0.66, 10));
+    this.batch.add(geo, woodM, [x, 0.33, z], [0, Math.random() * 3, 0]);
   }
 
   _crate(x, y, z) {
     const woodM = toonMaterial(0xc0a884, { map: this.tex.wood, repeat: [1, 1] });
-    this.batch.add(new THREE.BoxGeometry(0.55, 0.55, 0.55), woodM, [x, 0.28, z], [0, Math.random() * 3, 0]);
+    const geo = this._geo("crate", () => new THREE.BoxGeometry(0.55, 0.55, 0.55));
+    this.batch.add(geo, woodM, [x, 0.28, z], [0, Math.random() * 3, 0]);
   }
 
   /** 대안통운 물류창고 — 인(P)의 일터. 배송 퀘스트가 여기서 시작된다 */
@@ -556,7 +561,7 @@ export class World {
     const c = Math.cos(ry), s = Math.sin(ry);
     const hayM = toonMaterial(0xc8a850);
     for (const [lx, lz] of [[-4.4, 3.2], [-3.4, 4.2], [4.2, 3.4]])
-      this.batch.add(new THREE.CylinderGeometry(0.62, 0.62, 0.9, 10), hayM,
+      this.batch.add(this._geo("hay", () => new THREE.CylinderGeometry(0.62, 0.62, 0.9, 10)), hayM,
         [x + lx * c + lz * s, 0.45, z - lx * s + lz * c], [Math.PI / 2, Math.random() * 3, 0]);
 
     this.collision.addBox(x, z, w + 0.2, d + 0.2, 0, 0.3 + h, ry);
@@ -580,15 +585,15 @@ export class World {
 
     // 이랑과 작물 — 인스턴싱이라 개수를 늘려도 드로우콜은 그대로
     const c = Math.cos(ry), s = Math.sin(ry);
-    const ridgeGeo = new THREE.BoxGeometry(0.5, 0.16, d - 0.6);
+    const ridgeGeo = this._geo("fieldRidge", () => new THREE.BoxGeometry(0.5, 0.16, 1));
     const ridgeM = toonMaterial(0x7d6540, { map: this.tex.dirt, repeat: [1, 1] });
-    const cropGeo = new THREE.ConeGeometry(0.14, 0.42, 4);
+    const cropGeo = this._geo("crop", () => new THREE.ConeGeometry(0.14, 0.42, 4));
     const cropM = toonMaterial(0x6a9a4a);
 
     const rows = Math.floor(w / 1.1);
     for (let i = 0; i < rows; i++) {
       const lx = -w / 2 + 0.7 + i * 1.1;
-      this.batch.add(ridgeGeo, ridgeM, [x + lx * c, 0.09, z - lx * s], [0, ry, 0]);
+      this.batch.add(ridgeGeo, ridgeM, [x + lx * c, 0.09, z - lx * s], [0, ry, 0], [1, 1, d - 0.6]);
       const n = Math.round((d - 1) / 0.7);
       for (let j = 0; j < n; j++) {
         const lz = -d / 2 + 0.6 + j * 0.7;
@@ -752,14 +757,14 @@ export class World {
    * 물체와 땅이 만나는 자리를 메워야 장난감처럼 안 보인다.
    */
   _buildScatter() {
-    const bladeGeo = new THREE.ConeGeometry(0.06, 0.4, 3);
+    const bladeGeo = this._geo("blade", () => new THREE.ConeGeometry(0.06, 0.4, 3));
     const grassA = toonMaterial(PALETTE.leafC);
     const grassB = toonMaterial(PALETTE.leafA);
-    const pebbleGeo = new THREE.DodecahedronGeometry(0.14, 0);
+    const pebbleGeo = this._geo("pebble", () => new THREE.DodecahedronGeometry(0.14, 0));
     const pebbleM = toonMaterial(0xffffff, { map: this.tex.stone, repeat: [1, 1] });
-    const flowerGeo = new THREE.SphereGeometry(0.09, 6, 5);
+    const flowerGeo = this._geo("flower", () => new THREE.SphereGeometry(0.09, 6, 5));
     const flowerM = [toonMaterial(0xe8d0e0), toonMaterial(0xf0e0a0), toonMaterial(0xd8a0b0)];
-    const bushGeo = new THREE.IcosahedronGeometry(0.42, 0);
+    const bushGeo = this._geo("bush", () => new THREE.IcosahedronGeometry(0.42, 0));
     const bushM = toonMaterial(0xffffff, { map: this.tex.leaf, repeat: [1, 1] });
 
     const n = (base) => Math.round(base * this.density);
@@ -793,7 +798,7 @@ export class World {
     }
 
     // 광장 포석 — 흙바닥 위에 박힌 돌
-    const slabGeo = new THREE.CylinderGeometry(0.32, 0.34, 0.06, 6);
+    const slabGeo = this._geo("slab", () => new THREE.CylinderGeometry(0.32, 0.34, 0.06, 6));
     for (let i = 0; i < n(120); i++) {
       const a = Math.random() * Math.PI * 2;
       const r = Math.random() * 15;
@@ -829,6 +834,13 @@ export class World {
   }
 
   // ================= 공용 =================
+
+  /** 반복되는 소품의 지오메트리를 공유한다 — 인스턴싱이 묶이려면 같은 객체여야 한다 */
+  _geo(key, factory) {
+    let g = this._geoCache.get(key);
+    if (!g) { g = factory(); this._geoCache.set(key, g); }
+    return g;
+  }
 
   /**
    * 그룹의 모든 메시를 월드 좌표로 구워 병합 배치에 넘긴다.

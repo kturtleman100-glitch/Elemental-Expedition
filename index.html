@@ -56,6 +56,44 @@
       </div>
     </div>
 
+    <!-- 상호작용 안내 (NPC에 가까이 가면 표시) -->
+    <div id="interact-hint" hidden><span id="interact-key">우클릭</span> <span id="interact-name"></span></div>
+
+    <!-- 대화창 -->
+    <div id="dialogue" hidden>
+      <div class="dlg-box">
+        <div class="dlg-speaker">
+          <div id="dlg-cell" class="dlg-cell">
+            <span id="dlg-cell-num"></span>
+            <span id="dlg-cell-sym"></span>
+          </div>
+          <div class="dlg-id">
+            <div id="dlg-name"></div>
+            <div id="dlg-role"></div>
+          </div>
+        </div>
+        <p id="dlg-text"></p>
+        <div id="dlg-choices" hidden></div>
+        <div id="dlg-more" hidden>▼</div>
+      </div>
+    </div>
+
+    <!-- 원소 도감 -->
+    <div id="codex" hidden>
+      <div class="cx-panel">
+        <header class="cx-top">
+          <h2>원소 도감</h2>
+          <div class="cx-progress"><div id="codex-bar"></div></div>
+          <span id="codex-count"></span>
+          <button id="codex-close" class="icon-btn" aria-label="닫기">✕</button>
+        </header>
+        <div class="cx-body">
+          <div id="codex-grid"></div>
+          <aside id="codex-detail"></aside>
+        </div>
+      </div>
+    </div>
+
     <!-- 타이틀 화면 -->
     <div id="title-screen" hidden>
       <div class="title-logo">Elemental&nbsp;Expedition</div>
