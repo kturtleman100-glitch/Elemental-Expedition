@@ -1,5 +1,6 @@
 import { ELEMENTS, getElement, getCombatType, FAMILY_LABEL, COMBAT_LABEL } from "../data/elements.js";
 import { getFaction } from "../data/factions.js";
+import { familyInfo } from "../data/families.js";
 
 // 원소 도감 (K 키).
 //
@@ -10,6 +11,7 @@ import { getFaction } from "../data/factions.js";
 export class Codex {
   constructor() {
     this.root = document.getElementById("codex");
+    this.famOpen = false;   // 족 해설 펼침 여부
     this.gridEl = document.getElementById("codex-grid");
     this.detailEl = document.getElementById("codex-detail");
     this.countEl = document.getElementById("codex-count");
@@ -133,7 +135,43 @@ export class Codex {
       </dl>
       <p class="cx-bio">${el.bio}</p>
       <blockquote class="cx-quote">${el.quote}</blockquote>
-      ${bonds ? `<p class="cx-sub">인연이 깊은 원소</p><div class="cx-bonds">${bonds}</div>` : ""}`;
+      ${bonds ? `<p class="cx-sub">인연이 깊은 원소</p><div class="cx-bonds">${bonds}</div>` : ""}
+      ${this._familyBlock(el)}`;
+
+    const toggle = this.detailEl.querySelector(".cx-fam-toggle");
+    toggle?.addEventListener("click", () => {
+      this.famOpen = !this.famOpen;
+      this._renderDetail();
+    });
+  }
+
+  /**
+   * 족 해설. 숫자만 보여주면 외울 것만 늘고 남는 게 없다.
+   * 왜 같은 족이 비슷하게 행동하는지가 화학이 재미있어지는 지점이다.
+   *
+   * 기본은 접어 둔다 — 캐릭터를 보러 온 사람에게 설명부터 들이밀면 방해가 된다.
+   */
+  _familyBlock(el) {
+    const info = familyInfo(el.family);
+    if (!info) return "";
+
+    if (!this.famOpen) {
+      return `<button class="cx-fam-toggle" type="button">
+                ${info.label}은 어떤 족인가? <span class="cx-caret">▾</span>
+              </button>`;
+    }
+    return `<button class="cx-fam-toggle open" type="button">
+              ${info.label} <span class="cx-caret">▴</span>
+            </button>
+            <div class="cx-fam">
+              <p class="cx-fam-group">${info.group}</p>
+              <p class="cx-fam-trait">${info.trait}</p>
+              <p class="cx-fam-label">왜 그런가</p>
+              <p>${info.why}</p>
+              <p class="cx-fam-label">이 게임에서는</p>
+              <p>${info.inGame}</p>
+              <p class="cx-fam-watch">${info.watch}</p>
+            </div>`;
   }
 
   toJSON() { return [...this.found]; }

@@ -1221,3 +1221,60 @@ html, body {
   color: #e2b34a; font-size: 11px; letter-spacing: .08em;
   pointer-events: none; z-index: 40;
 }
+
+/* 족 해설 — 도감의 접이식 블록.
+   캐릭터를 보러 온 사람에게 설명부터 들이밀면 방해가 되므로 기본은 접어 둔다. */
+.cx-fam-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; margin-top: 1rem; padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(143, 209, 212, 0.28);
+  background: rgba(143, 209, 212, 0.07);
+  color: #8fd1d4;
+  font-family: inherit; font-size: 0.86em; text-align: left;
+  cursor: pointer;
+}
+.cx-fam-toggle:hover { background: rgba(143, 209, 212, 0.14); }
+.cx-fam-toggle.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.cx-caret { opacity: 0.7; }
+
+.cx-fam {
+  padding: 0.85rem 0.9rem 1rem;
+  border: 1px solid rgba(143, 209, 212, 0.28);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: rgba(143, 209, 212, 0.04);
+  font-size: 0.84em;
+  line-height: 1.72;
+  color: #cfc9bb;
+}
+.cx-fam p { margin: 0 0 0.7rem; }
+.cx-fam p:last-child { margin-bottom: 0; }
+.cx-fam-group {
+  display: inline-block;
+  padding: 1px 8px; border-radius: 999px;
+  background: rgba(143, 209, 212, 0.16);
+  color: #8fd1d4; font-size: 0.9em; letter-spacing: 0.04em;
+}
+.cx-fam-trait { color: #eae6da; font-weight: 600; }
+.cx-fam-label {
+  margin-bottom: 0.2rem !important;
+  color: #8fd1d4; font-size: 0.92em; letter-spacing: 0.06em;
+}
+/* 관찰 거리 — 도감의 숫자를 직접 비교해 보라고 권하는 줄이라 톤을 달리한다 */
+.cx-fam-watch {
+  margin-top: 0.9rem !important;
+  padding-left: 0.7rem;
+  border-left: 2px solid rgba(226, 179, 74, 0.5);
+  color: #b8ada0; font-style: italic;
+}
+
+/* 화합물의 화학 설명 */
+.inv-chem {
+  margin: 0.3rem 0 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 6px;
+  border-left: 2px solid rgba(143, 209, 212, 0.5);
+  background: rgba(143, 209, 212, 0.06);
+  font-size: 0.84em; line-height: 1.72; color: #cfc9bb;
+}

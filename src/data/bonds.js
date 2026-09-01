@@ -129,57 +129,99 @@ export function bondedWith(id) {
 /**
  * 전부 실제 화합물이다. 효과는 그 물질의 성질에서 끌어냈다.
  *  needs: 필요한 원소 id (순서 무관)
+ *  chem : 결합의 종류와, 그 물질이 알려주는 화학.
+ *         효과가 왜 그 효과인지까지 설명되면 규칙을 외우는 대신 추측할 수 있다
  */
 export const COMPOUNDS = [
   {
     id: "nacl", name: "소금", formula: "NaCl", needs: ["na", "cl"],
     desc: "이온 결합 결정. 단단해서 꿰뚫는다.",
     effect: { kind: "pierce", power: 1.4, note: "관통 — 뒤에 선 적까지 맞힌다" },
+    chem: {
+      bond: "이온 결합",
+      fact: "소듐이 전자 하나를 내주고 염소가 받는다. 서로 +와 −가 되어 강하게 끌어당기므로 결정이 단단하고 녹는점이 800°C를 넘는다. 전기음성도 차가 2.23으로 이 표에서 가장 크다 — 차이가 클수록 이온 결합이다.",
+    },
   },
   {
     id: "h2o", name: "물", formula: "H₂O", needs: ["h", "o"],
     desc: "알칼리 금속에 닿으면 격렬히 반응한다.",
     effect: { kind: "knockback", power: 1.2, vs: "alkali", bonus: 2.0, note: "알칼리 금속에게 연쇄 폭발" },
+    chem: {
+      bond: "극성 공유 결합",
+      fact: "산소가 수소보다 전자를 세게 당겨(3.44 대 2.20) 한쪽이 살짝 −, 다른 쪽이 +를 띤다. 게다가 분자가 굽어 있어 그 치우침이 상쇄되지 않는다. 물이 온갖 것을 녹이는 이유가 이 극성이다.",
+    },
   },
   {
     id: "rust", name: "녹", formula: "Fe₂O₃", needs: ["fe", "o"],
     desc: "철이 산소를 만나 부식된다.",
     effect: { kind: "debuff", stat: "defense", amount: -0.4, duration: 8, note: "적 방어력 −40%" },
+    chem: {
+      bond: "이온 결합",
+      fact: "철이 산소에게 전자를 빼앗긴다. 이것이 산화이고, 산화란 곧 전자를 잃는 일이다. 녹이 방어력을 깎는 것은 금속 결합이 끊어져 구조가 무너지기 때문이다.",
+    },
   },
   {
     id: "co2", name: "이산화탄소", formula: "CO₂", needs: ["c", "o"],
     desc: "타는 것을 덮어 끈다.",
     effect: { kind: "aoe", power: 0.9, note: "광역 질식 · 화염 무효화" },
+    chem: {
+      bond: "극성 공유 결합 · 무극성 분자",
+      fact: "C=O 결합 하나하나는 극성인데, 분자가 O=C=O로 반듯한 직선이라 양쪽 치우침이 정확히 상쇄된다. 그래서 결합은 극성인데 분자는 무극성이다. 물에 잘 안 섞이고 공기보다 무거워 아래로 깔리는 것이 여기서 나온다.",
+    },
   },
   {
     id: "sio2", name: "수정", formula: "SiO₂", needs: ["si", "o"],
     desc: "이산화규소 결정. 단단한 벽이 된다.",
     effect: { kind: "barrier", hp: 60, duration: 10, note: "방어 장벽 설치" },
+    chem: {
+      bond: "공유 결합 그물",
+      fact: "분자가 아니다. 규소와 산소가 그물처럼 끝없이 이어져 결정 하나가 통째로 거대한 분자다. 끊으려면 공유 결합을 전부 끊어야 하므로 1700°C까지 녹지 않는다. 유리·모래·수정이 모두 이것이다.",
+    },
   },
   {
     id: "caf2", name: "형석", formula: "CaF₂", needs: ["ca", "f"],
     desc: "자외선을 받으면 빛난다. 형광(fluorescence)의 어원.",
     effect: { kind: "reveal", radius: 20, duration: 12, note: "은신 해제 · 주변 조명" },
+    chem: {
+      bond: "이온 결합",
+      fact: "칼슘이 전자 두 개를 내주고 플루오린 둘이 하나씩 받는다 — 그래서 Ca 하나에 F 둘이다. 화학식의 아래 숫자는 임의가 아니라 주고받는 전자 수를 맞춘 결과다. 형광(fluorescence)이라는 말이 이 광물 형석(fluorite)에서 나왔다.",
+    },
   },
   {
     id: "znS", name: "섬아연석", formula: "ZnS", needs: ["zn", "s"],
     desc: "아연과 황. 어둠 속에서 오래 빛난다.",
     effect: { kind: "heal", amount: 0.25, note: "체력 25% 회복" },
+    chem: {
+      bond: "이온 결합",
+      fact: "빛을 받아 전자를 들뜬 상태로 붙잡아 두었다가 천천히 놓아주며 다시 빛을 낸다. 이것이 인광이다. 야광 별 스티커가 같은 원리다.",
+    },
   },
   {
     id: "hgS", name: "진사", formula: "HgS", needs: ["hg", "s"],
     desc: "수은과 황이 만든 붉은 안료.",
     effect: { kind: "charm", duration: 5, note: "적 하나를 잠시 아군으로" },
+    chem: {
+      bond: "이온 결합",
+      fact: "주홍색 안료 버밀리언의 원료이자 수은을 얻는 주된 광석이다. 수은은 금속인데도 상온에서 액체인데, 원자끼리 손을 제대로 잡지 않기 때문이다.",
+    },
   },
   {
     id: "pbS", name: "방연석", formula: "PbS", needs: ["pb", "s"],
     desc: "납의 주요 광석. 방사선을 막는다.",
     effect: { kind: "shield", reduce: 0.5, duration: 8, note: "받는 피해 절반" },
+    chem: {
+      bond: "이온 결합",
+      fact: "납의 주요 광석. 납이 방사선을 막는 것은 화학이 아니라 밀도의 문제다. 원자가 무겁고 빽빽할수록 방사선이 뚫고 지나가기 어렵다.",
+    },
   },
   {
     id: "agBr", name: "브로민화은", formula: "AgBr", needs: ["ag", "br"],
     desc: "필름의 감광제. 빛을 기억한다.",
     effect: { kind: "record", note: "마지막에 쓴 화합물을 한 번 더" },
+    chem: {
+      bond: "이온 결합",
+      fact: "빛을 받으면 은 이온이 전자를 되받아 금속 은으로 변하고, 그 자리가 검게 남는다. 필름 사진이 상을 기록하는 원리가 이것이다 — 빛이 닿은 만큼 은이 생긴다.",
+    },
   },
 ];
 

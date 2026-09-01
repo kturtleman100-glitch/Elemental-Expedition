@@ -89,6 +89,9 @@ export class Inventory {
       <div class="inv-parts">${parts}</div>
       <p class="inv-sub">효과</p>
       <p class="inv-effect">${c.effect.note ?? ""}</p>
+      ${c.chem ? `
+        <p class="inv-sub">${c.chem.bond}</p>
+        <p class="inv-chem">${c.chem.fact}</p>` : ""}
       <button class="inv-make" type="button" ${can ? "" : "disabled"}>
         ${can ? "제작" : "원소가 부족합니다"}
       </button>`;
