@@ -76,6 +76,7 @@ export class World {
 
     this._buildGround();
     this._buildVillage();
+    this._buildWilderness();
     this._buildNature();
     this._buildScatter();
     this._buildBoundary();
@@ -98,8 +99,8 @@ export class World {
 
   _buildGround() {
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(420, 420),
-      toonMaterial(0xffffff, { map: this.tex.grass, repeat: [64, 64] })
+      new THREE.PlaneGeometry(560, 560),
+      toonMaterial(0xffffff, { map: this.tex.grass, repeat: [86, 86] })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -116,7 +117,7 @@ export class World {
     this.scene.add(plaza);
 
     // 길 — 광장에서 세 방향. 나중에 다른 지역으로 이어질 자리를 암시한다
-    for (const [angle, len] of [[0, 46], [Math.PI * 0.5, 44], [Math.PI, 30], [Math.PI * 1.5, 44]]) {
+    for (const [angle, len] of [[0, 118], [Math.PI * 0.5, 96], [Math.PI, 88], [Math.PI * 1.5, 96]]) {
       const road = new THREE.Mesh(
         new THREE.PlaneGeometry(5, len),
         toonMaterial(0xffffff, { map: this.tex.dirt, repeat: [2, len / 4] })
@@ -132,8 +133,9 @@ export class World {
     // 언덕 — 완전한 평지는 화면을 비어 보이게 만든다
     const hillMat = toonMaterial(0xffffff, { map: this.tex.grass, repeat: [8, 8] });
     for (const [x, z, r, h] of [
-      [-76, -66, 21, 4.6], [70, -78, 25, 5.4], [-86, 56, 23, 5.0],
-      [80, 64, 20, 4.0], [0, -100, 31, 6.6], [-32, 90, 22, 4.4], [48, 92, 19, 3.8],
+      [-118, -92, 30, 6.0], [104, -112, 34, 7.2], [-128, 84, 32, 6.6],
+      [116, 96, 28, 5.4], [-44, -150, 38, 8.0], [-52, 132, 30, 5.6], [78, 138, 26, 5.0],
+      [150, -40, 34, 7.0], [-152, -30, 32, 6.4], [60, -150, 30, 6.2],
     ]) {
       const hill = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 10), hillMat);
       hill.position.set(x, -r + h, z);
@@ -755,6 +757,291 @@ export class World {
     this.collision.addBox(x, z, 0.72 * scale, 0.72 * scale, 0, h * scale);
   }
 
+  // ================= 마을 밖 =================
+
+  /**
+   * 토룡마을을 둘러싼 야외.
+   *
+   * 마을만 있으면 나갈 이유가 없다. 밖에도 갈 곳이 있어야 탐험이 성립한다.
+   * 다만 아직 다른 지역(7단계)은 없으므로, 사방의 길 끝에 이정표를 세워
+   * "저쪽에 무엇이 있다"는 것만 알려주고 실제 이동은 막아둔다.
+   *
+   *            [석회암 고원 · 북]
+   *                   │
+   *   [폐허 언덕]───[마을]───[강과 숲]
+   *        서          │          동
+   *              [남쪽 평원]
+   *          플레이어가 떠밀려 온 곳
+   */
+  _buildWilderness() {
+    this._northPlateau();
+    this._eastRiver();
+    this._westRuins();
+    this._southPlain();
+    this._outerForest();
+    this._signposts();
+    this._campsites();
+  }
+
+  /** 북 — 석회암이 솟은 척박한 고원. 나중에 저승·추방지로 이어진다 */
+  _northPlateau() {
+    const spots = [
+      [-70, -96, 6.0], [-52, -104, 4.4], [-88, -84, 5.2], [-34, -112, 4.0],
+      [12, -108, 5.6], [40, -96, 4.8], [64, -110, 6.2], [-14, -128, 5.0],
+      [30, -132, 4.4], [-60, -130, 5.8], [80, -84, 4.2], [-96, -110, 4.6],
+    ];
+    for (const [x, z, s] of spots) this._limestone(x, z, s);
+
+    // 말라붙은 웅덩이 — 석회암 지대라 물이 고이지 않는다는 표시
+    for (const [x, z, r] of [[-40, -118, 7], [24, -120, 5.5], [-76, -106, 6]]) {
+      const p = new THREE.Mesh(
+        new THREE.CircleGeometry(r, 18),
+        toonMaterial(0xa89880, { map: this.tex.dirt, repeat: [r / 2, r / 2] })
+      );
+      p.rotation.x = -Math.PI / 2;
+      p.position.set(x, 0.03, z);
+      p.receiveShadow = true;
+      this.scene.add(p);
+    }
+  }
+
+  /** 동 — 강이 흐르고 그 너머는 숲. 다리를 건너야 한다 */
+  _eastRiver() {
+    // 강 — 남북으로 흐른다
+    const river = new THREE.Mesh(
+      new THREE.PlaneGeometry(14, 220),
+      toonMaterial(0x2f6a86, { map: this.tex.dirt, repeat: [2, 30] })
+    );
+    river.rotation.x = -Math.PI / 2;
+    river.rotation.z = 0.06;
+    river.position.set(84, 0.05, -10);
+    river.receiveShadow = true;
+    this.scene.add(river);
+
+    // 강가 자갈
+    const pebbleGeo = this._geo("pebble", () => new THREE.DodecahedronGeometry(0.14, 0));
+    const pebbleM = toonMaterial(0xffffff, { map: this.tex.stone, repeat: [1, 1] });
+    for (let i = 0; i < Math.round(220 * this.density); i++) {
+      const z = -120 + Math.random() * 220;
+      const side = Math.random() > 0.5 ? 1 : -1;
+      const x = 84 + side * (7 + Math.random() * 3.5) + z * 0.06;
+      this.batch.add(pebbleGeo, pebbleM, [x, 0.07, z],
+        [Math.random() * 3, Math.random() * 3, Math.random() * 3], 0.6 + Math.random() * 1.1);
+    }
+
+    // 다리 — 동쪽 길이 강을 건넌다
+    this._bridge(84, 0, 0.06);
+
+    // 강 건너 숲
+    const forest = [
+      [102, -30, 1.2], [112, -14, 1.35], [98, 6, 1.15], [116, 20, 1.3],
+      [104, 40, 1.25], [120, -46, 1.4], [96, -58, 1.1], [126, 4, 1.2],
+      [108, 62, 1.3], [130, 40, 1.15], [94, 74, 1.25], [122, -70, 1.35],
+    ];
+    for (const [x, z, s] of forest) this._tree(x, z, s);
+  }
+
+  /** 서 — 무너진 옛 건축물. 비스무트가 남긴 것이라는 설정 */
+  _westRuins() {
+    const ruinM = toonMaterial(0xb8b0a0, { map: this.tex.stone, repeat: [2, 3] });
+    const brokenM = toonMaterial(0x9a9284, { map: this.tex.stone, repeat: [1, 1] });
+
+    // 무너진 기둥들 — 높이를 제각각으로 해야 폐허로 읽힌다
+    const pillars = [
+      [-96, 18, 5.5], [-88, 30, 3.2], [-104, 34, 6.2], [-92, 46, 2.4],
+      [-110, 20, 4.0], [-100, 6, 3.6], [-118, 40, 5.0], [-84, 12, 2.0],
+    ];
+    for (const [x, z, h] of pillars) {
+      const g = new THREE.Group();
+      g.position.set(x, 0, z);
+      g.rotation.y = Math.random() * Math.PI;
+      // 기단
+      this._put(g, new THREE.BoxGeometry(1.9, 0.4, 1.9), brokenM, [0, 0.2, 0], { outline: 0.025 });
+      // 기둥 — 위로 갈수록 가늘고, 꼭대기는 부서져 있다
+      this._put(g, new THREE.CylinderGeometry(0.6, 0.72, h, 10), ruinM, [0, 0.4 + h / 2, 0],
+        { rot: [(Math.random() - 0.5) * 0.06, 0, (Math.random() - 0.5) * 0.06], outline: 0.025 });
+      this._put(g, new THREE.DodecahedronGeometry(0.66, 0), brokenM, [0, 0.4 + h + 0.2, 0],
+        { rot: [Math.random(), Math.random(), Math.random()], outline: 0.03 });
+      this._mergeGroup(g);
+      this.collision.addBox(x, z, 1.9, 1.9, 0, 0.4 + h);
+    }
+
+    // 쓰러진 기둥 조각
+    const chunkGeo = this._geo("ruinChunk", () => new THREE.CylinderGeometry(0.55, 0.6, 2.6, 8));
+    for (const [x, z, ry] of [[-98, 26, 0.4], [-106, 44, 1.2], [-90, 38, 2.1],
+                              [-114, 28, 0.8], [-86, 24, 1.7], [-112, 12, 2.6]]) {
+      this.batch.add(chunkGeo, ruinM, [x, 0.6, z], [Math.PI / 2, ry, 0]);
+    }
+
+    // 깨진 바닥 타일 — 여기가 건물이었다는 흔적
+    const tileGeo = this._geo("ruinTile", () => new THREE.BoxGeometry(2.2, 0.12, 2.2));
+    for (let i = 0; i < Math.round(40 * this.density); i++) {
+      const x = -104 + (Math.random() - 0.5) * 40;
+      const z = 28 + (Math.random() - 0.5) * 44;
+      this.batch.add(tileGeo, brokenM, [x, 0.06, z], [0, Math.random() * 0.5, 0], 0.7 + Math.random() * 0.6);
+    }
+  }
+
+  /** 남 — 플레이어가 떠밀려 온 평원. 바다 냄새가 나기 시작한다 */
+  _southPlain() {
+    // 연못 — 바다로 이어지는 물길의 시작
+    const pond = new THREE.Mesh(new THREE.CircleGeometry(16, 28), toonMaterial(0x2f6a86));
+    pond.rotation.x = -Math.PI / 2;
+    pond.position.set(-24, 0.04, 104);
+    pond.receiveShadow = true;
+    this.scene.add(pond);
+
+    const rim = new THREE.Mesh(new THREE.RingGeometry(15.5, 18.5, 28),
+      toonMaterial(0xb0a084, { map: this.tex.dirt, repeat: [6, 6] }));
+    rim.rotation.x = -Math.PI / 2;
+    rim.position.set(-24, 0.045, 104);
+    rim.receiveShadow = true;
+    this.scene.add(rim);
+
+    // 갈대 — 연못가
+    const reedGeo = this._geo("reed", () => new THREE.ConeGeometry(0.05, 1.5, 3));
+    const reedM = toonMaterial(0x8a9a5a);
+    for (let i = 0; i < Math.round(120 * this.density); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 15 + Math.random() * 4;
+      this.batch.add(reedGeo, reedM,
+        [-24 + Math.sin(a) * r, 0.75, 104 + Math.cos(a) * r],
+        [0, Math.random() * 3, (Math.random() - 0.5) * 0.3], 0.7 + Math.random() * 0.7);
+    }
+
+    // 표류물 — 플레이어가 떠밀려 왔다는 설정의 흔적
+    const driftM = toonMaterial(0x8a7a60, { map: this.tex.wood, repeat: [1, 2] });
+    const plankGeo = this._geo("plank", () => new THREE.BoxGeometry(0.4, 0.18, 3.2));
+    for (const [x, z, ry] of [[6, 118, 0.4], [14, 124, 1.9], [-2, 126, 2.7],
+                              [20, 112, 0.9], [-10, 132, 1.4]]) {
+      this.batch.add(plankGeo, driftM, [x, 0.1, z], [0, ry, (Math.random() - 0.5) * 0.2]);
+    }
+
+    // 모래 — 남쪽 끝은 바닷가에 가까워진다
+    const sand = new THREE.Mesh(new THREE.PlaneGeometry(200, 70),
+      toonMaterial(0xd8c8a4, { map: this.tex.dirt, repeat: [30, 10] }));
+    sand.rotation.x = -Math.PI / 2;
+    sand.position.set(0, 0.02, 146);
+    sand.receiveShadow = true;
+    this.scene.add(sand);
+  }
+
+  /** 외곽 숲 — 경계를 자연스럽게 막는다 */
+  _outerForest() {
+    const ring = [];
+    const R = 150;
+    for (let i = 0; i < 46; i++) {
+      const a = (i / 46) * Math.PI * 2;
+      // 길이 나가는 네 방향은 비워둔다
+      const deg = (a * 180) / Math.PI;
+      const onRoad = [0, 90, 180, 270].some((d) => Math.abs(((deg - d + 540) % 360) - 180) > 172);
+      if (onRoad) continue;
+      const r = R + (Math.random() - 0.5) * 24;
+      ring.push([Math.sin(a) * r, Math.cos(a) * r, 1.1 + Math.random() * 0.5]);
+    }
+    for (const [x, z, s] of ring) this._tree(x, z, s);
+
+    // 중간 지대의 성긴 나무
+    for (let i = 0; i < Math.round(34 * this.density); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = 95 + Math.random() * 40;
+      this._tree(Math.sin(a) * r, Math.cos(a) * r, 0.9 + Math.random() * 0.5);
+    }
+  }
+
+  /** 다리 */
+  _bridge(x, z, ry) {
+    const p = new THREE.Group();
+    p.position.set(x, 0, z);
+    p.rotation.y = ry;
+
+    const woodM = toonMaterial(0xffffff, { map: this.tex.wood, repeat: [1, 4] });
+    const darkM = toonMaterial(0xa88a6a, { map: this.tex.wood, repeat: [1, 2] });
+
+    this._put(p, new THREE.BoxGeometry(22, 0.35, 5.4), woodM, [0, 0.5, 0], { outline: 0.02 });
+    for (const s of [-1, 1]) {
+      this._put(p, new THREE.BoxGeometry(22, 0.16, 0.16), darkM, [0, 1.35, s * 2.6], { noOutline: true });
+      for (let i = -4; i <= 4; i++) {
+        this._put(p, new THREE.BoxGeometry(0.18, 1.0, 0.18), darkM, [i * 2.5, 0.95, s * 2.6], { noOutline: true });
+      }
+    }
+    // 교각
+    for (const i of [-7, 0, 7]) {
+      this._put(p, new THREE.CylinderGeometry(0.4, 0.45, 1.6, 8), darkM, [i, -0.3, 0], { noOutline: true });
+    }
+
+    this._mergeGroup(p);
+    // 다리 위는 지나갈 수 있어야 하므로 난간만 막는다
+    for (const s of [-1, 1]) {
+      this.collision.addBox(x + Math.sin(ry) * 0, z + s * 2.7, 22, 0.4, 0.5, 1.5, ry);
+    }
+  }
+
+  /** 이정표 — 길 끝에서 다음 지역을 알려준다 */
+  _signposts() {
+    const posts = [
+      { x: 0, z: -96, ry: 0, lines: ["북 — 석회암 고원", "저승 · 추방지 방면"] },
+      { x: 96, z: 0, ry: Math.PI / 2, lines: ["동 — 강 건너 숲", "아르곤 시티 방면"] },
+      { x: 0, z: 118, ry: Math.PI, lines: ["남 — 바닷가 평원", "불안정한 바다 방면"] },
+      { x: -96, z: 0, ry: -Math.PI / 2, lines: ["서 — 옛 폐허", "철의 요새 방면"] },
+    ];
+
+    const woodM = toonMaterial(0xffffff, { map: this.tex.wood, repeat: [1, 3] });
+    const boardM = toonMaterial(0xc8b896, { map: this.tex.wood, repeat: [2, 1] });
+
+    for (const s of posts) {
+      const p = new THREE.Group();
+      p.position.set(s.x, 0, s.z);
+      p.rotation.y = s.ry;
+
+      this._put(p, new THREE.BoxGeometry(0.2, 3.0, 0.2), woodM, [0, 1.5, 0], { outline: 0.04 });
+      this._put(p, new THREE.BoxGeometry(2.6, 0.5, 0.12), boardM, [0.5, 2.5, 0], { rot: [0, 0, -0.04], outline: 0.03 });
+      this._put(p, new THREE.BoxGeometry(2.2, 0.42, 0.12), boardM, [-0.4, 1.9, 0], { rot: [0, 0, 0.05], outline: 0.03 });
+      // 돌무더기 받침
+      this._put(p, new THREE.DodecahedronGeometry(0.7, 0), toonMaterial(0xffffff, { map: this.tex.stone, repeat: [1, 1] }),
+        [0, 0.25, 0], { rot: [0.2, Math.random(), 0.1], outline: 0.03 });
+
+      this._mergeGroup(p);
+      this.collision.addBox(s.x, s.z, 0.6, 0.6, 0, 3.0);
+      this.signposts ??= [];
+      this.signposts.push(s);
+    }
+  }
+
+  /** 야영지 — 먼 길의 쉼터 */
+  _campsites() {
+    const sites = [[-58, 78, 0.4], [72, -62, 1.2], [-72, -58, 2.0], [46, 92, 0.8]];
+    const logGeo = this._geo("campLog", () => new THREE.CylinderGeometry(0.16, 0.18, 1.8, 6));
+    const stoneGeo = this._geo("campStone", () => new THREE.DodecahedronGeometry(0.3, 0));
+    const woodM = toonMaterial(0x6a4d34, { map: this.tex.wood, repeat: [1, 1] });
+    const stoneM = toonMaterial(0xffffff, { map: this.tex.stone, repeat: [1, 1] });
+    const emberM = toonMaterial(0xe8863a, { emissive: 0x8a3a08 });
+
+    for (const [x, z, ry] of sites) {
+      // 돌 화덕
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        this.batch.add(stoneGeo, stoneM, [x + Math.sin(a) * 0.9, 0.14, z + Math.cos(a) * 0.9],
+          [Math.random(), Math.random() * 3, Math.random()], 0.8 + Math.random() * 0.5);
+      }
+      // 장작
+      for (let i = 0; i < 3; i++) {
+        const a = ry + (i / 3) * Math.PI;
+        this.batch.add(logGeo, woodM, [x, 0.3, z], [Math.PI / 2.4, a, 0]);
+      }
+      // 잉걸불
+      this.batch.add(this._geo("ember", () => new THREE.IcosahedronGeometry(0.3, 0)),
+        emberM, [x, 0.18, z], [0, 0, 0], 1);
+
+      // 통나무 의자
+      this.batch.add(logGeo, woodM, [x + Math.sin(ry) * 2.2, 0.2, z + Math.cos(ry) * 2.2],
+        [0, ry + Math.PI / 2, Math.PI / 2], [1.4, 1.4, 1.4]);
+
+      this.campsites ??= [];
+      this.campsites.push({ x, z });
+    }
+  }
+
   // ================= 잔물건 (전부 인스턴싱) =================
 
   /**
@@ -775,8 +1062,8 @@ export class World {
     const n = (base) => Math.round(base * this.density);
 
     // 풀 포기 — 한 포기에 잎 3장
-    for (let i = 0; i < n(1500); i++) {
-      const [x, z] = this._scatterPoint(17, 86);
+    for (let i = 0; i < n(3200); i++) {
+      const [x, z] = this._scatterPoint(17, 150);
       for (let b = 0; b < 3; b++)
         this.batch.add(bladeGeo, Math.random() > 0.5 ? grassA : grassB,
           [x + (Math.random() - 0.5) * 0.3, 0.2, z + (Math.random() - 0.5) * 0.3],
@@ -784,20 +1071,20 @@ export class World {
           0.8 + Math.random() * 0.6);
     }
 
-    for (let i = 0; i < n(620); i++) {
-      const [x, z] = this._scatterPoint(15, 88);
+    for (let i = 0; i < n(1300); i++) {
+      const [x, z] = this._scatterPoint(15, 152);
       this.batch.add(pebbleGeo, pebbleM, [x, 0.06, z],
         [Math.random() * 3, Math.random() * 3, Math.random() * 3], 0.5 + Math.random() * 0.9);
     }
 
-    for (let i = 0; i < n(420); i++) {
-      const [x, z] = this._scatterPoint(18, 80);
+    for (let i = 0; i < n(850); i++) {
+      const [x, z] = this._scatterPoint(18, 140);
       this.batch.add(flowerGeo, flowerM[i % 3], [x, 0.22, z], [0, 0, 0], 0.7 + Math.random() * 0.6);
       this.batch.add(bladeGeo, grassB, [x, 0.12, z], [0, 0, 0], [0.5, 0.6, 0.5]);
     }
 
-    for (let i = 0; i < n(260); i++) {
-      const [x, z] = this._scatterPoint(19, 88);
+    for (let i = 0; i < n(560); i++) {
+      const [x, z] = this._scatterPoint(19, 152);
       this.batch.add(bushGeo, bushM, [x, 0.3, z],
         [Math.random(), Math.random() * 3, Math.random()], 0.7 + Math.random() * 0.9);
     }
@@ -831,10 +1118,10 @@ export class World {
   _buildBoundary() {
     // 지금은 토룡마을만 있으므로 빈 평야로 나가지 않게 막는다.
     // 7단계에서 지역이 이어지면 해당 방향의 벽을 연다.
-    const R = 100, seg = 28;
+    const R = 178, seg = 40;
     for (let i = 0; i < seg; i++) {
       const a = (i / seg) * Math.PI * 2;
-      this.collision.addBox(Math.sin(a) * R, Math.cos(a) * R, 34, 34, 0, 16);
+      this.collision.addBox(Math.sin(a) * R, Math.cos(a) * R, 40, 40, 0, 18);
     }
   }
 

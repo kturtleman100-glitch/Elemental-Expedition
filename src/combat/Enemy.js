@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { getElement } from "../data/elements.js";
 import { buildCharacter, animateCharacter } from "../characters/CharacterBuilder.js";
+import { animateVRM, updateCharacter } from "../characters/CharacterLoader.js";
 import { statsFor, styleOf, canAttack } from "./CombatStyle.js";
 import { ElectronPool, electronRole, ELECTRON_ROLE } from "./Electron.js";
 import { computeDamage } from "./DamageCalc.js";
@@ -84,6 +85,15 @@ export class Enemy {
   }
 
   get alive() { return this.state !== ENEMY_STATE.DEAD; }
+
+  /** 절차적 자리표시를 VRM으로 교체한다 (비동기 로드 후 Encounters가 호출) */
+  setModel(model, scene) {
+    scene.remove(this.mesh);
+    this.mesh = model;
+    this.mesh.position.copy(this.position);
+    this.mesh.rotation.y = this.yaw;
+    scene.add(this.mesh);
+  }
 
   /**
    * @param {number} dt
@@ -171,7 +181,12 @@ export class Enemy {
     this.mesh.position.set(this.position.x, 0, this.position.z);
     this.mesh.rotation.y = this.yaw;
     const attackT = this.attackAnim > 0 ? 1 - this.attackAnim / this.attackAnimDur : null;
-    animateCharacter(this.mesh, this.time, moveSpeed, attackT);
+    if (this.mesh.userData.source === "vrm") {
+      animateVRM(this.mesh, this.time, moveSpeed, attackT);
+      updateCharacter(this.mesh, dt);
+    } else {
+      animateCharacter(this.mesh, this.time, moveSpeed, attackT);
+    }
   }
 
   _strike(player, particles, dist, projectiles) {

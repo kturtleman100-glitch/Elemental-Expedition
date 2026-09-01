@@ -13,7 +13,7 @@ import { BODY } from "./CharacterBuilder.js";
 const MODEL_DIR = "assets/models/";
 
 /** 어떤 원소에 .vrm 파일이 있는지. 없는 원소를 매번 404로 찔러보지 않으려고 명시한다. */
-const AVAILABLE = new Set(["mg", "fe", "uue", "si", "ca"]);
+const AVAILABLE = new Set(["mg", "fe", "uue", "si", "ca", "p", "c", "hg"]);
 
 export class CharacterLoader {
   constructor({ outlines = true } = {}) {

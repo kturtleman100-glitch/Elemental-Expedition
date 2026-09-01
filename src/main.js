@@ -20,6 +20,12 @@ import { Particles } from "./fx/Particles.js";
 import { Encounters } from "./combat/Encounters.js";
 import { TargetLock } from "./combat/TargetLock.js";
 import { Projectiles } from "./combat/Projectile.js";
+import { PartyUI } from "./ui/PartyUI.js";
+import { Inventory } from "./ui/Inventory.js";
+import { Minimap } from "./ui/Minimap.js";
+import { QuestUI } from "./ui/Quest.js";
+import { QuestLog } from "./data/quests.js";
+import { bondBonuses } from "./data/bonds.js";
 
 // ---------------------------------------------------------------
 // 1단계: 움직이는 3D 월드. 렌더러 세팅 → 월드/플레이어/카메라 구성 →
@@ -79,6 +85,14 @@ async function boot() {
       if (action === "codex" || action === "menu") uiRefs.codex.hide();
       return;
     }
+    if (uiRefs?.party.open) {
+      if (action === "party" || action === "menu") uiRefs.party.hide();
+      return;
+    }
+    if (uiRefs?.inventory.open) {
+      if (action === "inventory" || action === "menu") uiRefs.inventory.hide();
+      return;
+    }
 
     if (action === "attack") {
       const r = player.tryAttack(encounters.alive, cameraRig.yawRadians, lockTarget);
@@ -125,6 +139,20 @@ async function boot() {
     }
     if (action === "targetNext") {
       targetLock.cycle(player.position, encounters.alive);
+      return;
+    }
+    if (action === "party") {
+      document.exitPointerLock?.();
+      uiRefs?.party.show();
+      return;
+    }
+    if (action === "inventory") {
+      document.exitPointerLock?.();
+      uiRefs?.inventory.show();
+      return;
+    }
+    if (action === "quest") {
+      uiRefs?.questUI.toggle();
       return;
     }
     if (action === "view") cameraRig.toggleView();
@@ -176,9 +204,47 @@ async function boot() {
   const flags = new Set();
   const reputation = new Reputation();
   const codex = new Codex();
+  const questLog = new QuestLog();
+
+  const partyUI = new PartyUI(player, (m, c) => hud.toast(m, c));
+  const inventory = new Inventory(player, (m, c) => hud.toast(m, c));
+  const minimap = new Minimap(document.getElementById("minimap"), player, cameraRig);
+  const questUI = new QuestUI(questLog);
+
+  // 인연 보너스를 능력치에 반영한다. 편성이 바뀔 때만 다시 계산한다.
+  let bondSig = "";
+  function applyBonds() {
+    const sig = player.progress.equipped.join(",");
+    if (sig === bondSig) return;
+    bondSig = sig;
+    player.bondMult = bondBonuses(player.progress.equipped).mult;
+    player._recalcStats();
+  }
+
+  /** 퀘스트 완료 확인 — 보상 지급까지 */
+  function checkQuests() {
+    const done = questLog.checkComplete({ flags, codexSize: codex.found.size });
+    for (const q of done) {
+      hud.toast("[완료] " + q.title, "#8fe388");
+      const rw = q.reward ?? {};
+      if (rw.exp) {
+        const g = player.progress.addExp(rw.exp);
+        if (g.leveled) hud.toast("레벨 " + player.progress.level, "#8fe388");
+      }
+      if (rw.rep) reputation.add(rw.rep[0], rw.rep[1]);
+      if (rw.element) {
+        const el = getElement(rw.element);
+        if (el && player.progress.acquire(rw.element)) {
+          codex.discover(rw.element);
+          hud.toast(el.ko + "(" + el.sym + ")이(가) 동료가 되었다", "#56ccf2");
+          applyBonds();
+        }
+      }
+    }
+  }
 
   const particles = new Particles(scene);
-  const encounters = new Encounters(scene, { outlines: device.tierName !== "low" });
+  const encounters = new Encounters(scene, { outlines: device.tierName !== "low", loader: charLoader });
   const projectiles = new Projectiles(scene, particles);
   const targetLock = new TargetLock();
   const hud = new HUD(camera);
@@ -195,7 +261,10 @@ async function boot() {
     if (player.progress.acquire(enemy.element.id)) {
       codex.discover(enemy.element.id);
       hud.toast(`${enemy.element.ko}(${enemy.element.sym})의 힘을 얻었다`, "#56ccf2");
+      applyBonds();
     }
+    questLog.onDefeat(enemy.element.id);
+    checkQuests();
   }
 
   player.onDamaged = (result) => {
@@ -214,6 +283,7 @@ async function boot() {
       if (fx.flag) flags.add(fx.flag);
       if (fx.rep) reputation.add(fx.rep[0], fx.rep[1]);
       if (fx.codex) codex.discover(fx.codex);
+      checkQuests();
     },
     onClose: () => {
       // 대화가 끝나면 다시 조작을 돌려준다
@@ -250,7 +320,8 @@ async function boot() {
   const game = new Game();
   Object.assign(game.state, { scene, camera, renderer, player, world, device, input, cameraRig });
 
-  uiRefs = { dialogue, codex, talkTo, nearestTalkable };
+  uiRefs = { dialogue, codex, party: partyUI, inventory, questUI, talkTo, nearestTalkable };
+  applyBonds();
 
   // 논리는 update(고정 틱), 표시는 render(프레임당 1회).
   //
@@ -258,12 +329,13 @@ async function boot() {
   // style.width 하나만 써도 브라우저가 레이아웃을 다시 계산한다.
   // 초당 600번이면 화면이 멈춘다 — 실제로 그렇게 됐었다.
   let lockTarget = null;
+  let questTick = 0;
   let talkTarget = null;
 
   game.addSystem({
     update(dt) {
       // 대화·도감이 열려 있으면 플레이어를 멈춘다. 카메라와 NPC는 계속 살아 있다.
-      const uiOpen = dialogue.active || codex.open;
+      const uiOpen = dialogue.active || codex.open || partyUI.open || inventory.open;
 
       // 락온 — 카메라 갱신 전에 타겟을 정해야 이번 틱에 반영된다
       lockTarget = uiOpen ? null : targetLock.update(player.position, cameraRig.yawRadians, encounters.alive);
@@ -285,6 +357,12 @@ async function boot() {
 
       // 전투 중에는 대화를 걸 수 없다
       talkTarget = uiOpen || targetLock.inCombat ? null : nearestTalkable();
+
+      if (!uiOpen) {
+        questLog.onMove(player.position.x, player.position.z);
+        questTick -= dt;
+        if (questTick <= 0) { questTick = 0.5; checkQuests(); }
+      }
     },
   });
 
@@ -299,6 +377,10 @@ async function boot() {
       world.followLight(player.position.x, player.position.z);
       cameraRig.render(alpha);
       compass.render();
+      minimap.enemies = encounters.enemies;
+      minimap.npcs = npcs.map((n) => ({ x: n.x, z: n.z }));
+      minimap.render();
+      questUI.render({ flags, codexSize: codex.found.size });
       dialogue.update(dt);
       hud.render(dt);
 
@@ -338,6 +420,7 @@ async function boot() {
     renderer.setSize(w, h);
     compass?.resize();
     particles?.onResize();
+    minimap?.resize();
   }
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", resize);
@@ -392,6 +475,7 @@ async function boot() {
     hudRoot.hidden = false;
     // HUD가 숨겨져 있는 동안엔 캔버스 크기가 0으로 측정된다. 보인 뒤에 다시 잰다.
     compass.resize();
+    minimap.resize();
     loop.start();
   }
 }

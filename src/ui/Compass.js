@@ -21,11 +21,18 @@ const CARDINALS = [
 
 // 마을의 주요 지점. 플레이어 위치에서의 방위를 계산해 표식으로 띄운다.
 const LANDMARKS = [
+  // 마을 안
   { x: 0, z: 0, label: "광장", color: "#e8c07a" },
   { x: 0, z: -50, label: "촌장 집", color: "#8fd1d4" },
   { x: -40, z: 26, label: "대안통운", color: "#d9a441" },
   { x: 40, z: 30, label: "농경지", color: "#9fd17a" },
   { x: -43, z: -34, label: "석회암 동굴", color: "#d8cfb8" },
+  // 마을 밖 — 이정표가 선 곳
+  { x: 0, z: -96, label: "석회암 고원", color: "#c8bea6" },
+  { x: 96, z: 0, label: "강 다리", color: "#7fc0d8" },
+  { x: -96, z: 0, label: "옛 폐허", color: "#b8b0a0" },
+  { x: 0, z: 118, label: "바닷가 평원", color: "#e0d0a8" },
+  { x: -24, z: 104, label: "연못", color: "#5fa8c8" },
 ];
 
 const VIEW_SPAN = 110; // 나침반에 한 번에 담는 각도 범위

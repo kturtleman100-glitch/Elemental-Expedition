@@ -29,6 +29,29 @@ export const SPAWNS = [
   // 북쪽 석회암 지대 — 가장 강한 상대. 준비되면 오라는 뜻
   { elementId: "cl", x: -54, z: -54, level: 4 },
   { elementId: "hg", x: -34, z: -66, level: 4 },
+
+  // ---- 마을 밖 ----
+  // 북 석회암 고원 — 척박한 만큼 험한 것들이 산다
+  { elementId: "as", x: -62, z: -100, level: 5 },
+  { elementId: "hg", x: 20, z: -112, level: 6 },
+  { elementId: "cl", x: -90, z: -88, level: 5 },
+  { elementId: "as", x: 56, z: -104, level: 6 },
+
+  // 동 강가와 숲
+  { elementId: "br", x: 96, z: -34, level: 4 },
+  { elementId: "cl", x: 108, z: 18, level: 5 },
+  { elementId: "as", x: 118, z: -50, level: 6 },
+  { elementId: "br", x: 100, z: 58, level: 5 },
+
+  // 서 폐허 — 무언가를 지키고 있는 듯하다
+  { elementId: "hg", x: -100, z: 28, level: 6 },
+  { elementId: "cl", x: -86, z: 44, level: 5 },
+  { elementId: "as", x: -114, z: 16, level: 6 },
+
+  // 남 평원 — 마을에서 가까워 비교적 순하다
+  { elementId: "br", x: -20, z: 84, level: 3 },
+  { elementId: "cl", x: 24, z: 96, level: 4 },
+  { elementId: "br", x: -6, z: 122, level: 4 },
 ];
 
 export class Encounters {
@@ -40,9 +63,11 @@ export class Encounters {
     this.scene = scene;
     this.outlines = opts.outlines !== false;
     this.authority = opts.authority !== false;
+    this.loader = opts.loader ?? null;
     this.enemies = [];
     this._dead = []; // { spec, timer }
-
+    // 같은 원소의 VRM을 여러 마리가 공유할 수 없다(본이 따로 놀아야 한다).
+    // 대신 로더가 파일을 캐시하므로 내려받기는 한 번뿐이다.
     for (const spec of SPAWNS) this._spawn(spec);
   }
 
@@ -55,6 +80,13 @@ export class Encounters {
     this.scene.add(e.mesh);
     e._spec = spec;
     this.enemies.push(e);
+
+    // VRM이 있으면 자리표시를 교체한다. 없으면 절차적 생성 그대로.
+    if (this.loader) {
+      this.loader.build(e.element).then((model) => {
+        if (model.userData.source === "vrm" && e.mesh) e.setModel(model, this.scene);
+      }).catch(() => {});
+    }
     return e;
   }
 

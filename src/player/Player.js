@@ -61,7 +61,8 @@ export class Player {
     this.attackAnim = 0;
     this.attackAnimDur = 0.42;
     this.outOfCombat = 0; // 0이 되면 체력이 회복된다
-    this.hybridMode = HYBRID_MODE.STRIKER; // T 키로 전환. 하이브리드 원소에만 의미가 있다
+    this.hybridMode = HYBRID_MODE.STRIKER;
+    this.bondMult = { hp: 1, attack: 1, defense: 1, electrons: 1 }; // T 키로 전환. 하이브리드 원소에만 의미가 있다
     this.dead = false;
     this.onDamaged = null;   // (result, source) => void
     this.onDeath = null;
@@ -90,12 +91,14 @@ export class Player {
   /** 레벨이나 장착 원소가 바뀌면 능력치를 다시 계산한다 */
   _recalcStats() {
     const st = statsFor(this.element, this.progress.level);
+    // 인연 보너스는 편성에서 나온다. main이 applyBonds()로 채워준다.
+    const m = this.bondMult ?? { hp: 1, attack: 1, defense: 1, electrons: 1 };
     const hpRatio = this.hpMax > 0 ? this.hp / this.hpMax : 1;
-    this.hpMax = st.hpMax;
-    this.hp = Math.min(st.hpMax, Math.max(1, st.hpMax * hpRatio));
-    this.attack = st.attack;
-    this.defense = st.defense;
-    this.electrons.max = st.electronsMax;
+    this.hpMax = Math.round(st.hpMax * m.hp);
+    this.hp = Math.min(this.hpMax, Math.max(1, this.hpMax * hpRatio));
+    this.attack = Math.round(st.attack * m.attack);
+    this.defense = Math.round(st.defense * m.defense);
+    this.electrons.max = Math.round(st.electronsMax * m.electrons);
     this.electrons.element = this.element;
     this.electrons.role = electronRole(this.element);
   }
