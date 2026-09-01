@@ -43,10 +43,15 @@ export class Compass {
     this.player = player;
     this.cameraRig = cameraRig;
     this.dpr = 1;
+    // 캔버스 2D의 fillText는 비싸다. 방위가 거의 그대로면 다시 그리지 않는다.
+    this._lastBearing = -999;
+    this._lastX = -9999;
+    this._lastZ = -9999;
     this.resize();
   }
 
   resize() {
+    this._lastBearing = -999;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = this.canvas.clientWidth || 340;
     const h = this.canvas.clientHeight || 34;
@@ -73,10 +78,24 @@ export class Compass {
     return ((target - current + 540) % 360) - 180;
   }
 
-  render() {
+  render(force = false) {
+    const bearing = this._bearing();
+    const px = this.player.position.x;
+    const pz = this.player.position.z;
+
+    // 0.4도 미만으로 돌았고 1m 미만으로 움직였으면 화면이 사실상 같다.
+    // 60fps에서 이 검사만으로 대부분의 프레임을 건너뛴다.
+    if (!force
+        && Math.abs(this._delta(bearing, this._lastBearing)) < 0.4
+        && Math.abs(px - this._lastX) < 1
+        && Math.abs(pz - this._lastZ) < 1) return;
+
+    this._lastBearing = bearing;
+    this._lastX = px;
+    this._lastZ = pz;
+
     const ctx = this.ctx;
     const { w, h, dpr } = this;
-    const bearing = this._bearing();
     const pxPerDeg = w / VIEW_SPAN;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -130,9 +149,6 @@ export class Compass {
     }
 
     // 지점 표식 — 플레이어 위치 기준 방위
-    const px = this.player.position.x;
-    const pz = this.player.position.z;
-
     for (const m of LANDMARKS) {
       const dx = m.x - px;
       const dz = m.z - pz;

@@ -358,14 +358,32 @@ export function setupLighting(scene, device) {
   if (device.tier.shadows) {
     key.castShadow = true;
     key.shadow.mapSize.set(device.tier.shadowMapSize, device.tier.shadowMapSize);
-    key.shadow.camera.left = -45;
-    key.shadow.camera.right = 45;
-    key.shadow.camera.top = 45;
-    key.shadow.camera.bottom = -45;
-    key.shadow.camera.far = 140;
-    key.shadow.bias = -0.0016;
+    // 범위를 좁게 잡고 플레이어를 따라다니게 한다. 마을이 130m인데 그림자 카메라를
+    // 그만큼 키우면 해상도가 흩어져 그림자가 뭉개지고, 고정해두면 마을 밖에서는
+    // 그림자가 아예 안 나오면서 비용만 나간다.
+    const R = 26;
+    key.shadow.camera.left = -R;
+    key.shadow.camera.right = R;
+    key.shadow.camera.top = R;
+    key.shadow.camera.bottom = -R;
+    key.shadow.camera.near = 1;
+    key.shadow.camera.far = 130;
+    key.shadow.bias = -0.0012;
+    key.shadow.normalBias = 0.02;
   }
   scene.add(key);
+  scene.add(key.target);
+
+  // 그림자 카메라를 플레이어 근처로 옮긴다. 텍셀 단위로 스냅해야
+  // 걸을 때 그림자 가장자리가 지글거리지 않는다.
+  const texel = (26 * 2) / device.tier.shadowMapSize;
+  key.userData.follow = (x, z) => {
+    const sx = Math.round(x / texel) * texel;
+    const sz = Math.round(z / texel) * texel;
+    key.position.set(sx + 28, 42, sz + 24);
+    key.target.position.set(sx, 0, sz);
+    key.target.updateMatrixWorld();
+  };
 
   const fill = new THREE.DirectionalLight(0x93b4d6, 0.5);
   fill.position.set(-32, 18, 20);

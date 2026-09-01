@@ -35,10 +35,19 @@ export class CameraRig {
     // 벽을 벗어날 때 부드럽게 되돌아간다 (즉시 되돌리면 화면이 튄다).
     this._camDistance = THIRD_PERSON_DISTANCE;
 
+    // 전투 락온 — TargetLock이 정한 대상을 카메라가 따라간다.
+    // 급격히 돌리면 멀미가 나므로 항상 감속 보간으로만 접근한다.
+    this.lockTarget = null;
+    this.lockEnabled = true; // 설정에서 끌 수 있다
+    this._lockBlend = 0;
+
     this._applyModeVisibility();
   }
 
   get yawRadians() { return this.yaw; }
+
+  /** 플레이어 모델이 교체되면 표시 여부를 다시 적용한다 */
+  refreshModel() { this._applyModeVisibility(); }
 
   toggleView() {
     this.mode = this.mode === "first" ? "third" : "first";
@@ -52,6 +61,11 @@ export class CameraRig {
     this.pitch = Math.max(MIN_PITCH, Math.min(MAX_PITCH, this.pitch));
   }
 
+  /** 전투 시작/종료 시 TargetLock이 호출한다 */
+  setLockTarget(target) {
+    this.lockTarget = target;
+  }
+
   /** 틱마다 호출 — 모드 전환 보간 진행 */
   update(dt) {
     const diff = this._viewBlendTarget - this._viewBlend;
@@ -61,6 +75,37 @@ export class CameraRig {
       this._viewBlend = this._viewBlendTarget;
     }
     this._applyModeVisibility();
+    this._updateLock(dt);
+  }
+
+  /**
+   * 타겟 쪽으로 시선을 끌어당긴다.
+   * 완전히 고정하지 않는 이유는 두 가지다 — 3D 멀미를 줄이고,
+   * 플레이어가 직접 시선을 돌리려 할 때 그 입력이 이기게 하려고.
+   */
+  _updateLock(dt) {
+    const want = this.lockEnabled && this.lockTarget && this.lockTarget.alive;
+    const target = want ? 1 : 0;
+    this._lockBlend += (target - this._lockBlend) * Math.min(1, 3 * dt);
+    if (!want || this._lockBlend < 0.01) return;
+
+    const t = this.lockTarget;
+    const dx = t.position.x - this.player.position.x;
+    const dz = t.position.z - this.player.position.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 0.2) return;
+
+    const desiredYaw = Math.atan2(dx, dz);
+    let diff = ((desiredYaw - this.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+
+    // 속도 상한 — 갑자기 홱 돌아가면 어지럽다
+    const maxStep = 2.6 * dt;
+    const step = Math.max(-maxStep, Math.min(maxStep, diff * 2.4 * dt)) * this._lockBlend;
+    this.yaw += step;
+
+    // 상대를 살짝 내려다보게 — 대상이 화면 중앙에 오도록
+    const desiredPitch = -Math.atan2(1.0, Math.max(1, dist)) * 0.5;
+    this.pitch += (desiredPitch - this.pitch) * Math.min(1, 1.4 * dt) * this._lockBlend;
   }
 
   _applyModeVisibility() {

@@ -199,7 +199,9 @@ function buildArms(rig, el) {
   const armLen = 0.46;
 
   for (const s of [-1, 1]) {
-    const x = s * BODY.shoulderHalf;
+    // 어깨 관절을 몸통 바깥에 둔다. 몸통 반폭이 0.15~0.17인데 팔 반지름이
+    // 0.052라, 부착점이 0.19면 안쪽 모서리가 몸통과 겹친다.
+    const x = s * (BODY.shoulderHalf + 0.035);
     const geo = wide
       ? new THREE.CylinderGeometry(BODY.armRadius * 0.9, BODY.armRadius * 2.1, armLen, 8)
       : new THREE.CylinderGeometry(BODY.armRadius, BODY.armRadius * 0.92, armLen, 8);
@@ -215,7 +217,9 @@ function buildArms(rig, el) {
     const ho = makeOutline(hand, 0.06, rig.outlines);
     if (ho) pivot.add(ho);
 
-    rig.parts[s < 0 ? "leftArm" : "rightArm"] = pivot;
+    // 캐릭터는 +Z를 향해 서 있고, 이 좌표계에서 캐릭터의 왼쪽이 +X다.
+    // 따라서 s<0(-X)이 캐릭터의 오른팔이다. 무기도 이쪽에 달린다.
+    rig.parts[s < 0 ? "rightArm" : "leftArm"] = pivot;
   }
 }
 
@@ -240,7 +244,7 @@ function buildLegs(rig, el) {
     const bo = makeOutline(boot, 0.05, rig.outlines);
     if (bo) pivot.add(bo);
 
-    rig.parts[s < 0 ? "leftLeg" : "rightLeg"] = pivot;
+    rig.parts[s < 0 ? "rightLeg" : "leftLeg"] = pivot;
   }
 }
 
@@ -316,18 +320,43 @@ export function buildCharacter(el, opts = {}) {
 
   rig.root.userData.parts = rig.parts;
   rig.root.userData.elementId = el.id;
+  rig.root.userData.combat = getCombatType(el);
   rig.root.userData.procedural = true;
 
   return rig.root;
 }
 
+const easeOut = (k) => 1 - (1 - k) * (1 - k);
+const easeIn = (k) => k * k;
+
 /**
- * 걷기·대기 동작. GLB 모델이 들어오면 그쪽 애니메이션 클립으로 대체된다.
+ * 공격 모션의 팔 각도. t는 0(시작)~1(끝).
+ *
+ * 무기형은 뒤로 들었다가 내리치고, 마법형은 앞으로 뻗는다.
+ * 되돌아오는 구간을 길게 잡아야 다음 공격과 자연스럽게 이어진다.
+ */
+function attackArmAngle(t, combat) {
+  if (combat === COMBAT.CASTER) {
+    // 앞으로 찌르듯 뻗었다가 천천히 복귀
+    if (t < 0.22) return -1.7 * easeOut(t / 0.22);
+    const k = (t - 0.22) / 0.78;
+    return -1.7 * (1 - easeOut(k));
+  }
+  // 무기형·하이브리드 — 들어올림 → 내리침 → 복귀
+  if (t < 0.3) return -2.0 * easeOut(t / 0.3);
+  if (t < 0.52) return -2.0 + 3.1 * easeIn((t - 0.3) / 0.22);
+  const k = (t - 0.52) / 0.48;
+  return 1.1 * (1 - easeOut(k));
+}
+
+/**
+ * 걷기·대기·공격 동작.
  * @param {THREE.Group} model buildCharacter의 반환값
  * @param {number} time 초 단위 누적 시간
  * @param {number} speed 0=정지, 1=전력 이동
+ * @param {number} [attackT] 공격 진행도 0~1. null이면 공격 중이 아니다
  */
-export function animateCharacter(model, time, speed) {
+export function animateCharacter(model, time, speed, attackT = null) {
   const p = model.userData.parts;
   if (!p) return;
 
@@ -337,21 +366,43 @@ export function animateCharacter(model, time, speed) {
 
   const swing = Math.sin(time * 9) * (0.15 + speed * 0.55);
   const breathe = Math.sin(time * 1.8) * 0.03;
+  const attacking = attackT !== null && attackT >= 0 && attackT <= 1;
 
   if (p.leftLeg) p.leftLeg.rotation.x = swing * speed;
   if (p.rightLeg) p.rightLeg.rotation.x = -swing * speed;
 
+  // z 부호는 팔이 붙은 쪽에 따라 다르다. 왼팔은 +X에 있으므로 +z가 바깥,
+  // 오른팔은 -X에 있으므로 -z가 바깥이다. 반대로 주면 팔이 몸을 파고든다.
   if (p.leftArm) {
     p.leftArm.rotation.x = -swing * speed * 0.7;
-    p.leftArm.rotation.z = 0.07 + breathe * (1 - speed);
+    p.leftArm.rotation.z = 0.09 + breathe * (1 - speed);
   }
+
   if (p.rightArm) {
-    p.rightArm.rotation.x = swing * speed * 0.7;
-    p.rightArm.rotation.z = -0.07 - breathe * (1 - speed);
+    if (attacking) {
+      p.rightArm.rotation.x = attackArmAngle(attackT, model.userData.combat);
+      // 휘두르는 내내 바깥으로 충분히 벌려둔다. 사인으로 흔들면 궤도가
+      // 몸통을 스쳐 지나가므로, 시작부터 끝까지 벌린 채로 유지한다.
+      p.rightArm.rotation.z = -0.34;
+    } else {
+      p.rightArm.rotation.x = swing * speed * 0.7;
+      p.rightArm.rotation.z = -0.09 - breathe * (1 - speed);
+    }
+  }
+
+  // 상체를 반대로 살짝 틀어야 팔만 도는 인형처럼 안 보인다
+  if (attacking) {
+    model.rotation.z = Math.sin(attackT * Math.PI) * 0.07;
+  } else if (model.rotation.z !== 0) {
+    model.rotation.z *= 0.85;
+    if (Math.abs(model.rotation.z) < 0.001) model.rotation.z = 0;
   }
 
   if (p.orb) {
     p.orb.rotation.y = time * 1.4;
     p.orb.rotation.x = time * 0.9;
+    // 시전 중에는 결정이 앞으로 나가며 커진다
+    const s = attacking ? 1 + Math.sin(attackT * Math.PI) * 0.8 : 1;
+    p.orb.scale.setScalar(s);
   }
 }

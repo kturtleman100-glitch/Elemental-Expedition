@@ -11,6 +11,7 @@ import { getElement } from "../data/elements.js";
 const LOOK_RANGE = 9; // 이 거리 안에 들어오면 플레이어 쪽으로 몸을 돌린다
 const TALK_RANGE = 3.6; // 대화가 가능한 거리
 const TURN_SPEED = 3.5;
+const SLEEP_RANGE = 30;
 
 export class NPC {
   /**
@@ -35,11 +36,20 @@ export class NPC {
 
   /** @param {THREE.Vector3} playerPos */
   update(dt, playerPos) {
-    this.time += dt;
-
     const dx = playerPos.x - this.x;
     const dz = playerPos.z - this.z;
     const dist = Math.hypot(dx, dz);
+
+    // 멀리 있으면 갱신도 렌더도 멈춘다 — 스프링본 물리가 특히 비싸다
+    if (dist > SLEEP_RANGE) {
+      if (this.model.visible) this.model.visible = false;
+      this.nearPlayer = false;
+      this.inTalkRange = false;
+      this.distance = dist;
+      return;
+    }
+    if (!this.model.visible) this.model.visible = true;
+    this.time += dt;
     this.distance = dist;
     this.nearPlayer = dist < LOOK_RANGE;
     this.inTalkRange = dist < TALK_RANGE;
@@ -52,10 +62,10 @@ export class NPC {
 
     // 제자리에 서 있으므로 걷기 강도는 0 — 숨쉬는 동작만 나온다
     if (this.model.userData.source === "vrm") {
-      animateVRM(this.model, this.time, 0);
+      animateVRM(this.model, this.time, 0, null);
       updateCharacter(this.model, dt);
     } else {
-      animateCharacter(this.model, this.time, 0);
+      animateCharacter(this.model, this.time, 0, null);
     }
   }
 }

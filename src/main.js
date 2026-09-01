@@ -10,11 +10,16 @@ import { setupTouchControls } from "./ui/TouchControls.js";
 import { Compass } from "./ui/Compass.js";
 import { CharacterLoader } from "./characters/CharacterLoader.js";
 import { NPC, NPC_PLACEMENTS } from "./characters/NPC.js";
-import { getElement } from "./data/elements.js";
+import { getElement, PLAYER_ELEMENT } from "./data/elements.js";
 import { hasDialogue } from "./data/dialogue.js";
 import { Reputation } from "./data/factions.js";
 import { Dialogue } from "./ui/Dialogue.js";
 import { Codex } from "./ui/Codex.js";
+import { HUD } from "./ui/HUD.js";
+import { Particles } from "./fx/Particles.js";
+import { Encounters } from "./combat/Encounters.js";
+import { TargetLock } from "./combat/TargetLock.js";
+import { Projectiles } from "./combat/Projectile.js";
 
 // ---------------------------------------------------------------
 // 1단계: 움직이는 3D 월드. 렌더러 세팅 → 월드/플레이어/카메라 구성 →
@@ -27,7 +32,7 @@ const loadingScreen = document.getElementById("loading-screen");
 const loadingBarFill = document.getElementById("loading-bar-fill");
 const loadingText = document.getElementById("loading-text");
 const titleScreen = document.getElementById("title-screen");
-const hud = document.getElementById("hud");
+const hudRoot = document.getElementById("hud"); // HUD 클래스 인스턴스와 이름이 겹치지 않게
 const debugOverlay = document.getElementById("debug-overlay");
 
 function setLoadingProgress(pct, label) {
@@ -61,6 +66,8 @@ async function boot() {
 
   const input = new Input({ canvas, device });
   let uiRefs = null; // 아래에서 대화·도감이 만들어진 뒤 채운다
+  // 표시 갱신을 값이 바뀔 때만 하도록 마지막 값을 기억해둔다
+  const lastHud = { hp: -1, e: -1, exp: -1, talk: null, target: null };
   input.onAction((action) => {
     // 대화 중에는 진행/종료만 받는다
     if (uiRefs?.dialogue.active) {
@@ -73,6 +80,53 @@ async function boot() {
       return;
     }
 
+    if (action === "attack") {
+      const r = player.tryAttack(encounters.alive, cameraRig.yawRadians, lockTarget);
+      if (!r) return;
+
+      if (r.kind === "cast") {
+        // 마법 — 투사체를 날린다. 맞았을 때 피해가 계산된다.
+        projectiles.fire({
+          from: { x: player.position.x, y: 1.15, z: player.position.z },
+          toward: r.aimAt,
+          speed: r.style.projectileSpeed ?? 22,
+          element: player.element,
+          damage: { critical: r.critical },
+          fromPlayer: true,
+          target: r.target,
+        });
+        particles.burst({ x: player.position.x, y: 1.15, z: player.position.z },
+          player.element.family, 0.35);
+        return;
+      }
+
+      if (r.kind === "melee" && r.hit) {
+        hud.popDamage({ x: r.hit.position.x, y: 1.4, z: r.hit.position.z }, r.result);
+        particles.burst({ x: r.hit.position.x, y: 1.1, z: r.hit.position.z },
+          player.element.family, r.result.mult >= 1.7 ? 1.5 : 1);
+        if (r.died) onEnemyDown(r.hit);
+      }
+      return;
+    }
+    if (action === "stance") {
+      const mode = player.toggleStance();
+      if (mode) {
+        lastHud.e = -1; // 표시를 즉시 갱신
+        hud.toast(mode === "caster" ? "마법 자세" : "무기 자세", "#c4a8f0");
+      } else {
+        hud.toast(`${player.element.ko}은(는) 자세를 바꿀 수 없다`, "#9a9488");
+      }
+      return;
+    }
+    if (action.startsWith("slot")) {
+      const i = Number(action.slice(4)) - 1;
+      if (player.setSlot(i)) hud.toast(`${player.element.ko} (${player.element.sym})`, "#56ccf2");
+      return;
+    }
+    if (action === "targetNext") {
+      targetLock.cycle(player.position, encounters.alive);
+      return;
+    }
     if (action === "view") cameraRig.toggleView();
     else if (action === "codex") {
       document.exitPointerLock?.();
@@ -85,22 +139,75 @@ async function boot() {
 
   setLoadingProgress(85, "마을 사람들을 부르는 중...");
   const charLoader = new CharacterLoader({ outlines: device.tierName !== "low" });
+
+  // 플레이어 모델 — uue.vrm 이 있으면 절차적 자리표시를 교체한다.
+  // NPC와 함께 병렬로 받도록 여기서는 약속만 만들어 둔다.
+  const playerModelPromise = charLoader.build(PLAYER_ELEMENT);
+  // VRM은 하나에 14~17MB다. for 안에서 await하면 넷을 줄줄이 기다려
+  // 부팅이 네 배로 길어진다. 한꺼번에 띄워 병렬로 받는다.
+  const specs = NPC_PLACEMENTS.map((spec) => ({ spec, el: getElement(spec.elementId) }))
+    .filter((x) => x.el);
+
+  let loadedCount = 0;
+  const models = await Promise.all(
+    specs.map(({ el }) =>
+      charLoader.build(el).then((model) => {
+        loadedCount++;
+        setLoadingProgress(
+          85 + (loadedCount / specs.length) * 12,
+          "마을 사람들을 부르는 중... (" + loadedCount + "/" + specs.length + ")"
+        );
+        return model;
+      })
+    )
+  );
+
   const npcs = [];
-  for (const spec of NPC_PLACEMENTS) {
-    const el = getElement(spec.elementId);
-    if (!el) continue;
-    const model = await charLoader.build(el);
+  specs.forEach(({ spec }, i) => {
+    const model = models[i];
     scene.add(model);
     npcs.push(new NPC(model, spec));
     // NPC도 벽처럼 통과하지 못하게 막는다
     world.collision.addBox(spec.x, spec.z, 0.8, 0.8, 0, 1.8);
-  }
+  });
 
   // ---- 진행 상태 ----
   // 6단계에서 SaveData가 이 셋을 그대로 직렬화한다.
   const flags = new Set();
   const reputation = new Reputation();
   const codex = new Codex();
+
+  const particles = new Particles(scene);
+  const encounters = new Encounters(scene, { outlines: device.tierName !== "low" });
+  const projectiles = new Projectiles(scene, particles);
+  const targetLock = new TargetLock();
+  const hud = new HUD(camera);
+
+  /** 적을 쓰러뜨렸을 때의 보상 처리 — 근접과 투사체가 함께 쓴다 */
+  function onEnemyDown(enemy) {
+    const gain = player.progress.addExp(enemy.expReward);
+    hud.toast(`${enemy.element.ko} 격파  +${enemy.expReward} EXP`, "#f2c94c");
+    if (gain.leveled) {
+      player._recalcStats();
+      hud.toast(`레벨 ${player.progress.level}`, "#8fe388");
+    }
+    // 쓰러뜨린 원소를 얻는다 — 이 게임의 성장은 원소 수집이다
+    if (player.progress.acquire(enemy.element.id)) {
+      codex.discover(enemy.element.id);
+      hud.toast(`${enemy.element.ko}(${enemy.element.sym})의 힘을 얻었다`, "#56ccf2");
+    }
+  }
+
+  player.onDamaged = (result) => {
+    hud.popDamage({ x: player.position.x, y: 1.2, z: player.position.z }, result);
+  };
+  player.onDeath = () => {
+    hud.toast("쓰러졌다… 마을로 돌아간다", "#eb5757");
+    setTimeout(() => {
+      player.revive(world.spawnPoint);
+      targetLock.clear();
+    }, 1600);
+  };
 
   const dialogue = new Dialogue({
     onEffect: (fx) => {
@@ -137,35 +244,90 @@ async function boot() {
   const interactKey = document.getElementById("interact-key");
   interactKey.textContent = device.isTouch ? "대화" : "우클릭";
 
+  player.setModel(await playerModelPromise, scene);
+  cameraRig.refreshModel();
+
   const game = new Game();
   Object.assign(game.state, { scene, camera, renderer, player, world, device, input, cameraRig });
 
   uiRefs = { dialogue, codex, talkTo, nearestTalkable };
 
+  // 논리는 update(고정 틱), 표시는 render(프레임당 1회).
+  //
+  // DOM을 틱에서 건드리면 안 된다. 틱은 120Hz이고 프레임당 최대 5번 도는데,
+  // style.width 하나만 써도 브라우저가 레이아웃을 다시 계산한다.
+  // 초당 600번이면 화면이 멈춘다 — 실제로 그렇게 됐었다.
+  let lockTarget = null;
+  let talkTarget = null;
+
   game.addSystem({
     update(dt) {
       // 대화·도감이 열려 있으면 플레이어를 멈춘다. 카메라와 NPC는 계속 살아 있다.
       const uiOpen = dialogue.active || codex.open;
+
+      // 락온 — 카메라 갱신 전에 타겟을 정해야 이번 틱에 반영된다
+      lockTarget = uiOpen ? null : targetLock.update(player.position, cameraRig.yawRadians, encounters.alive);
+      cameraRig.setLockTarget(lockTarget);
       cameraRig.update(dt);
-      if (!uiOpen) player.update(dt, input, cameraRig.yawRadians);
+
+      if (!uiOpen) {
+        player.update(dt, input, cameraRig.yawRadians);
+        encounters.update(dt, player, particles, world.collision, projectiles);
+        projectiles.update(dt, encounters.alive, player, (enemy, dmg) => {
+          const { result, died } = player.resolveHit(enemy, dmg?.critical);
+          hud.popDamage({ x: enemy.position.x, y: 1.4, z: enemy.position.z }, result);
+          if (died) onEnemyDown(enemy);
+        });
+      }
       for (const npc of npcs) npc.update(dt, player.position);
 
-      dialogue.update(dt);
+      particles.update(dt);
 
-      // 상호작용 안내
-      const target = uiOpen ? null : nearestTalkable();
-      interactHint.hidden = !target;
-      if (target) interactName.textContent = `${target.element.ko} (${target.element.sym})`;
+      // 전투 중에는 대화를 걸 수 없다
+      talkTarget = uiOpen || targetLock.inCombat ? null : nearestTalkable();
     },
   });
 
   const compass = new Compass(document.getElementById("compass"), player, cameraRig);
 
+
   game.addRenderable({
-    render(alpha) {
+    render(alpha, frameDt) {
+      const dt = frameDt ?? 0.016;
+
       player.syncMesh(alpha);
+      world.followLight(player.position.x, player.position.z);
       cameraRig.render(alpha);
       compass.render();
+      dialogue.update(dt);
+      hud.render(dt);
+
+      // ---- DOM 갱신: 프레임당 1회, 값이 바뀌었을 때만 ----
+      const hp = Math.ceil(player.hp);
+      const e = Math.floor(player.electrons.value);
+      const exp = player.progress.exp;
+      if (hp !== lastHud.hp || e !== lastHud.e || exp !== lastHud.exp) {
+        lastHud.hp = hp; lastHud.e = e; lastHud.exp = exp;
+        hud.updateBars({
+          hp: player.hp, hpMax: player.hpMax,
+          electrons: player.electrons,
+          exp: player.progress.exp, expToNext: player.progress.expToNext,
+          level: player.progress.level,
+          style: player.style,
+        });
+      }
+
+      if (lockTarget !== lastHud.target || (lockTarget && lockTarget.hp !== lastHud.targetHp)) {
+        lastHud.target = lockTarget;
+        lastHud.targetHp = lockTarget?.hp;
+        hud.updateTarget(lockTarget, lockTarget ? player.affinityTo(lockTarget) : null);
+      }
+
+      if (talkTarget !== lastHud.talk) {
+        lastHud.talk = talkTarget;
+        interactHint.hidden = !talkTarget;
+        if (talkTarget) interactName.textContent = `${talkTarget.element.ko} (${talkTarget.element.sym})`;
+      }
     },
   });
 
@@ -175,6 +337,7 @@ async function boot() {
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
     compass?.resize();
+    particles?.onResize();
   }
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", resize);
@@ -226,7 +389,7 @@ async function boot() {
 
   function startGame() {
     titleScreen.hidden = true;
-    hud.hidden = false;
+    hudRoot.hidden = false;
     // HUD가 숨겨져 있는 동안엔 캔버스 크기가 0으로 측정된다. 보인 뒤에 다시 잰다.
     compass.resize();
     loop.start();

@@ -15,7 +15,12 @@ const KEY_TO_ACTION = {
   KeyV: "view",
   KeyF: "interact", // 트랙패드 두 손가락 탭 대체 키
   Tab: "targetNext",
+  KeyT: "stance", // 하이브리드 원소의 무기/마법 자세 전환
   Escape: "menu",
+  Digit1: "slot1",
+  Digit2: "slot2",
+  Digit3: "slot3",
+  Digit4: "slot4",
 };
 
 export class Input {

@@ -561,3 +561,88 @@ html, body {
   .dlg-box { padding: 0.8rem 0.9rem 0.9rem; }
   #dlg-text { font-size: 0.92rem; }
 }
+
+/* ---------- 전투 HUD ---------- */
+#target-info {
+  position: absolute;
+  top: 8vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(300px, 60vw);
+  text-align: center;
+}
+#target-name { font-size: 0.85rem; margin-bottom: 0.3em; text-shadow: 0 1px 3px #000; }
+.target-bar { height: 6px; min-height: 6px; }
+.target-bar .bar-fill { background: linear-gradient(90deg, #eb5757, #8e2230); }
+#affinity-hint {
+  margin-top: 0.35em;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-shadow: 0 1px 4px #000;
+  letter-spacing: 0.02em;
+}
+
+#float-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.float-dmg {
+  position: absolute;
+  top: 0; left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+.fd-num { font-size: 1.35rem; font-weight: 700; }
+.float-dmg.crit .fd-num { font-size: 1.75rem; }
+.fd-tag { font-size: 0.68rem; font-weight: 600; opacity: 0.95; }
+
+.hud-toast {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-shadow: 0 2px 6px #000;
+  animation: toastIn 2.6s ease-out forwards;
+  white-space: nowrap;
+}
+@keyframes toastIn {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  12% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-14px); }
+}
+
+/* ---------- 오류 표시 ---------- */
+#error-box {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 999;
+  max-height: 46vh;
+  overflow: auto;
+  padding: 0.7rem 1rem;
+  background: rgba(120, 20, 24, 0.96);
+  color: #ffe8e4;
+  font-family: Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  border-bottom: 2px solid #ff6b5c;
+}
+#error-box b { display: block; margin-bottom: 0.3rem; letter-spacing: 0.1em; }
+#error-text { margin: 0; white-space: pre-wrap; word-break: break-word; }
+
+#stance-label {
+  font-size: 0.68rem;
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 3px #000;
+  margin-top: 0.2em;
+}

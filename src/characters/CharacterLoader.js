@@ -13,7 +13,7 @@ import { BODY } from "./CharacterBuilder.js";
 const MODEL_DIR = "assets/models/";
 
 /** 어떤 원소에 .vrm 파일이 있는지. 없는 원소를 매번 404로 찔러보지 않으려고 명시한다. */
-const AVAILABLE = new Set(["mg", "fe"]);
+const AVAILABLE = new Set(["mg", "fe", "uue", "si", "ca"]);
 
 export class CharacterLoader {
   constructor({ outlines = true } = {}) {
@@ -128,12 +128,17 @@ export function updateCharacter(model, dt) {
  * @param {number} time 누적 시간(초)
  * @param {number} speed 0=정지, 1=전력
  */
-export function animateVRM(model, time, speed) {
+const easeOut = (k) => 1 - (1 - k) * (1 - k);
+const easeIn = (k) => k * k;
+
+/** @param {number} attackT 0~1 */
+export function animateVRM(model, time, speed, attackT = null) {
   const vrm = model?.userData?.vrm;
   if (!vrm?.humanoid) return;
 
   const swing = Math.sin(time * 8) * (0.12 + speed * 0.6);
   const breathe = Math.sin(time * 1.6) * 0.04;
+  const attacking = attackT !== null && attackT >= 0 && attackT <= 1;
 
   const set = (name, x, z) => {
     const node = vrm.humanoid.getNormalizedBoneNode(name);
@@ -152,6 +157,39 @@ export function animateVRM(model, time, speed) {
   // −π/2가 완전히 수직이고, 그보다 조금 덜 줘야 몸통에 붙지 않고 자연스럽다.
   const ARM_DOWN = 1.32;
   set("leftUpperArm", -swing * speed * 0.7, -ARM_DOWN - breathe * (1 - speed));
+
+  if (attacking) {
+    // 오른팔을 들었다가 내리친다. z를 줄여 팔을 위로 올리고 x로 앞뒤를 만든다.
+    // armZ를 ARM_DOWN(1.32, 팔이 아래로 내려온 상태)보다 항상 작게 유지한다.
+    // 값이 작을수록 팔이 옆으로 들리므로, 휘두르는 궤도가 몸통 바깥을 지난다.
+    // 0.55 아래로는 내리지 않아야 어깨가 뒤틀리지 않는다.
+    const OUT = 0.62; // 휘두르는 동안 유지할 최소 벌림
+    let armX, armZ;
+    if (attackT < 0.3) {
+      const k = easeOut(attackT / 0.3);
+      armX = -1.5 * k;                        // 뒤로 젖힘
+      armZ = ARM_DOWN - (ARM_DOWN - OUT) * k; // 어깨를 옆으로 들어올림
+    } else if (attackT < 0.52) {
+      const k = easeIn((attackT - 0.3) / 0.22);
+      armX = -1.5 + 2.4 * k;                  // 빠르게 내리침
+      armZ = OUT;                             // 벌린 채 유지 — 여기서 좁히면 몸을 스친다
+    } else {
+      const k = easeOut((attackT - 0.52) / 0.48);
+      armX = 0.9 * (1 - k);
+      armZ = OUT + (ARM_DOWN - OUT) * k;      // 서서히 원위치
+    }
+    set("rightUpperArm", armX, armZ);
+    set("rightLowerArm", -Math.sin(attackT * Math.PI) * 0.7, 0.18);
+
+    // 허리를 같이 틀어야 팔만 도는 인형처럼 안 보인다
+    const spine = vrm.humanoid.getNormalizedBoneNode("spine");
+    if (spine) {
+      spine.rotation.x = speed * 0.08 + breathe * 0.3;
+      spine.rotation.y = -Math.sin(attackT * Math.PI) * 0.35;
+    }
+    return;
+  }
+
   set("rightUpperArm", swing * speed * 0.7, ARM_DOWN + breathe * (1 - speed));
 
   // 팔꿈치를 살짝 굽혀야 막대처럼 뻣뻣해 보이지 않는다
@@ -159,5 +197,8 @@ export function animateVRM(model, time, speed) {
   set("rightLowerArm", 0, 0.18);
 
   const spine = vrm.humanoid.getNormalizedBoneNode("spine");
-  if (spine) spine.rotation.x = speed * 0.08 + breathe * 0.3;
+  if (spine) {
+    spine.rotation.x = speed * 0.08 + breathe * 0.3;
+    spine.rotation.y *= 0.85; // 공격이 끝나면 허리를 서서히 되돌린다
+  }
 }

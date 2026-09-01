@@ -72,7 +72,7 @@ export class World {
     this._geoCache = new Map();
 
     makeSky(scene, device, PALETTE);
-    setupLighting(scene, device);
+    this.lights = setupLighting(scene, device);
 
     this._buildGround();
     this._buildVillage();
@@ -87,6 +87,11 @@ export class World {
       instances: inst.instances,
       mergedFrom: merge.source,
     };
+  }
+
+  /** 그림자 카메라를 플레이어 근처로 옮긴다 (프레임당 1회) */
+  followLight(x, z) {
+    this.lights?.key?.userData?.follow?.(x, z);
   }
 
   // ================= 지형 =================
