@@ -1278,3 +1278,14 @@ html, body {
   background: rgba(143, 209, 212, 0.06);
   font-size: 0.84em; line-height: 1.72; color: #cfc9bb;
 }
+
+/* 족 규칙의 예외 — 화학과 설정이 어긋나는 지점이라 눈에 띄어야 한다 */
+.cx-exc {
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 6px;
+  border-left: 2px solid rgba(226, 179, 74, 0.6);
+  background: rgba(226, 179, 74, 0.07);
+  font-size: 0.83em; line-height: 1.7; color: #cfc9bb;
+}
+.cx-exc b { display: block; margin-bottom: 0.3rem; color: #e2b34a; letter-spacing: 0.05em; }

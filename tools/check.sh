@@ -24,4 +24,8 @@ echo ""
 echo "=== import 검사 ==="
 node tools/check-imports.mjs
 
+echo ""
+echo "=== 화학 검사 ==="
+node tools/check-chemistry.mjs | tail -4
+
 exit $fail

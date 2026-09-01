@@ -7,6 +7,9 @@
 // bonds   : 자료의 "인연이 깊은 원소" — 파티 보너스 판정에 쓰인다
 // colors  : 절차적 3D 모델 생성에 쓰는 색. main/sub/accent/hair 4색 구성
 // model   : assets/models/<id>.glb 가 있으면 그걸 쓰고, 없으면 절차적 생성으로 대체
+// exception: 족 규칙(금속=무기형, 비금속=마법형)을 어길 때 그 이유.
+//            안 적으면 플레이어가 "마그네슘은 비금속인가 보다"라고 잘못 배운다.
+//            예외를 드러내는 것이 규칙을 가르치는 방법이다
 
 export const FAMILY = {
   ALKALI: "alkali",
@@ -229,6 +232,7 @@ export const ELEMENTS = [
     faction: "affinity", role: "브로민 신문사 기자",
     bio: "화제성 없는 스캔들 기사를 주로 쓴다. 가짜 뉴스가 세상에 퍼져나가는 것을 막으며 꿋꿋이 진실을 보도하는 진정한 저널리스트.",
     quote: "어머나, 또 할로젠의 폭주 사고야? 하긴 자주 있는 일이지.",
+    exception: "할로겐은 본래 마법형이지만, 이 브로민은 기자라서 카메라와 펜을 무기처럼 휘두른다. 화학이 아니라 직업에서 나온 예외다.",
     bonds: ["cl", "ag", "k"],
     colors: { main: 0x6b4a2a, sub: 0x2e2014, accent: 0xc48a4a, hair: 0xa8874a },
   },
@@ -353,6 +357,7 @@ export const ELEMENTS = [
     faction: "neutral", role: "숲의 주인 (세계수)",
     bio: "자칭 '숲의 주인'. 요정의 모습을 했지만 정체는 대륙에 거대한 그림자를 드리운 세계수. 하지만 본인은 전혀 개의치 않고 늘 나무 안이나 바닷속에서 태양을 향한다.",
     quote: "…음냐… 흠냐….",
+    exception: "마그네슘은 분명한 금속이라 규칙대로면 무기형이다. 다만 이 마그네슘의 정체가 세계수여서 자연 주문을 쓴다. 참고로 실제 마그네슘은 엽록소의 중심에 박혀 식물이 빛을 붙잡게 하는 원소다 — 세계수라는 설정이 여기서 나왔다.",
     bonds: ["al", "be", "mn"],
     colors: { main: 0xe8e4d0, sub: 0x4a5c3a, accent: 0x8ac46a, hair: 0xd8d4c0 },
   },
@@ -363,6 +368,7 @@ export const ELEMENTS = [
     faction: "neutral", role: "물리학자",
     bio: "쿠키 만들기와 연애가 취미인 물리학자. 부와 명성에는 조금도 관심이 없다. 가련한 외모와 달리 혹독한 환경에서 일어나는 현상을 관측하는 데 조예가 깊다.",
     quote: "쿨롱 장벽(Coulomb barrier)… 까다롭다니까. 마지막 한 걸음을 어떻게 다가가면 좋을까?",
+    exception: "베릴륨도 금속이지만 마법형으로 두었다. 실제 베릴륨은 가볍고 X선을 그대로 통과시켜 관측 창에 쓰인다. 그 '투과시키는' 성질을 주문으로 옮겼다.",
     bonds: ["mg", "al", "cu"],
     colors: { main: 0x2a4a3e, sub: 0x14261e, accent: 0x6ac4a8, hair: 0x4a9e88 },
   },
@@ -393,6 +399,7 @@ export const ELEMENTS = [
     faction: "neutral", role: "상온 액체 마법사",
     bio: "대륙에 이름을 널리 알린 상온 액체 마법사. 사람의 마음을 홀릴 때 즐거움을 느끼고, 자신이 마치 슈퍼히어로라도 된 듯 행동하는 나르시시스트.",
     quote: "계략은 은밀한 게 최고!",
+    exception: "수은은 전이 금속이므로 규칙대로면 무기형이다. 상온에서 액체인 유일한 금속이라 형태가 고정되지 않고, 그래서 무기를 벼릴 수 없다고 보아 마법형으로 두었다.",
     bonds: ["pb", "c", "s"],
     colors: { main: 0x1e1e24, sub: 0x8a1a2a, accent: 0xc8ccd8, hair: 0xe8d878 },
   },
@@ -413,6 +420,7 @@ export const ELEMENTS = [
     faction: "neutral", role: "어린 암살 마법사",
     bio: "깜찍한 외모에 어울리지 않는 원한과 욕망을 가슴에 품고 있는 어린 마법사. 수많은 암살 계획을 실행에 옮겨왔지만, 허술한 마무리로 대개 암살 계획이 들통났다.",
     quote: "아니야! 나는 유산을 지키고 싶었을 뿐이야! 살인이 아니라구!",
+    exception: "준금속은 하이브리드가 원칙인데 비소만 마법형이다. 암살 마법사라는 설정 때문이며, 화학적으로는 규소·안티모니와 같은 경계의 원소다.",
     bonds: ["ga", "hg", "tl"],
     colors: { main: 0x3a4028, sub: 0x1a1e12, accent: 0xd8c84a, hair: 0x2a2a2e },
   },

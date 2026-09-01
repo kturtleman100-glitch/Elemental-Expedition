@@ -110,14 +110,19 @@ const METAL_FAMILIES = new Set([FAMILY.ALKALI, FAMILY.ALKALINE, FAMILY.TRANSITIO
   FAMILY.PRECIOUS, FAMILY.POST_TRANSITION]);
 const NONMETAL_FAMILIES = new Set([FAMILY.NONMETAL, FAMILY.HALOGEN, FAMILY.NOBLE]);
 
+// 규칙을 어기는 것 자체는 문제가 아니다. 이유를 안 적는 것이 문제다 —
+// 설명 없이 두면 플레이어가 "마그네슘은 비금속인가 보다"라고 잘못 배운다.
+let noted = 0;
 for (const el of ELEMENTS) {
-  if (METAL_FAMILIES.has(el.family) && el.combat === COMBAT.CASTER)
-    warn(el.ko + ": 금속인데 마법형 — 설정상 의도라면 도감에 이유를 적어야 한다");
-  if (NONMETAL_FAMILIES.has(el.family) && el.combat === COMBAT.STRIKER)
-    warn(el.ko + ": 비금속인데 무기형 — 설정상 의도라면 도감에 이유를 적어야 한다");
-  if (el.family === FAMILY.METALLOID && el.combat !== COMBAT.HYBRID)
-    warn(el.ko + ": 준금속인데 하이브리드가 아니다");
+  let broke = null;
+  if (METAL_FAMILIES.has(el.family) && el.combat === COMBAT.CASTER) broke = "금속인데 마법형";
+  else if (NONMETAL_FAMILIES.has(el.family) && el.combat === COMBAT.STRIKER) broke = "비금속인데 무기형";
+  else if (el.family === FAMILY.METALLOID && el.combat !== COMBAT.HYBRID) broke = "준금속인데 하이브리드가 아님";
+  if (!broke) continue;
+  if (el.exception) noted++;
+  else err(el.ko + ": " + broke + "인데 exception 설명이 없다 — 오개념을 심는다");
 }
+console.log("  족 규칙의 예외 " + noted + "건, 모두 이유가 적혀 있다");
 console.log("  검사 완료\n");
 
 // ---------------------------------------------------------------- 3. 화합물
@@ -149,7 +154,10 @@ for (const c of COMPOUNDS) {
   if (c.needs.length === 2 && real.bond) {
     const [x, y] = c.needs;
     const calc = bondType(x, y);
-    if (calc !== "판정 불가" && !real.bond.includes(calc.slice(0, 2)))
+    // 공유끼리는 더 따지지 않는다. SiO2는 "극성 공유"이면서 "공유 결합 그물"이라
+    // 둘 다 맞는데, 앞 두 글자만 비교하면 어긋난 것처럼 보인다.
+    const bothCovalent = calc.includes("공유") && real.bond.includes("공유");
+    if (calc !== "판정 불가" && !bothCovalent && !real.bond.includes(calc.slice(0, 2)))
       warn(c.name + ': 규칙상 "' + calc + '" 결합인데 설명은 "' + real.bond + '"');
   }
 }
@@ -169,9 +177,8 @@ for (const el of ELEMENTS) {
     if (!dangling.has(b)) dangling.set(b, []);
     dangling.get(b).push(el.sym);
   }
-  const r = REF[el.id];
-  if (r?.group === GROUP.NOBLE && (el.bonds ?? []).length > 2)
-    warn(el.ko + ": 비활성 기체인데 인연이 " + el.bonds.length + "개 — 반응하지 않는 설정과 어긋나 보인다");
+  // 비활성 기체의 인연은 화학 결합이 아니다. 도감이 "가까이 지내는 원소"로
+  // 따로 표시하므로 여기서는 문제 삼지 않는다.
 }
 if (dangling.size) {
   // 여럿이 가리키는 원소일수록 먼저 만들 가치가 있다

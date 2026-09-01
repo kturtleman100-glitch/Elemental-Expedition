@@ -1,4 +1,4 @@
-import { ELEMENTS, getElement, getCombatType, FAMILY_LABEL, COMBAT_LABEL } from "../data/elements.js";
+import { ELEMENTS, getElement, getCombatType, FAMILY, FAMILY_LABEL, COMBAT_LABEL } from "../data/elements.js";
 import { getFaction } from "../data/factions.js";
 import { familyInfo } from "../data/families.js";
 
@@ -135,7 +135,8 @@ export class Codex {
       </dl>
       <p class="cx-bio">${el.bio}</p>
       <blockquote class="cx-quote">${el.quote}</blockquote>
-      ${bonds ? `<p class="cx-sub">인연이 깊은 원소</p><div class="cx-bonds">${bonds}</div>` : ""}
+      ${el.exception ? `<p class="cx-exc"><b>족 규칙의 예외</b>${el.exception}</p>` : ""}
+      ${bonds ? `<p class="cx-sub">${this._bondLabel(el)}</p><div class="cx-bonds">${bonds}</div>` : ""}
       ${this._familyBlock(el)}`;
 
     const toggle = this.detailEl.querySelector(".cx-fam-toggle");
@@ -143,6 +144,15 @@ export class Codex {
       this.famOpen = !this.famOpen;
       this._renderDetail();
     });
+  }
+
+  /**
+   * 비활성 기체의 '인연'은 화학 결합이 아니라 사이가 가깝다는 뜻이다.
+   * 같은 말로 부르면 "귀족 기체도 결합하는구나"라고 잘못 배운다.
+   */
+  _bondLabel(el) {
+    if (el.family !== FAMILY.NOBLE) return "인연이 깊은 원소";
+    return "가까이 지내는 원소 <em>— 결합은 아니다</em>";
   }
 
   /**
