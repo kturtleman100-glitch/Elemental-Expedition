@@ -41,6 +41,7 @@ export class Particles {
     this.size = new Float32Array(max);
     this.cursor = 0;
     this._wasEmpty = true;
+    this.enabled = true;
 
     // 죽은 입자는 카메라 뒤 먼 곳에 세워둔다 (크기 0이면 셰이더에서 나눗셈이 생긴다)
     for (let i = 0; i < max; i++) this.pos[i * 3 + 1] = -9999;
@@ -96,6 +97,7 @@ export class Particles {
    * @param {number} [scale] 세기 배율
    */
   burst(at, family, scale = 1) {
+    if (this.enabled === false) return;
     const fx = familyFx(family);
     const c = new THREE.Color(fx.color);
     const n = Math.round(fx.burst * scale);

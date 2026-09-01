@@ -46,6 +46,23 @@
         <div id="affinity-hint" hidden></div>
       </div>
 
+      <!-- 지역 이름 (진입 시 잠깐) -->
+      <div id="zone-title" hidden><b id="zone-name"></b><span id="zone-sub"></span></div>
+
+      <!-- 보스 체력 -->
+      <div id="boss-bar" hidden>
+        <div id="boss-name"></div>
+        <div class="bar boss-hp"><div id="boss-hp-fill" class="bar-fill"></div></div>
+        <div id="boss-phase"></div>
+      </div>
+      <div id="doom-timer" hidden></div>
+
+      <!-- 자막 -->
+      <div id="subtitle" hidden>
+        <div id="sub-name"></div>
+        <div id="sub-text"></div>
+      </div>
+
       <!-- 미니맵 -->
       <canvas id="minimap" aria-hidden="true"></canvas>
 
@@ -154,10 +171,50 @@
       </div>
     </div>
 
+    <!-- 저장 메뉴 (Esc) -->
+    <div id="save-menu" hidden>
+      <div class="sm-panel">
+        <header class="sm-top">
+          <h2>메뉴</h2>
+          <div class="sm-tabs">
+            <button type="button" data-mode="save" aria-pressed="true">저장</button>
+            <button type="button" data-mode="load" aria-pressed="false">불러오기</button>
+          </div>
+          <button id="sm-close" class="icon-btn" aria-label="닫기">✕</button>
+        </header>
+        <div class="sm-body">
+          <div class="sm-left">
+            <p id="sm-warn" class="sm-alert" hidden>
+              이 브라우저에서는 저장소를 쓸 수 없습니다(시크릿 모드 등).
+              게임은 정상 작동하지만 진행이 저장되지 않습니다.
+            </p>
+            <div id="sm-slots"></div>
+            <button id="sm-quit" class="sm-quit" type="button">타이틀로 나가기</button>
+          </div>
+          <aside class="sm-right">
+            <p class="sm-sub">설정</p>
+            <div id="sm-settings"></div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
+    <!-- 엔딩 -->
+    <div id="ending" hidden>
+      <div class="ed-inner">
+        <div id="ending-title"></div>
+        <h1 id="ending-name"></h1>
+        <div id="ending-lines"></div>
+        <div id="ending-meta"></div>
+        <button id="ending-close" class="title-btn" type="button">타이틀로</button>
+      </div>
+    </div>
+
     <!-- 타이틀 화면 -->
     <div id="title-screen" hidden>
       <div class="title-logo">Elemental&nbsp;Expedition</div>
       <div class="title-sub">아스티온 대륙 원소기</div>
+      <div id="title-slotinfo"></div>
       <div id="title-menu">
         <button id="btn-continue" class="title-btn" disabled>이어하기</button>
         <button id="btn-new-game" class="title-btn">새 게임</button>

@@ -26,6 +26,14 @@ import { Minimap } from "./ui/Minimap.js";
 import { QuestUI } from "./ui/Quest.js";
 import { QuestLog } from "./data/quests.js";
 import { bondBonuses } from "./data/bonds.js";
+import { SaveMenu } from "./ui/SaveMenu.js";
+import * as Save from "./core/SaveData.js";
+import { ZoneManager } from "./world/Zone.js";
+import { BossFight } from "./combat/Boss.js";
+import { availableBosses } from "./data/bosses.js";
+import { resolveEnding } from "./data/endings.js";
+import { Cinematic } from "./ui/Cinematic.js";
+import { PartyManager } from "./characters/PartyMember.js";
 
 // ---------------------------------------------------------------
 // 1단계: 움직이는 3D 월드. 렌더러 세팅 → 월드/플레이어/카메라 구성 →
@@ -93,9 +101,18 @@ async function boot() {
       if (action === "inventory" || action === "menu") uiRefs.inventory.hide();
       return;
     }
+    if (uiRefs?.saveMenu.open) {
+      if (action === "menu") uiRefs.saveMenu.hide();
+      return;
+    }
+    if (action === "menu") {
+      document.exitPointerLock?.();
+      uiRefs?.saveMenu.show();
+      return;
+    }
 
     if (action === "attack") {
-      const r = player.tryAttack(encounters.alive, cameraRig.yawRadians, lockTarget);
+      const r = player.tryAttack(allEnemies(), cameraRig.yawRadians, lockTarget);
       if (!r) return;
 
       if (r.kind === "cast") {
@@ -138,7 +155,7 @@ async function boot() {
       return;
     }
     if (action === "targetNext") {
-      targetLock.cycle(player.position, encounters.alive);
+      targetLock.cycle(player.position, allEnemies());
       return;
     }
     if (action === "party") {
@@ -205,6 +222,18 @@ async function boot() {
   const reputation = new Reputation();
   const codex = new Codex();
   const questLog = new QuestLog();
+  const cine = new Cinematic();
+  const party = new PartyManager(scene, charLoader);
+
+  // 지역 — 안개와 조명이 서서히 바뀐다
+  const zoneNameEl = document.getElementById("zone-title");
+  const zones = new ZoneManager(scene, world.lights, (zn) => {
+    document.getElementById("zone-name").textContent = zn.name;
+    document.getElementById("zone-sub").textContent = zn.sub ?? "";
+    zoneNameEl.hidden = true;
+    void zoneNameEl.offsetWidth; // 애니메이션 재시작
+    zoneNameEl.hidden = false;
+  });
 
   const partyUI = new PartyUI(player, (m, c) => hud.toast(m, c));
   const inventory = new Inventory(player, (m, c) => hud.toast(m, c));
@@ -219,6 +248,59 @@ async function boot() {
     bondSig = sig;
     player.bondMult = bondBonuses(player.progress.equipped).mult;
     player._recalcStats();
+    // 편성이 바뀌면 동료도 다시 세운다
+    party.sync(player.progress.equipped, player.progress.level, getElement, player.element.id);
+  }
+
+  // ---- 보스전 ----
+  const bossFight = new BossFight(scene, {
+    onIntro: (b) => {
+      cine.showBoss(b);
+      cine.sayAll(b.def.name, b.lines.intro, b.def.color ?? 0xf2c94c);
+    },
+    subtitle: (name, text, color) => cine.say(name, text, color),
+    onDefeat: (b) => {
+      cine.sayAll(b.def.name, b.lines.defeat, b.def.color ?? 0xf2c94c);
+      cine.hideBoss();
+      onEnemyDown(b);
+      if (b.persuaded) {
+        flags.add("persuaded_chlorine");
+        hud.toast("염소를 설득했다", "#8fd1d4");
+      }
+      autoSave("보스 격파");
+    },
+    onTimerEnd: () => {
+      flags.add("polonium_timer_expired");
+      showEnding();
+    },
+  });
+
+  /** 조건이 맞는 보스를 마을 밖에 세운다 */
+  function spawnBosses() {
+    const list = availableBosses(flags).filter((b) => !flags.has("boss_done_" + b.id));
+    // 지금은 한 번에 하나만 — 여럿을 동시에 두면 길을 잃는다
+    const next = list.sort((a, b) => a.chapter - b.chapter)[0];
+    if (!next) return;
+    if (bossFight.boss?.def.id === next.id) return;
+    bossFight.start(next.id, charLoader, device.tierName !== "low");
+  }
+
+  /** 엔딩 판정과 연출 */
+  function showEnding() {
+    const result = resolveEnding({ flags, reputation, codexSize: codex.found.size });
+    loop.stop();
+    document.exitPointerLock?.();
+    cine.showEnding(result, {
+      level: player.progress.level,
+      owned: player.progress.owned.size,
+      codex: codex.found.size,
+      playtime: Save.formatPlaytime(playtime),
+    });
+    cine.onEndingClose = () => {
+      hudRoot.hidden = true;
+      titleScreen.hidden = false;
+      refreshTitle();
+    };
   }
 
   /** 퀘스트 완료 확인 — 보상 지급까지 */
@@ -226,12 +308,14 @@ async function boot() {
     const done = questLog.checkComplete({ flags, codexSize: codex.found.size });
     for (const q of done) {
       hud.toast("[완료] " + q.title, "#8fe388");
+      autoSave(q.title);
       const rw = q.reward ?? {};
       if (rw.exp) {
         const g = player.progress.addExp(rw.exp);
         if (g.leveled) hud.toast("레벨 " + player.progress.level, "#8fe388");
       }
       if (rw.rep) reputation.add(rw.rep[0], rw.rep[1]);
+      spawnBosses();
       if (rw.element) {
         const el = getElement(rw.element);
         if (el && player.progress.acquire(rw.element)) {
@@ -251,6 +335,7 @@ async function boot() {
 
   /** 적을 쓰러뜨렸을 때의 보상 처리 — 근접과 투사체가 함께 쓴다 */
   function onEnemyDown(enemy) {
+    if (enemy.isBoss) flags.add("boss_done_" + enemy.def.id);
     const gain = player.progress.addExp(enemy.expReward);
     hud.toast(`${enemy.element.ko} 격파  +${enemy.expReward} EXP`, "#f2c94c");
     if (gain.leveled) {
@@ -320,7 +405,52 @@ async function boot() {
   const game = new Game();
   Object.assign(game.state, { scene, camera, renderer, player, world, device, input, cameraRig });
 
-  uiRefs = { dialogue, codex, party: partyUI, inventory, questUI, talkTo, nearestTalkable };
+  // ---- 저장 ----
+  let playtime = 0;
+  let autoSaveTimer = 60;
+
+  const saveContext = () => ({
+    player, codex, flags, reputation, questLog, playtime,
+  });
+
+  const settings = Save.loadSettings();
+  function applySettings(s) {
+    input.setSensitivity(s.sensitivity);
+    cameraRig.lockEnabled = s.cameraLock;
+    renderer.shadowMap.enabled = s.shadows && device.tier.shadows;
+    particles.points.visible = s.particles;
+    particles.enabled = s.particles;
+  }
+  applySettings(settings);
+
+  const saveMenu = new SaveMenu({
+    getContext: saveContext,
+    toast: (m, c) => hud.toast(m, c),
+    onSettings: applySettings,
+    onLoad: (data) => {
+      Save.apply(data, { player, codex, flags, reputation, questLog, onLoaded: applyBonds });
+      cameraRig.yaw = player.yaw;
+      targetLock.clear();
+      hud.toast("불러왔습니다", "#8fe388");
+    },
+    onQuit: () => {
+      loop.stop();
+      hudRoot.hidden = true;
+      titleScreen.hidden = false;
+      refreshTitle();
+      document.exitPointerLock?.();
+    },
+  });
+
+  /** 자동 저장 — 진행이 바뀌는 순간마다 부른다 */
+  function autoSave(reason) {
+    const slot = Save.latestSlot();
+    if (Save.save(slot < 0 ? 0 : slot, saveContext())) {
+      hud.toast(reason ? "자동 저장 · " + reason : "자동 저장", "#7c9a8a");
+    }
+  }
+
+  uiRefs = { dialogue, codex, party: partyUI, inventory, questUI, saveMenu, talkTo, nearestTalkable };
   applyBonds();
 
   // 논리는 update(고정 틱), 표시는 render(프레임당 1회).
@@ -330,22 +460,37 @@ async function boot() {
   // 초당 600번이면 화면이 멈춘다 — 실제로 그렇게 됐었다.
   let lockTarget = null;
   let questTick = 0;
+
+  /** 일반 적과 보스를 함께 넘긴다 — 락온·공격·투사체가 모두 이 목록을 쓴다 */
+  function allEnemies() {
+    const list = encounters.alive;
+    return bossFight.boss?.alive ? [...list, bossFight.boss] : list;
+  }
   let talkTarget = null;
 
   game.addSystem({
     update(dt) {
       // 대화·도감이 열려 있으면 플레이어를 멈춘다. 카메라와 NPC는 계속 살아 있다.
-      const uiOpen = dialogue.active || codex.open || partyUI.open || inventory.open;
+      const uiOpen = dialogue.active || codex.open || partyUI.open || inventory.open || saveMenu.open;
 
       // 락온 — 카메라 갱신 전에 타겟을 정해야 이번 틱에 반영된다
-      lockTarget = uiOpen ? null : targetLock.update(player.position, cameraRig.yawRadians, encounters.alive);
+      lockTarget = uiOpen ? null : targetLock.update(player.position, cameraRig.yawRadians, allEnemies());
       cameraRig.setLockTarget(lockTarget);
       cameraRig.update(dt);
 
       if (!uiOpen) {
         player.update(dt, input, cameraRig.yawRadians);
         encounters.update(dt, player, particles, world.collision, projectiles);
-        projectiles.update(dt, encounters.alive, player, (enemy, dmg) => {
+        bossFight.update(dt, player, particles, world.collision, projectiles);
+        party.update(dt, player, allEnemies(), world.collision, {
+          particles, projectiles,
+          onHit: (enemy, result, died) => {
+            hud.popDamage({ x: enemy.position.x, y: 1.4, z: enemy.position.z }, result);
+            if (died) onEnemyDown(enemy);
+          },
+        });
+        zones.update(dt, player.position.x, player.position.z);
+        projectiles.update(dt, allEnemies(), player, (enemy, dmg) => {
           const { result, died } = player.resolveHit(enemy, dmg?.critical);
           hud.popDamage({ x: enemy.position.x, y: 1.4, z: enemy.position.z }, result);
           if (died) onEnemyDown(enemy);
@@ -359,9 +504,14 @@ async function boot() {
       talkTarget = uiOpen || targetLock.inCombat ? null : nearestTalkable();
 
       if (!uiOpen) {
+        playtime += dt;
         questLog.onMove(player.position.x, player.position.z);
         questTick -= dt;
         if (questTick <= 0) { questTick = 0.5; checkQuests(); }
+
+        // 주기 자동 저장 — 60초마다. 진행이 바뀌는 순간에도 따로 부른다.
+        autoSaveTimer -= dt;
+        if (autoSaveTimer <= 0) { autoSaveTimer = 60; autoSave(); }
       }
     },
   });
@@ -374,13 +524,16 @@ async function boot() {
       const dt = frameDt ?? 0.016;
 
       player.syncMesh(alpha);
+      party.setVisible(player.mesh.visible);
       world.followLight(player.position.x, player.position.z);
       cameraRig.render(alpha);
       compass.render();
-      minimap.enemies = encounters.enemies;
+      minimap.enemies = allEnemies();
       minimap.npcs = npcs.map((n) => ({ x: n.x, z: n.z }));
       minimap.render();
       questUI.render({ flags, codexSize: codex.found.size });
+      cine.update(dt);
+      cine.updateBoss(bossFight.boss);
       dialogue.update(dt);
       hud.render(dt);
 
@@ -457,17 +610,42 @@ async function boot() {
       `${device.isTouch ? "터치" : "마우스/키보드"} 입력`;
   }
 
+  const btnContinue = document.getElementById("btn-continue");
+  const slotInfoEl = document.getElementById("title-slotinfo");
+
+  /** 저장이 있으면 이어하기를 켜고 무엇을 이어받는지 보여준다 */
+  function refreshTitle() {
+    const slot = Save.latestSlot();
+    if (slot < 0) {
+      btnContinue.disabled = true;
+      slotInfoEl.textContent = Save.storageAvailable() ? "" : "이 브라우저에서는 저장할 수 없습니다";
+      return;
+    }
+    btnContinue.disabled = false;
+    const s = Save.listSlots()[slot];
+    slotInfoEl.textContent = `슬롯 ${slot + 1} · ${s.chapter}장 · 레벨 ${s.level} · ${Save.formatPlaytime(s.playtime)}`;
+  }
+
   setLoadingProgress(100, "완료");
   await new Promise((r) => setTimeout(r, 150));
   loadingScreen.hidden = true;
   titleScreen.hidden = false;
+  refreshTitle();
 
   document.getElementById("btn-new-game").addEventListener("click", () => {
+    const slot = Save.latestSlot();
+    if (slot >= 0 && !confirm("새로 시작하면 이어하기가 가리키는 저장이 덮어써질 수 있습니다. 계속할까요?")) return;
     startGame();
   });
-  document.getElementById("btn-continue").addEventListener("click", () => {
-    // 6단계에서 저장 데이터 불러오기로 연결된다. 지금은 새 게임과 동일하게 시작.
+  btnContinue.addEventListener("click", () => {
+    const slot = Save.latestSlot();
+    const data = slot >= 0 ? Save.load(slot) : null;
     startGame();
+    if (data) {
+      Save.apply(data, { player, codex, flags, reputation, questLog, onLoaded: applyBonds });
+      cameraRig.yaw = player.yaw;
+      playtime = data.playtime ?? 0;
+    }
   });
 
   function startGame() {
@@ -476,6 +654,7 @@ async function boot() {
     // HUD가 숨겨져 있는 동안엔 캔버스 크기가 0으로 측정된다. 보인 뒤에 다시 잰다.
     compass.resize();
     minimap.resize();
+    spawnBosses();
     loop.start();
   }
 }
