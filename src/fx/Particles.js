@@ -17,6 +17,7 @@ const FAMILY_FX = {
   [FAMILY.TRANSITION]: { color: 0xffa54a, size: 0.15, speed: 6.0, gravity: -9, life: 0.45, burst: 22, spread: 0.7 },
   [FAMILY.PRECIOUS]:   { color: 0xffe08a, size: 0.16, speed: 4.5, gravity: -2, life: 0.9,  burst: 24, spread: 0.9 },
   [FAMILY.NONMETAL]:   { color: 0x8fd4ff, size: 0.19, speed: 5.0, gravity: -1, life: 0.8,  burst: 20, spread: 1.1 },
+  [FAMILY.POST_TRANSITION]: { color: 0xb0b8c8, size: 0.17, speed: 4.2, gravity: -4, life: 0.8,  burst: 20, spread: 0.9 },
   [FAMILY.METALLOID]:  { color: 0xc4a8f0, size: 0.17, speed: 5.2, gravity: -2, life: 0.7,  burst: 20, spread: 0.9 },
   [FAMILY.HALOGEN]:    { color: 0xa8e05a, size: 0.28, speed: 2.2, gravity: 0.6, life: 1.4, burst: 30, spread: 1.6 },
   [FAMILY.NOBLE]:      { color: 0xd8c0ff, size: 0.14, speed: 3.0, gravity: 0.4, life: 1.1, burst: 16, spread: 1.2 },

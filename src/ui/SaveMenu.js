@@ -48,27 +48,53 @@ export class SaveMenu {
     this.warnEl.hidden = Save.storageAvailable();
 
     const slots = Save.listSlots();
+    // 삭제 버튼은 슬롯 버튼 안에 넣을 수 없다(버튼 중첩은 유효하지 않은 HTML이라
+    // 클릭이 엉킨다). 줄을 감싸는 div를 두고 형제로 놓는다.
     this.slotsEl.innerHTML = slots.map((s) => {
       if (s.empty) {
-        return `<button class="sm-slot empty" type="button" data-slot="${s.slot}"
-                  ${this.mode === "load" ? "disabled" : ""}>
-                  <span class="sm-no">${s.slot + 1}</span>
-                  <span class="sm-empty">비어 있음</span>
-                </button>`;
+        return `<div class="sm-slot-row">
+                  <button class="sm-slot empty" type="button" data-slot="${s.slot}"
+                    ${this.mode === "load" ? "disabled" : ""}>
+                    <span class="sm-no">${s.slot + 1}</span>
+                    <span class="sm-empty">비어 있음</span>
+                  </button>
+                </div>`;
       }
-      return `<button class="sm-slot" type="button" data-slot="${s.slot}">
-                <span class="sm-no">${s.slot + 1}</span>
-                <span class="sm-info">
-                  <b>${s.chapter}장 · 레벨 ${s.level}</b>
-                  <span>원소 ${s.owned} · 도감 ${s.codex}</span>
-                  <span class="sm-time">${Save.formatPlaytime(s.playtime)} · ${Save.formatDate(s.savedAt)}</span>
-                </span>
-              </button>`;
+      return `<div class="sm-slot-row">
+                <button class="sm-slot" type="button" data-slot="${s.slot}">
+                  <span class="sm-no">${s.slot + 1}</span>
+                  <span class="sm-info">
+                    <b>${s.chapter}장 · 레벨 ${s.level}</b>
+                    <span>원소 ${s.owned} · 도감 ${s.codex}</span>
+                    <span class="sm-time">${Save.formatPlaytime(s.playtime)} · ${Save.formatDate(s.savedAt)}</span>
+                  </span>
+                </button>
+                <button class="sm-del" type="button" data-del="${s.slot}"
+                  title="슬롯 ${s.slot + 1} 삭제" aria-label="슬롯 ${s.slot + 1} 삭제">✕</button>
+              </div>`;
     }).join("");
 
     for (const btn of this.slotsEl.querySelectorAll(".sm-slot")) {
       btn.addEventListener("click", () => this._onSlot(Number(btn.dataset.slot)));
     }
+    for (const btn of this.slotsEl.querySelectorAll(".sm-del")) {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._onDelete(Number(btn.dataset.del));
+      });
+    }
+  }
+
+  /** 슬롯 삭제 — 되돌릴 수 없으므로 무엇을 지우는지 보여주고 묻는다 */
+  _onDelete(slot) {
+    const s = Save.listSlots()[slot];
+    if (!s || s.empty) return;
+    const what = `슬롯 ${slot + 1} · ${s.chapter}장 · 레벨 ${s.level} · ${Save.formatPlaytime(s.playtime)}`;
+    if (!confirm(`${what}\n\n이 저장을 지웁니다. 되돌릴 수 없습니다.`)) return;
+    Save.clear(slot);
+    this.hooks.toast?.(`슬롯 ${slot + 1}을 지웠습니다`, "#eb5757");
+    this.hooks.onDeleted?.();
+    this._render();
   }
 
   _onSlot(slot) {

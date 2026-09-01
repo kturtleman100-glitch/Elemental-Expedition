@@ -10,7 +10,7 @@ import { setupTouchControls } from "./ui/TouchControls.js";
 import { Compass } from "./ui/Compass.js";
 import { CharacterLoader } from "./characters/CharacterLoader.js";
 import { NPC, NPC_PLACEMENTS } from "./characters/NPC.js";
-import { getElement, PLAYER_ELEMENT } from "./data/elements.js";
+import { ELEMENTS, getElement, PLAYER_ELEMENT } from "./data/elements.js";
 import { hasDialogue } from "./data/dialogue.js";
 import { Reputation } from "./data/factions.js";
 import { Dialogue } from "./ui/Dialogue.js";
@@ -427,6 +427,8 @@ async function boot() {
     getContext: saveContext,
     toast: (m, c) => hud.toast(m, c),
     onSettings: applySettings,
+    // 지운 슬롯이 타이틀의 '이어하기'에 남아 있으면 안 된다
+    onDeleted: () => refreshTitle(),
     onLoad: (data) => {
       Save.apply(data, { player, codex, flags, reputation, questLog, onLoaded: applyBonds });
       cameraRig.yaw = player.yaw;
@@ -444,6 +446,9 @@ async function boot() {
 
   /** 자동 저장 — 진행이 바뀌는 순간마다 부른다 */
   function autoSave(reason) {
+    // 베타는 검증용이라 저장하지 않는다. 아니면 한 번 눌러본 것만으로
+    // 정식 저장이 전체 해금 상태로 덮어써진다
+    if (betaMode) return;
     const slot = Save.latestSlot();
     if (Save.save(slot < 0 ? 0 : slot, saveContext())) {
       hud.toast(reason ? "자동 저장 · " + reason : "자동 저장", "#7c9a8a");
@@ -610,6 +615,32 @@ async function boot() {
       `${device.isTouch ? "터치" : "마우스/키보드"} 입력`;
   }
 
+  /**
+   * 베타 검증용 전체 해금. 저장하지 않으므로 정식 진행은 오염되지 않는다.
+   * (autoSave가 돌면 덮어쓰므로 beta일 때는 자동 저장을 끈다)
+   */
+  function grantEverything() {
+    for (const el of ELEMENTS) {
+      if (el.id === player.element.id) continue; // 플레이어 자신은 제외
+      player.progress.owned.add(el.id);
+      codex.discover(el.id);
+    }
+    player.progress.level = 30;
+    player.progress.chapter = 7;
+    // 편성은 비워 둔다 — 파티 UI에서 직접 골라 보게 하려고
+    player.progress.equipped = [];
+    // 엔딩·보스 분기를 다 열어 둔다
+    for (const f of ["sided_noblesse", "persuaded_chlorine", "oganesson_ally"]) flags.add(f);
+    player._recalcStats();
+    // electrons는 ElectronPool 객체다. 숫자를 대입하면 풀 자체가 사라져
+    // 다음 틱의 electrons.update()에서 터진다
+    player.hp = player.hpMax;
+    player.electrons.value = player.electrons.max;
+    applyBonds();
+    betaMode = true;
+  }
+
+  let betaMode = false;
   const btnContinue = document.getElementById("btn-continue");
   const slotInfoEl = document.getElementById("title-slotinfo");
 
@@ -633,6 +664,7 @@ async function boot() {
   refreshTitle();
 
   document.getElementById("btn-new-game").addEventListener("click", () => {
+    betaMode = false;
     const slot = Save.latestSlot();
     if (slot >= 0 && !confirm("새로 시작하면 이어하기가 가리키는 저장이 덮어써질 수 있습니다. 계속할까요?")) return;
     startGame();
@@ -648,7 +680,19 @@ async function boot() {
     }
   });
 
-  function startGame() {
+  document.getElementById("btn-beta").addEventListener("click", () => {
+    startGame({ beta: true });
+    hud.toast("베타 · 원소 " + player.progress.owned.size + "종 해금 (저장 안 함)", "#e2b34a");
+  });
+
+  /**
+   * @param {{beta?:boolean}} [opts] beta면 모든 원소·레벨·플래그를 미리 준다.
+   *   인벤토리·파티·도감처럼 "다 모아야 보이는" 화면을 검증하려면
+   *   정공법으로 수십 시간을 플레이해야 하므로 우회로를 둔다.
+   */
+  function startGame(opts = {}) {
+    if (opts.beta) grantEverything();
+    document.getElementById("beta-badge").hidden = !opts.beta;
     titleScreen.hidden = true;
     hudRoot.hidden = false;
     // HUD가 숨겨져 있는 동안엔 캔버스 크기가 0으로 측정된다. 보인 뒤에 다시 잰다.

@@ -974,6 +974,28 @@ html, body {
 .sm-slot:hover:not(:disabled) { background: rgba(242, 201, 76, 0.12); border-color: rgba(242, 201, 76, 0.45); }
 .sm-slot:disabled { opacity: 0.3; cursor: not-allowed; }
 .sm-slot.empty { border-style: dashed; }
+
+/* 삭제 버튼 — 평소엔 흐리게 두고 줄에 올렸을 때만 또렷해진다.
+   저장 슬롯 바로 옆에 있어서, 늘 선명하면 잘못 누르기 쉽다. */
+.sm-slot-row { display: flex; align-items: stretch; gap: 0.4rem; }
+.sm-slot-row .sm-slot { flex: 1; }
+.sm-del {
+  flex: 0 0 40px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  color: #7a7468;
+  font-family: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  transition: color .12s, background .12s, border-color .12s;
+}
+.sm-slot-row:hover .sm-del { color: #b8ada0; border-color: rgba(255, 255, 255, 0.2); }
+.sm-del:hover {
+  background: rgba(235, 87, 87, 0.16);
+  border-color: rgba(235, 87, 87, 0.55);
+  color: #eb5757;
+}
 .sm-no {
   width: 32px;
   height: 32px;
@@ -1179,3 +1201,23 @@ html, body {
   letter-spacing: 0.05em;
 }
 #ending-close { margin-top: 1.6rem; align-self: center; width: min(280px, 70vw); }
+
+/* 베타 버튼 — 정식 진행과 눈에 띄게 구분해야 실수로 누르지 않는다 */
+.title-btn-beta {
+  border-color: rgba(226, 179, 74, .55);
+  color: #e2b34a;
+  font-size: .82em;
+  letter-spacing: .04em;
+}
+.title-btn-beta:hover { background: rgba(226, 179, 74, .14); }
+
+/* 베타 진행 중임을 화면에 계속 알린다 */
+#beta-badge {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 6px); left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 12px; border-radius: 999px;
+  background: rgba(226, 179, 74, .16);
+  border: 1px solid rgba(226, 179, 74, .5);
+  color: #e2b34a; font-size: 11px; letter-spacing: .08em;
+  pointer-events: none; z-index: 40;
+}
