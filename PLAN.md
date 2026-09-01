@@ -76,7 +76,7 @@
 - [x] `.gitignore` — `참고자료/` 제외 확인
 - [x] `git init` → remote 연결 → push
 - [x] `vercel.json` 작성
-- [ ] **Vercel Import 실제 연결 — 사용자 확인 필요** (코드 작업 아님)
+- [x] **Vercel 연결 완료** — https://elemental-expedition.vercel.app (`git push` 시 자동 배포)
 
 ### 아트 디렉션 전환 · 완료 (커밋 `806379d`)
 
@@ -126,9 +126,9 @@
 - [x] `src/ui/Quest.js` — 우측 상시 표시 (`J`로 접기)
 - [x] `src/ui/Minimap.js` — 정적 지형은 오프스크린에 한 번만
 - [x] **마을 밖 야외** — 북 석회암 고원 · 동 강·다리·숲 · 서 폐허 · 남 평원·연못
-- [ ] `src/characters/PartyMember.js` — 동료 AI (편성은 되지만 따라다니지는 않는다)
+- [x] `src/characters/PartyMember.js` — 동료 AI. 편성한 원소가 따라다니며 함께 싸운다
 
-### 6단계 — 저장과 이어하기 · **← 지금 여기**
+### 6단계 — 저장과 이어하기 · 완료 (커밋 `50f39ec`)
 
 - [x] `src/core/SaveData.js` — localStorage 스키마 + **버전 마이그레이션**(v3)
 - [x] `src/ui/SaveMenu.js` — 슬롯 3개, 설정 포함 (`Esc`)
@@ -139,33 +139,66 @@
 **검증**: 브라우저를 완전히 닫고 다시 열어도 위치·레벨·인벤토리·퀘스트가 복원된다.
 시크릿 모드에서도 저장만 안 될 뿐 게임은 정상 실행된다 (`try/catch` 필수).
 
-### 7단계 — 지역 확장·스토리·엔딩 분기
+### 7단계 — 지역·엔딩 분기 · 완료 (커밋 `50f39ec`)
 
-- [ ] `src/world/Zone.js` — 10개 지역
-- [ ] `src/ui/Quest.js` — 퀘스트 추적
-- [ ] 세력 평판 수치, 엔딩 플래그 누적, 회차 이월
+- [x] `src/world/Zone.js` — 5개 지역의 안개·조명을 서서히 전환
+- [x] `src/ui/Quest.js` — 퀘스트 추적 (5단계에서 먼저 완료)
+- [x] `src/data/endings.js` — 4개 엔딩 판정 + 회차 이월
+- [x] `src/ui/Cinematic.js` — 자막·엔딩 연출
+- [x] 세력 평판 수치, 엔딩 플래그 누적
+- [ ] 나머지 5개 지역의 **실제 지형** (탄소 학교·아르곤 시티·철의 요새·대성당·온천)
 
-### 8단계 — 보스 6인과 엔딩
+### 8단계 — 보스 6인 · 완료 (커밋 `50f39ec`)
 
-- [ ] `src/data/bosses.js`, `src/combat/Boss.js`
-- [ ] 4개 엔딩 연출
+- [x] `src/data/bosses.js` — 조무래기 2 · 중급 3 · 파멸급 1
+- [x] `src/combat/Boss.js` — Enemy 상속 + 페이즈·기믹, 염소 설득 분기
+- [x] 4개 엔딩 연출
+- [ ] 기믹의 **실제 동작** — 지금은 페이즈 전환과 자막까지. 포탑 소환·독 장판·
+      매혹 같은 개별 기믹은 뼈대만 있고 효과가 구현되지 않았다
 
-### 9단계 — 멀티플레이
+### 9단계 — 멀티플레이 · **← 남은 단계**
 
 - [ ] `src/net/Transport.js` (PeerJS를 교체 가능하게 인터페이스로 감쌈)
 - [ ] `src/net/Host.js`, `src/net/Guest.js`, `src/net/RoomCode.js`
 - [ ] `src/ui/MultiplayerUI.js`
+
+전투 코드에 `authority` 인자를 처음부터 넣어뒀으므로(4단계), 호스트만 판정하도록
+바꾸는 작업이 비교적 수월하다.
 
 ---
 
 ## 4. 마지막 작업 지점
 
 - **날짜**: 2026-09-01
-- **완료**: 1·2·3·4·5단계 + 아트 전환 + 마을 확장 + 마을 밖 야외
-- **진행 중**: 6단계(저장) 완료, 7·8단계 작업 중
-- **사용자 요청**: "8단계까지 다 밀어놔" — 9단계(멀티플레이)는 그 뒤
+- **마지막 커밋**: `50f39ec` 6·7·8단계
+- **완료**: **1~8단계 전부**
+- **남은 것**: 9단계 멀티플레이
 
-### 캐릭터 에셋 현황 (VRM 8종, 사용자 제작)
+### 배포
+
+**https://elemental-expedition.vercel.app** — `git push` 시 자동 배포된다.
+휴대폰에서도 이 주소로 바로 확인할 수 있다.
+
+### 커밋 전 검사
+
+```
+bash tools/check.sh
+```
+
+문법(`node --check`)과 **import 무결성**을 함께 본다. 후자가 중요한 이유는
+`node --check`가 파일 하나씩만 보기 때문에, 존재하지 않는 이름을 import해도
+잡히지 않고 브라우저에서야 터지기 때문이다.
+
+### 다음에 할 일 (우선순위 순)
+
+1. **실제 플레이 검증** — 1장부터 끝까지 한 번 통과해 보며 막히는 곳 찾기
+2. **보스 기믹 구현** — 페이즈 전환은 되지만 개별 기믹(포탑·독 장판·매혹)이 비어 있다
+3. **VRM 용량** — 8종 108MB. PNG→WebP로 절반을 줄일 수 있다.
+   39명을 다 만들면 저장소가 감당하지 못한다
+4. **나머지 5개 지역** 지형
+5. **9단계 멀티플레이**
+
+### 캐릭터 에셋 (VRM 8종, 사용자 제작)
 
 | 원소 | 파일 | 역할 |
 |---|---|---|
@@ -176,17 +209,12 @@
 | 인 P | `p.vrm` | 대안통운 택배 기사 |
 | 마그네슘 Mg | `mg.vrm` | 숲의 주인 |
 | 철 Fe | `fe.vrm` | 전이 금속 군단 대장 |
-| 수은 Hg | `hg.vrm` | 3장 중급 보스 (적으로 등장) |
+| 수은 Hg | `hg.vrm` | 3장 중급 보스 |
 
-새 `.vrm`을 넣을 때: `assets/models/<원소id>.vrm` → `CharacterLoader.js`의
-`AVAILABLE`에 id 추가 → `node tools/strip-vrm-thumbnail.mjs assets/models/*.vrm`
-
-### 알아둘 것
-
-- **용량**: VRM 8종 108MB. 썸네일은 제거했고, PNG→WebP로 절반을 더 줄일 수 있다.
-  39명을 다 만들면 저장소가 감당하지 못하므로 그전에 처리해야 한다
-- `PartyMember.js`(동료 AI)는 아직 없다. 편성 보너스는 적용되지만 따라다니지는 않는다
-- Vercel Import 연결 여부 미확인
+**새 `.vrm`을 넣는 절차**
+1. `assets/models/<원소id>.vrm` 에 복사
+2. `src/characters/CharacterLoader.js`의 `AVAILABLE`에 id 추가
+3. `node tools/strip-vrm-thumbnail.mjs assets/models/*.vrm`
 
 ---
 
