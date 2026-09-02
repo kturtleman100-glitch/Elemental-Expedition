@@ -95,6 +95,7 @@ export class Chunk {
     });
 
     const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = "chunk-ground:" + this.key;
     mesh.position.set(ox + size / 2, 0, oz + size / 2);
     mesh.receiveShadow = true;
     // 지형은 그림자를 드리우지 않는다 — 넓은 면이 그림자 맵을 다 먹는다
@@ -155,6 +156,7 @@ export class Chunk {
       const merged = mergeColored(list);
       if (!merged) continue;
       const mesh = new THREE.Mesh(merged, mat);
+      mesh.name = "chunk-props:" + this.key;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       this.group.add(mesh);

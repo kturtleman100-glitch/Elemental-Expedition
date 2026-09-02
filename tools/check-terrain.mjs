@@ -103,20 +103,20 @@ console.log(bar);
   let flat = true, wrong = null;
   for (let i = 0; i < 400; i++) {
     const a = Math.random() * Math.PI * 2;
-    const r = Math.sqrt(Math.random()) * 55;
+    const r = Math.sqrt(Math.random()) * 220;
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (Math.abs(terrain.heightAt(x, z)) > 0.001) flat = false;
     const b = terrain.biomeAt(x, z);
     if (b.danger > 0) wrong = b.name;
   }
-  console.log(flat ? "  마을(55m) 안은 완전한 평지" : "  마을 안에 굴곡이 있다");
+  console.log(flat ? "  손으로 지은 범위(220m) 안은 완전한 평지" : "  손으로 지은 범위 안에 굴곡이 있다");
   if (!flat) problems.push("마을 안에 굴곡이 생겼다 — 손으로 지은 건물이 땅에 묻힌다");
   console.log(wrong ? `  위험한 바이옴이 마을에 닿았다: ${wrong}` : "  마을 주변은 안전한 바이옴");
   if (wrong) problems.push("시작 지점에 위험 지역이 붙어 있다");
 
   // 마을 밖으로 나가면 지형이 살아나는가
-  const outside = [80, 120, 200, 400].map((d) => terrain.heightAt(d, 0).toFixed(1));
-  console.log(`  마을 밖 고도 (80·120·200·400m): ${outside.join(", ")}m`);
+  const outside = [230, 280, 340, 400, 600].map((d) => terrain.heightAt(d, 0).toFixed(1));
+  console.log(`  마을 밖 고도 (230·280·340·400·600m): ${outside.join(", ")}m`);
 }
 
 console.log("\n" + bar);

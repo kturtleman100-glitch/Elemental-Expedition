@@ -127,11 +127,27 @@ export class Input {
     this._updateMoveVectorFromKeys();
   }
 
-  _requestPointerLock() {
-    if (document.pointerLockElement !== this.canvas) {
-      this.canvas.requestPointerLock?.();
-    }
+  /**
+    * 마우스를 화면에 가둔다.
+    *
+    * Esc로 락을 푼 직후 약 1초 동안 브라우저가 재획득을 거부한다 —
+    * 사용자가 빠져나갈 방법을 보장하기 위한 안전장치라 정상 동작이다.
+    * 그 거부를 받아주지 않으면 처리되지 않은 Promise로 올라가 화면에
+    * 빨간 오류 상자가 뜬다. 실패하면 잠깐 뒤 한 번만 다시 시도한다.
+    */
+  _requestPointerLock(retry = true) {
+    if (document.pointerLockElement === this.canvas) return;
+    const p = this.canvas.requestPointerLock?.();
+    if (!p?.catch) return;   // 옛 브라우저는 Promise를 돌려주지 않는다
+    p.catch(() => {
+      if (!retry) return;
+      clearTimeout(this._lockRetry);
+      this._lockRetry = setTimeout(() => this._requestPointerLock(false), 1200);
+    });
   }
+
+  /** 바깥(대화 종료 등)에서 조작을 되돌려줄 때 */
+  requestLock() { this._requestPointerLock(); }
 
   _setKeyState(code, down) {
     const keyName = "key:" + code;

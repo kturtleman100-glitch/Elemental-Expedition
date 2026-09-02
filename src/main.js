@@ -84,6 +84,10 @@ async function boot() {
 
   const cameraRig = new CameraRig(camera, player);
 
+  // 개발용 손잡이. 브라우저를 눈으로 볼 수 없으니 도구가 씬을 직접 재야 한다.
+  // 게임 로직은 이걸 절대 읽지 않는다 — 읽는 순간 디버그가 사양이 된다.
+  window.__debug = { scene, world, player, camera, renderer };
+
   const input = new Input({ canvas, device });
   let uiRefs = null; // 아래에서 대화·도감이 만들어진 뒤 채운다
   // 표시 갱신을 값이 바뀔 때만 하도록 마지막 값을 기억해둔다
@@ -385,8 +389,10 @@ async function boot() {
       checkQuests();
     },
     onClose: () => {
-      // 대화가 끝나면 다시 조작을 돌려준다
-      if (!device.isTouch) canvas.requestPointerLock?.();
+      // 대화가 끝나면 다시 조작을 돌려준다.
+      // Input이 재시도와 거부 처리를 함께 맡는다 — 여기서 직접 부르면
+      // 락 해제 직후의 거부가 처리되지 않은 Promise로 새어 나간다.
+      if (!device.isTouch) input.requestLock();
     },
   });
 
