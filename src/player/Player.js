@@ -34,6 +34,8 @@ export class Player {
     // 지형이 있으면 그 높이를 따라 걷는다. 없으면 평지로 친다 —
     // 이 인자를 필수로 두면 시험 코드에서 Player만 떼어 쓰기 어려워진다.
     this.terrain = opts.terrain ?? null;
+    this.rustTimer = 0;   // 철의 산화 오라에 노출된 남은 시간
+    this.barrier = 0;     // 수정 장벽이 받아낼 몫
 
     this.position = spawnPos.clone();
     this.prevPosition = spawnPos.clone();
@@ -97,6 +99,22 @@ export class Player {
   }
 
   /** 레벨이나 장착 원소가 바뀌면 능력치를 다시 계산한다 */
+  /**
+   * 산화 오라에 노출된 동안 방어가 깎인다.
+   * Boss가 매 0.5초 rustTimer를 채워 주고, 여기서 줄어든다 —
+   * 보스에게서 떨어지면 자연히 풀린다.
+   */
+  updateStatus(dt) {
+    if (this.rustTimer > 0) {
+      this.rustTimer -= dt;
+      if (this.rustTimer <= 0) { this.rustTimer = 0; this._recalcStats(); }
+      else if (!this._rusted) { this._rusted = true; this._recalcStats(); }
+    } else if (this._rusted) {
+      this._rusted = false;
+      this._recalcStats();
+    }
+  }
+
   _recalcStats() {
     const st = statsFor(this.element, this.progress.level);
     // 인연 보너스는 편성에서 나온다. main이 applyBonds()로 채워준다.
@@ -105,7 +123,9 @@ export class Player {
     this.hpMax = Math.round(st.hpMax * m.hp);
     this.hp = Math.min(this.hpMax, Math.max(1, this.hpMax * hpRatio));
     this.attack = Math.round(st.attack * m.attack);
-    this.defense = Math.round(st.defense * m.defense);
+    // 산화 오라에 닿아 있으면 방어가 깎인다 — 녹이 금속을 삭히는 것과 같다
+    const rust = this.rustTimer > 0 ? 0.6 : 1;
+    this.defense = Math.round(st.defense * m.defense * rust);
     this.electrons.max = Math.round(st.electronsMax * m.electrons);
     this.electrons.element = this.element;
     this.electrons.role = electronRole(this.element);
@@ -167,7 +187,7 @@ export class Player {
       { power: style.power, isCritical: critical }
     );
 
-    const died = best.takeDamage(result);
+    const died = best.takeDamage(result, { attacker: this });
     this._steal(best, result.amount);
 
     return { kind: "melee", hit: best, result, died, style };
@@ -181,7 +201,8 @@ export class Player {
       { element: enemy.element, defense: enemy.defense },
       { power: style.power, isCritical: critical }
     );
-    const died = enemy.takeDamage(result);
+    // 투사체는 근접이 아니므로 액체 변형(meleeResist)을 타지 않는다
+    const died = enemy.takeDamage(result, { attacker: this, projectile: true });
     this._steal(enemy, result.amount);
     return { result, died };
   }

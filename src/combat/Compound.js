@@ -18,7 +18,25 @@ const COST = {
   charm: 26, record: 12,
 };
 
-const COOLDOWN = 6;   // 초. 평타보다 훨씬 길어야 특별하게 느껴진다
+// 같은 효과를 겹쳐 쓸 때 붙는 보너스. 2배+2배가 4배가 아니라 6배가 되는 값이다.
+const STACK_BONUS = 1.5;
+
+/**
+ * 쿨다운(초). 종류마다 다르다.
+ *
+ * 전투용은 평타보다 훨씬 길어야 특별하게 느껴지지만, 이동용(얼음)은
+ * 짧아야 쓸모가 있다 — 먼 길을 가는데 6초마다 멈춰 서면 걷는 것과 다를 바 없다.
+ * 겹쳐 쓰면 배율이 더 붙으므로(2배+2배=6배) 짧은 쿨다운이 곧 보상이 된다.
+ */
+const COOLDOWN = {
+  glide: 1,
+  reveal: 4,
+  heal: 8,
+  charm: 12,
+  default: 6,
+};
+
+const cooldownOf = (kind) => COOLDOWN[kind] ?? COOLDOWN.default;
 
 export class CompoundCaster {
   constructor() {
@@ -59,11 +77,26 @@ export class CompoundCaster {
   /** 형석이 비추는 반경. 꺼져 있으면 0 */
   get revealRadius() { return this.get("reveal")?.radius ?? 0; }
 
-  /** 이동 속도 배율 — 얼음 위를 미끄러지는 동안 빨라진다 */
+  /**
+   * 이동 속도 배율 — 얼음 위를 미끄러지는 동안 빨라진다.
+   *
+   * 겹쳐 쓰면 곱셈보다 더 붙는다. 2배에 2배를 얹으면 4배가 아니라 **6배**다.
+   * 곱하기만 하면 두 번째 사용이 첫 번째와 똑같은 값어치라 겹쳐 쓸 이유가
+   * 없는데, 쿨다운을 두 번 쓴 만큼은 더 돌아와야 한다.
+   *
+   *   n개 겹침 → (배율의 곱) × STACK_BONUS^(n-1)
+   *   1개: 2.0 × 1    = 2.0
+   *   2개: 4.0 × 1.5  = 6.0
+   *   3개: 8.0 × 2.25 = 18.0
+   */
   get speedMult() {
-    let m = 1;
-    for (const b of this.buffs) if (b.kind === "glide") m *= b.speed;
-    return m;
+    let m = 1, n = 0;
+    for (const b of this.buffs) {
+      if (b.kind !== "glide") continue;
+      m *= b.speed;
+      n++;
+    }
+    return n > 1 ? m * Math.pow(STACK_BONUS, n - 1) : m;
   }
 
   /**
@@ -93,7 +126,7 @@ export class CompoundCaster {
     const c = check.compound;
     const { player } = ctx;
     player.electrons.spend(COST[c.effect.kind] ?? 16);
-    this.cooldown = COOLDOWN;
+    this.cooldown = cooldownOf(c.effect.kind);
 
     const text = this._apply(c, ctx);
     return { ok: true, compound: c, text };
@@ -105,7 +138,7 @@ export class CompoundCaster {
     // 화합물은 전기음성도 상성을 그대로 타므로 평타와 같은 규칙이다 —
     // 물이 알칼리 금속에게 강한 것도 결국 상성으로 설명된다.
     const result = computeDamage(ctx.player, enemy, { power });
-    const died = enemy.takeDamage(result);
+    const died = enemy.takeDamage(result, { attacker: ctx.player, projectile: true });
     ctx.onHit?.(enemy, result, died);
     return result;
   }
@@ -207,10 +240,12 @@ export class CompoundCaster {
 
       // 얼음은 마찰이 거의 없다 — 미끄러져 멀리 간다
       case "glide": {
-        this.buffs.push({ kind: "glide", speed: e.speed ?? 2.1, timer: e.duration ?? 9 });
+        this.buffs.push({ kind: "glide", speed: e.speed ?? 2.1, timer: e.duration ?? 15 });
         particles?.burst({ x: player.position.x, y: player.position.y + 0.2, z: player.position.z },
           player.element.family, 1.0);
-        return `${c.name}(${c.formula}) — ${e.duration ?? 9}초간 미끄러진다`;
+        const n = this.buffs.filter((x) => x.kind === "glide").length;
+        return `${c.name}(${c.formula}) — ${this.speedMult.toFixed(1)}배` +
+          (n > 1 ? ` (겹침 ${n})` : "");
       }
 
       // 형석은 자외선에 빛난다 — 주변을 드러낸다

@@ -27,6 +27,7 @@ const TUNING = {
 const AGGRO_RANGE = 9.5;   // 14는 너무 멀어 지나가기만 해도 끌려온다
 const LOSE_RANGE = 17;
 const TURN_SPEED = 4;
+const TURRET_RANGE = 15;   // 포탑은 다가가지 않으므로 사거리가 넓어야 견제가 된다
 const SEPARATION = 1.9;    // 적끼리 이 거리보다 가까우면 서로 밀어낸다
 
 export const ENEMY_STATE = {
@@ -46,7 +47,8 @@ export class Enemy {
    * @param {number} [opts.level]
    * @param {boolean} [opts.authority] 이 개체의 판정을 내가 하는가
    */
-  constructor({ elementId, x, z, level = 1, authority = true, outlines = true, terrain = null }) {
+  constructor({ elementId, x, z, level = 1, authority = true, outlines = true, terrain = null,
+                stationary = false }) {
     this.element = getElement(elementId);
     this.level = level;
     this.authority = authority;
@@ -74,6 +76,8 @@ export class Enemy {
 
     // 지형이 있으면 그 높이에 세운다. 없으면 평지로 친다.
     this.terrain = terrain;
+    // 포탑처럼 제자리에서만 싸우는 개체. 쫓아오지 않는다
+    this.stationary = stationary;
     const y = this.terrain ? this.terrain.heightAt(x, z) : 0;
     this.position = new THREE.Vector3(x, y, z);
     this.home = new THREE.Vector3(x, y, z);
@@ -96,6 +100,7 @@ export class Enemy {
 
   /** 절차적 자리표시를 VRM으로 교체한다 (비동기 로드 후 Encounters가 호출) */
   setModel(model, scene) {
+    this.mesh?.userData?.releaseVRM?.();
     scene.remove(this.mesh);
     this.mesh = model;
     this.mesh.position.copy(this.position);
@@ -155,15 +160,17 @@ export class Enemy {
     let moveSpeed = 0;
 
     if (this.state === ENEMY_STATE.CHASE || this.state === ENEMY_STATE.ATTACK) {
-      // 사거리 안이면 멈춰서 때리고, 밖이면 다가간다
-      const inRange = dist <= this.style.range;
+      // 사거리 안이면 멈춰서 때리고, 밖이면 다가간다.
+      // 포탑은 다가가지 않으므로 사거리를 넓게 본다 — 그래야 견제가 된다.
+      const range = this.stationary ? TURRET_RANGE : this.style.range;
+      const inRange = dist <= range;
       this.state = inRange ? ENEMY_STATE.ATTACK : ENEMY_STATE.CHASE;
 
       const targetYaw = Math.atan2(dx, dz);
       let diff = ((targetYaw - this.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
       this.yaw += diff * Math.min(1, TURN_SPEED * dt);
 
-      if (!inRange && this.windup <= 0) {
+      if (!inRange && this.windup <= 0 && !this.stationary) {
         const sp = this.speed * pool.speedMult;
         const nx = this.position.x + (dx / dist) * sp * dt;
         const nz = this.position.z + (dz / dist) * sp * dt;
@@ -190,6 +197,8 @@ export class Enemy {
           this.attackAnim = this.attackAnimDur;
         }
       }
+    } else if (this.stationary) {
+      // 포탑은 복귀할 자리가 곧 선 자리다. 아무것도 하지 않는다
     } else {
       // 제자리로 천천히 복귀
       const hx = this.home.x - this.position.x;
@@ -302,5 +311,8 @@ export class Enemy {
 
   dispose(scene) {
     scene.remove(this.mesh);
+    // VRM 자리를 돌려준다. 안 돌려주면 몇 마리 죽고 나서부터
+    // 같은 원소가 전부 절차적 캐릭터로 나온다.
+    this.mesh?.userData?.releaseVRM?.();
   }
 }

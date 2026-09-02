@@ -15,12 +15,29 @@ const MODEL_DIR = "assets/models/";
 /** 어떤 원소에 .vrm 파일이 있는지. 없는 원소를 매번 404로 찔러보지 않으려고 명시한다. */
 const AVAILABLE = new Set(["mg", "fe", "uue", "si", "ca", "p", "c", "hg", "au"]);
 
+/**
+ * 원소 하나가 동시에 가질 수 있는 VRM 개체 수.
+ *
+ * VRM은 개체마다 따로 파싱해야 한다(아래 참조). 15MB짜리를 수십 번 파싱하면
+ * 메모리도 시간도 감당이 안 되므로, 이 수를 넘으면 절차적 캐릭터로 대체한다.
+ * 같은 원소 적이 우글거릴 때 앞의 몇만 진짜 모델을 쓰는 셈인데,
+ * 아무것도 안 보이는 것보다는 낫다.
+ */
+const MAX_VRM_INSTANCES = 3;
+
 export class CharacterLoader {
   constructor({ outlines = true } = {}) {
     this.outlines = outlines;
     this.loader = new GLTFLoader();
     this.loader.register((parser) => new VRMLoaderPlugin(parser));
-    this._cache = new Map(); // id → Promise<VRM|null>
+    // id → Promise<ArrayBuffer>. **VRM 객체가 아니라 파일 바이트를 캐시한다.**
+    //
+    // 예전에는 VRM 객체를 캐시하고 _wrapVRM 에서 root.add(vrm.scene) 을 했다.
+    // Object3D.add 는 이전 부모에서 떼어내므로, 같은 원소의 두 번째 개체가
+    // 첫 번째의 몸을 통째로 빼앗아 갔다 — 먼저 만들어진 쪽이 투명해진 것이다.
+    // 내려받기는 한 번, 파싱은 개체마다 한 번이 옳다.
+    this._buffers = new Map();
+    this._counts = new Map();  // id → 지금 살아 있는 VRM 개체 수
     this.loaded = new Set();
   }
 
@@ -36,9 +53,11 @@ export class CharacterLoader {
    */
   async build(el) {
     if (!AVAILABLE.has(el.id)) return this._procedural(el);
+    // 같은 원소를 너무 많이 세우면 파싱 비용이 감당이 안 된다
+    if ((this._counts.get(el.id) ?? 0) >= MAX_VRM_INSTANCES) return this._procedural(el);
 
     try {
-      const vrm = await this._loadVRM(el.id);
+      const vrm = await this._newVRM(el.id);
       if (!vrm) return this._procedural(el);
       return this._wrapVRM(vrm, el);
     } catch (err) {
@@ -53,20 +72,31 @@ export class CharacterLoader {
     return model;
   }
 
-  _loadVRM(id) {
-    if (this._cache.has(id)) return this._cache.get(id);
-
-    const p = new Promise((resolve, reject) => {
-      this.loader.load(
-        `${MODEL_DIR}${id}.vrm`,
-        (gltf) => resolve(gltf.userData.vrm || null),
-        undefined,
-        reject
-      );
-    });
-
-    this._cache.set(id, p);
+  /** 파일 바이트를 한 번만 내려받는다 */
+  _buffer(id) {
+    let p = this._buffers.get(id);
+    if (!p) {
+      p = fetch(`${MODEL_DIR}${id}.vrm`).then((r) => {
+        if (!r.ok) throw new Error(`${id}.vrm ${r.status}`);
+        return r.arrayBuffer();
+      });
+      this._buffers.set(id, p);
+    }
     return p;
+  }
+
+  /**
+   * 개체 하나짜리 VRM을 새로 만든다.
+   *
+   * three-vrm에는 안전한 복제 수단이 없다. 스킨드 메시를 그냥 clone() 하면
+   * 스켈레톤이 원본을 가리키고, SkeletonUtils로 복제해도 vrm.humanoid 가
+   * 원본 본을 들고 있어 애니메이션이 엉뚱한 몸에 걸린다.
+   * 그래서 캐시한 바이트를 개체마다 다시 파싱한다 — 내려받기는 한 번뿐이다.
+   */
+  async _newVRM(id) {
+    const buf = await this._buffer(id);
+    const gltf = await this.loader.parseAsync(buf.slice(0), MODEL_DIR);
+    return gltf.userData.vrm || null;
   }
 
   /**
@@ -106,6 +136,11 @@ export class CharacterLoader {
     root.userData.parts = {}; // 절차적 쪽과 형태를 맞춰둔다 (VRM은 본으로 움직인다)
 
     this.loaded.add(el.id);
+    this._counts.set(el.id, (this._counts.get(el.id) ?? 0) + 1);
+    // 개체가 사라질 때 자리를 돌려준다 — 안 돌려주면 재생성 때 절차적으로 밀린다
+    root.userData.releaseVRM = () => {
+      this._counts.set(el.id, Math.max(0, (this._counts.get(el.id) ?? 1) - 1));
+    };
     return root;
   }
 }

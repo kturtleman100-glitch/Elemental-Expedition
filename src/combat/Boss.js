@@ -1,5 +1,14 @@
 import * as THREE from "three";
 import { Enemy } from "./Enemy.js";
+
+// 장판·오라 판정 주기(초)와 반경(m).
+// 매 틱 판정하면 스치기만 해도 즉사하므로 반드시 간격을 둔다.
+const AURA_INTERVAL = 0.5;
+const POISON_RADIUS = 6.5;
+const RADIATION_RADIUS = 13;
+const RUST_RADIUS = 8;
+const DRAIN_RADIUS = 11;
+const CHARM_SECONDS = 8;
 import { getElement } from "../data/elements.js";
 import { getBoss, BOSS_TIER } from "../data/bosses.js";
 
@@ -45,6 +54,13 @@ export class Boss extends Enemy {
 
     this.onPhase = null;      // (phase) => void
     this.onTimerEnd = null;   // () => void
+    this.onSummon = null;     // (spec[]) => void — 포탑처럼 개체를 부를 때
+    this.onCharm = null;      // (seconds) => void — 동료를 잠시 빼앗을 때
+
+    // 장판·오라는 0.5초마다 한 번씩만 판정한다.
+    // 매 틱(120Hz) 피해를 주면 장판에 스치기만 해도 즉사한다.
+    this._auraTick = 0;
+    this._summoned = false;
   }
 
   /** 보스는 항상 깨어 있다 (거리 컬링에서 제외) */
@@ -63,12 +79,59 @@ export class Boss extends Enemy {
 
     super.update(dt, player, particles, collision, projectiles);
 
-    // 기믹 지속 효과
+    // 기믹 지속 효과 — 눈에 보이는 것
     if (this.gimmicks.has("radiation_field") && particles) {
       particles.emit({ x: this.position.x, y: 0.6, z: this.position.z }, this.element.family, dt, 26);
     }
     if (this.gimmicks.has("poison_field") && particles) {
       particles.emit({ x: this.position.x, y: 0.4, z: this.position.z }, this.element.family, dt, 14);
+    }
+
+    this._auraTick -= dt;
+    if (this._auraTick <= 0) {
+      this._auraTick = AURA_INTERVAL;
+      this._applyAuras(player);
+    }
+  }
+
+  /**
+   * 장판과 오라.
+   *
+   * 예전에는 이 기믹들이 파티클만 뿌리고 아무 일도 하지 않았다 —
+   * 보스가 화려하게 연출만 하고 실제로는 평타만 때린 셈이다.
+   */
+  _applyAuras(player) {
+    if (this.state === "dead") return;
+    const dx = player.position.x - this.position.x;
+    const dz = player.position.z - this.position.z;
+    const dist = Math.hypot(dx, dz);
+
+    // 비소의 독 장판 — 가까이 오면 안 된다
+    if (this.gimmicks.has("poison_field") && dist < POISON_RADIUS) {
+      player.takeDamage({ amount: Math.round(this.attack * 0.22), mult: 1, label: "독" }, this);
+    }
+
+    // 폴로늄의 방사선 — 더 넓고 더 아프다. 붕괴 에너지에는 거리밖에 답이 없다
+    if (this.gimmicks.has("radiation_field") && dist < RADIATION_RADIUS) {
+      const falloff = 1 - dist / RADIATION_RADIUS;
+      player.takeDamage({ amount: Math.round(this.attack * 0.3 * falloff) + 1, mult: 1, label: "방사선" }, this);
+    }
+
+    // 철의 산화 오라 — 곁에 있으면 장비가 삭는다
+    if (this.gimmicks.has("rust_aura") && dist < RUST_RADIUS) {
+      player.rustTimer = 2.0;   // Player가 이 값을 보고 방어를 깎는다
+    }
+
+    // 염소의 전자 탈취 — 맞지 않아도 빨려 나간다. 이것이 전자 친화팀의 수법이다
+    if (this.gimmicks.has("drain") && dist < DRAIN_RADIUS && player.electrons) {
+      const stolen = Math.min(player.electrons.value, 4);
+      player.electrons.value -= stolen;
+      this.hp = Math.min(this.hpMax, this.hp + stolen * 2);
+    }
+
+    // 비소는 독을 너무 많이 깔아 자기가 밟는다. 유도하면 자멸한다
+    if (this.gimmicks.has("self_poison")) {
+      this.hp = Math.max(1, this.hp - Math.round(this.hpMax * 0.012));
     }
   }
 
@@ -96,17 +159,60 @@ export class Boss extends Enemy {
       this.timerRunning = true;
     }
     if (ph.gimmick === "persuade_window") this.persuadable = true;
-    // 액체 변형 — 근접 피해를 흘린다
+    // 액체 변형 — 근접 피해를 흘린다. 형태가 없으니 벨 수가 없다
     if (ph.gimmick === "liquid_form") this.meleeResist = 0.45;
-    if (ph.gimmick === "reflect") this.reflect = 0.2;
+    // 백금은 왕수로만 녹는다 — 받은 피해의 일부를 되돌린다
+    if (ph.gimmick === "reflect") this.reflect = 0.25;
+    // 촉매 — 반응을 빠르게 한다. 백금의 실제 쓰임이다
+    if (ph.gimmick === "haste") {
+      this.style = { ...this.style, cooldown: this.style.cooldown * 0.55 };
+      this.speed *= 1.35;
+    }
+    // 정의의 철퇴 — 한 방이 무겁다
+    if (ph.gimmick === "heavy_strike") this.attack = Math.round(this.attack * 1.5);
+    // 아르곤 흉내 — 전자를 채워 비활성 기체처럼 반응하지 않는다.
+    // 실제로는 양성자 수가 그대로라 결코 아르곤이 될 수 없다 — 그래서 완전하지 않다
+    if (ph.gimmick === "mimic_argon") this.nobleMimic = 0.45;
+    // 매혹 — 편성한 동료 하나를 잠시 빼앗는다.
+    // 수은은 사람을 홀리는 나르시시스트이고, 진사(HgS)도 같은 효과를 낸다
+    if (ph.gimmick === "charm") this.onCharm?.(CHARM_SECONDS);
+    // 발명품 포탑 — 부수며 다가가야 한다
+    if (ph.gimmick === "turrets" && !this._summoned) {
+      this._summoned = true;
+      this.onSummon?.(this._turretSpecs());
+    }
 
     this.onPhase?.(ph, next);
   }
 
-  /** 무기형 공격을 흘리는 기믹을 여기서 처리한다 */
+  /** 포탑을 세울 자리 — 보스를 둘러싸는 삼각형 */
+  _turretSpecs() {
+    const out = [];
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + 0.4;
+      out.push({
+        elementId: this.def.elementId,
+        x: this.position.x + Math.sin(a) * 9,
+        z: this.position.z + Math.cos(a) * 9,
+        level: Math.max(1, this.level - 8),
+      });
+    }
+    return out;
+  }
+
+  /** 피해를 흘리거나 되돌리는 기믹을 여기서 처리한다 */
   takeDamage(result, opts = {}) {
     if (this.meleeResist && !opts.projectile) {
       result = { ...result, amount: Math.max(1, Math.round(result.amount * (1 - this.meleeResist))) };
+    }
+    // 아르곤 흉내 — 반응하지 않으므로 무엇에게 맞든 덜 아프다
+    if (this.nobleMimic) {
+      result = { ...result, amount: Math.max(1, Math.round(result.amount * (1 - this.nobleMimic))) };
+    }
+    // 되돌리기는 실제로 되돌려야 한다. 값만 두고 아무도 안 쓰면 없는 기믹이다
+    if (this.reflect && opts.attacker?.takeDamage) {
+      const back = Math.max(1, Math.round(result.amount * this.reflect));
+      opts.attacker.takeDamage({ amount: back, mult: 1, label: "반사" }, this);
     }
     const died = super.takeDamage(result);
     if (died) {
@@ -173,6 +279,9 @@ export class BossFight {
       this.hooks.onPhase?.(boss, ph);
     };
     boss.onTimerEnd = () => this.hooks.onTimerEnd?.(boss);
+    // 포탑은 일반 적으로 세운다 — 락온·피해·사망 처리를 그대로 물려받는다
+    boss.onSummon = (specs) => this.hooks.onSummon?.(specs, boss);
+    boss.onCharm = (sec) => this.hooks.onCharm?.(sec, boss);
 
     // VRM이 있으면 갈아끼운다
     if (loader) {

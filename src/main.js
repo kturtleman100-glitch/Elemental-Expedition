@@ -219,6 +219,9 @@ async function boot() {
       document.exitPointerLock?.();
       uiRefs?.codex.show();
     } else if (action === "interact") {
+      // 설득 창이 열려 있으면 대화보다 먼저 본다.
+      // 이게 없으면 tryPersuade를 부를 방법이 없어 진엔딩 조건에 도달할 수 없다.
+      if (tryPersuadeBoss()) return;
       const npc = uiRefs?.nearestTalkable();
       if (npc) uiRefs.talkTo(npc);
     }
@@ -318,6 +321,21 @@ async function boot() {
         hud.toast("염소를 설득했다", "#8fd1d4");
       }
       autoSave("보스 격파");
+    },
+    // 수은의 매혹 — 동료 하나가 잠시 싸움에서 빠진다
+    onCharm: (sec) => {
+      const taken = party.charmOne(sec);
+      hud.toast(taken
+        ? `${taken.element.ko}이(가) 홀렸다 — ${sec}초`
+        : "매혹이 걸릴 동료가 없다", "#c4a8f0");
+    },
+    // 폴로늄의 포탑 — 일반 적으로 세워 두면 락온·피해·사망이 전부 그대로 돈다
+    onSummon: (specs, boss) => {
+      for (const spec of specs) {
+        const e = encounters.spawnAt({ ...spec, stationary: true });
+        if (e) e._chunk = "boss:" + boss.def.id;
+      }
+      hud.toast("포탑이 나타났다", "#7cff6a");
     },
     onTimerEnd: () => {
       flags.add("polonium_timer_expired");
@@ -531,6 +549,36 @@ async function boot() {
   let lockTarget = null;
   let questTick = 0;
 
+  /**
+   * 화면에 띄울 상성 값.
+   *
+   * 브로민은 신문 기자라 가짜 뉴스를 뿌린다. 그 페이즈에서는 **표시만** 거짓이고
+   * 실제 피해는 진짜 상성대로 들어간다 — 숫자를 믿지 말고 실제로 얼마나
+   * 깎이는지 보라는 것이 이 보스의 기믹이다.
+   */
+  function fakeableAffinity(target) {
+    const real = player.affinityTo(target);
+    if (!target.gimmicks?.has("fake_affinity") || !real) return real;
+    // 유리해 보이게 뒤집는다. 믿고 덤비면 아프다
+    const fake = real.mult >= 1 ? 0.6 : 1.9;
+    return { ...real, mult: fake, label: fake > 1 ? "약점!" : "저항" };
+  }
+
+  /**
+   * 염소의 설득. 붕괴 직전 페이즈에서 **공격을 멈추고 다가가야** 열린다.
+   * 쓰러뜨리는 대신 설득하는 것이 진엔딩 조건이다.
+   * @returns {boolean} 설득을 시도했는가
+   */
+  function tryPersuadeBoss() {
+    const b = bossFight.boss;
+    if (!b?.persuadable || !b.alive) return false;
+    const d = Math.hypot(b.position.x - player.position.x, b.position.z - player.position.z);
+    if (d > 7) return false;
+    if (!b.tryPersuade()) return false;
+    hud.toast("설득했다", "#8fd1d4");
+    return true;
+  }
+
   /** 일반 적과 보스를 함께 넘긴다 — 락온·공격·투사체가 모두 이 목록을 쓴다 */
   function allEnemies() {
     const list = encounters.alive;
@@ -562,6 +610,7 @@ async function boot() {
         });
         zones.update(dt, player.position.x, player.position.z);
         compounds.update(dt, player);
+        player.updateStatus(dt);
         // 지속 효과가 실제로 화면과 전투에 반영되도록 넘긴다
         player.damageTakenMult = compounds.damageTaken;
         player.compoundSpeed = compounds.speedMult;
@@ -612,6 +661,7 @@ async function boot() {
       minimap.render();
       questUI.render({ flags, codexSize: codex.found.size });
       renderCompoundSlot();
+      renderPersuadeHint();
       cine.update(dt);
       cine.updateBoss(bossFight.boss);
       dialogue.update(dt);
@@ -635,7 +685,7 @@ async function boot() {
       if (lockTarget !== lastHud.target || (lockTarget && lockTarget.hp !== lastHud.targetHp)) {
         lastHud.target = lockTarget;
         lastHud.targetHp = lockTarget?.hp;
-        hud.updateTarget(lockTarget, lockTarget ? player.affinityTo(lockTarget) : null);
+        hud.updateTarget(lockTarget, lockTarget ? fakeableAffinity(lockTarget) : null);
       }
 
       if (talkTarget !== lastHud.talk) {
@@ -745,6 +795,18 @@ async function boot() {
       compoundCd.textContent = cd > 0 ? cd.toFixed(1) + "초" : "";
       compoundSlot.classList.toggle("cooling", cd > 0);
     }
+  }
+
+  // 설득 안내 — 창이 열려도 알려주지 않으면 그냥 때려 죽이게 된다
+  let persuadeShown = false;
+  function renderPersuadeHint() {
+    const b = bossFight.boss;
+    const open = !!(b?.persuadable && b.alive &&
+      Math.hypot(b.position.x - player.position.x, b.position.z - player.position.z) < 7);
+    if (open === persuadeShown) return;
+    persuadeShown = open;
+    interactHint.hidden = !open;
+    if (open) interactName.textContent = `${b.def.name}을(를) 설득한다`;
   }
 
   const btnContinue = document.getElementById("btn-continue");

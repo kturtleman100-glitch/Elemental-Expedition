@@ -44,6 +44,7 @@ export class PartyMember {
     this.position = new THREE.Vector3();
     this.yaw = 0;
     this.cooldown = 1 + index * 0.4;   // 넷이 동시에 때리지 않게 흩어놓는다
+    this.charmed = 0;                  // 수은에게 홀린 남은 시간(초)
     this.attackAnim = 0;
     this.attackAnimDur = 0.42;
     this.time = Math.random() * 8;
@@ -211,7 +212,10 @@ export class PartyMember {
     );
   }
 
-  dispose(scene) { scene.remove(this.model); }
+  dispose(scene) {
+    scene.remove(this.model);
+    this.model?.userData?.releaseVRM?.();
+  }
 }
 
 /**
@@ -256,7 +260,27 @@ export class PartyManager {
   }
 
   update(dt, player, enemies, collision, deps) {
-    for (const m of this.members) m.update(dt, player, enemies, collision, deps);
+    for (const m of this.members) {
+      if (m.charmed > 0) {
+        // 홀린 동료는 따라만 다니고 싸우지 않는다. 적으로 돌려 플레이어를
+        // 때리게 하면 억울하기만 하고 대응할 방법이 없다 —
+        // "한 명이 빠진다"가 플레이어가 실제로 대처할 수 있는 형태다.
+        m.charmed -= dt;
+        m.cooldown = Math.max(m.cooldown, 0.5);
+        m.update(dt, player, [], collision, deps);
+        continue;
+      }
+      m.update(dt, player, enemies, collision, deps);
+    }
+  }
+
+  /** 무작위 동료 하나를 잠시 빼앗는다 @returns {object|null} 빼앗긴 동료 */
+  charmOne(seconds) {
+    const free = this.members.filter((m) => !(m.charmed > 0));
+    if (!free.length) return null;
+    const m = free[Math.floor(Math.random() * free.length)];
+    m.charmed = seconds;
+    return m;
   }
 
   setVisible(v) {

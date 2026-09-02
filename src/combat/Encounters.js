@@ -213,6 +213,15 @@ export class Encounters {
     }
   }
 
+  /**
+   * 개체 하나를 그 자리에 세운다 (보스의 포탑 등).
+   * @returns {Enemy|null} 상한에 걸리면 null
+   */
+  spawnAt(spec) {
+    if (this.enemies.length >= MAX_WILD + 6) return null;   // 포탑 몫으로 조금 여유
+    return this._spawn(spec);
+  }
+
   /** 청크가 버려질 때 그 땅의 적도 함께 거둔다 */
   clearChunk(key) {
     for (let i = this.enemies.length - 1; i >= 0; i--) {
