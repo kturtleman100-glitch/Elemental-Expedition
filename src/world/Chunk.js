@@ -137,8 +137,9 @@ export class Chunk {
         const lx = rand() * size, lz = rand() * size;
         const x = ox + lx, z = oz + lz;
 
-        // 마을 안에는 아무것도 놓지 않는다. 손으로 지은 것을 덮으면 안 된다
-        if (terrain.villageMask(x, z) > 0.02) continue;
+        // 마을 안에는 아무것도 놓지 않는다. 손으로 지은 것을 덮으면 안 된다.
+        // 지형이 평평한 범위(108m)보다 넓게 잡는다 — 길이 118m까지 뻗어 있다
+        if (terrain.isHandBuilt(x, z)) continue;
         // 절벽에는 세우지 않는다 — 비탈에 수직으로 박힌 나무는 금방 눈에 띈다
         if (terrain.slopeAt(x, z) > 0.55) continue;
 

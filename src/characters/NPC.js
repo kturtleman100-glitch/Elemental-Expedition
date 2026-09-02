@@ -30,7 +30,8 @@ export class NPC {
     this.inTalkRange = false;
     this.distance = Infinity;
 
-    model.position.set(this.x, 0, this.z);
+    // 마을은 평지라 대개 0이지만, 밖에 세울 NPC를 위해 지형을 따른다
+    model.position.set(this.x, this.y ?? 0, this.z);
     model.rotation.y = this.yaw;
   }
 

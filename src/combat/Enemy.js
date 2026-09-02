@@ -187,7 +187,8 @@ export class Enemy {
       }
     }
 
-    this.mesh.position.set(this.position.x, 0, this.position.z);
+    // y를 0으로 못 박으면 지형이 오르내려도 캐릭터는 그대로 있어 뜨거나 묻힌다
+    this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.yaw;
     const attackT = this.attackAnim > 0 ? 1 - this.attackAnim / this.attackAnimDur : null;
     if (this.mesh.userData.source === "vrm") {

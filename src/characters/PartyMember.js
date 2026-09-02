@@ -155,7 +155,7 @@ export class PartyMember {
     }
 
     // ---- 표시 ----
-    this.model.position.set(this.position.x, 0, this.position.z);
+    this.model.position.copy(this.position);
     this.model.rotation.y = this.yaw;
     const attackT = this.attackAnim > 0 ? 1 - this.attackAnim / this.attackAnimDur : null;
     if (this.model.userData.source === "vrm") {

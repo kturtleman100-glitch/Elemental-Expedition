@@ -126,15 +126,15 @@ export class World {
   // ================= 지형 =================
 
   _buildGround() {
-    const ground = new THREE.Mesh(
-      // 마을을 덮을 만큼만. 이 바깥은 청크가 지형을 만든다 —
-      // 예전처럼 560m 판을 깔면 청크 지형과 겹쳐 z-파이팅이 난다
-      new THREE.PlaneGeometry(150, 150),
-      toonMaterial(0xffffff, { map: this.tex.grass, repeat: [23, 23] })
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
+    // 풀밭 판을 따로 깔지 않는다.
+    //
+    // 예전에는 560m 판 하나로 온 땅을 덮었지만, 청크가 자기 지형을 만들면서
+    // 마을 안(높이 0으로 고정된 구역)에서 두 면이 정확히 같은 높이에 겹쳤다.
+    // 깊이값이 똑같으니 어느 쪽을 그릴지 매 픽셀 갈팡질팡해서 땅이
+    // 얼룩덜룩하게 깜빡였다(z-파이팅). 판을 줄여도 경계선만 옮길 뿐이다.
+    //
+    // 그래서 풀밭은 청크에게 온전히 맡기고, 마을은 그 위에 얹는 것만 그린다.
+    // 광장·길은 y=0.02 이상에 있어 청크 지형 위에 정상적으로 덮인다.
 
     // 광장 — 흙바닥
     const plaza = new THREE.Mesh(

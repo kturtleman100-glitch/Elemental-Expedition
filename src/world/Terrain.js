@@ -9,6 +9,10 @@ import { BIOME, BIOMES, getBiome } from "./Biome.js";
 // 그래서 계산은 오직 여기서만 하고 나머지는 물어보기만 한다.
 
 const VILLAGE_FLAT = 62;    // 이 반경 안은 완전한 평지 — 손으로 지은 마을이 있다
+// 마을에서 뻗어 나간 길·다리·표지판이 여기까지 닿는다.
+// 지형은 이 바깥부터 살아나지만, 절차적 소품은 여기 안에 놓으면 안 된다 —
+// 길 한복판에 나무가 자라면 손으로 지은 것이 다 망가진다.
+const VILLAGE_BUILT = 136;
 const VILLAGE_BLEND = 46;   // 여기서부터 서서히 지형이 살아난다
 const SEA_START = 1800;     // 이 거리부터 바다로 내려간다. 사실상 무한이지만 끝은 있다
 const SEA_FULL = 2100;
@@ -34,6 +38,11 @@ export class Terrain {
     if (d >= VILLAGE_FLAT + VILLAGE_BLEND) return 0;
     const t = (d - VILLAGE_FLAT) / VILLAGE_BLEND;
     return 1 - t * t * (3 - 2 * t);   // 부드럽게 0으로
+  }
+
+  /** 손으로 지은 구역인가 — 절차적 소품을 놓지 말아야 할 곳 */
+  isHandBuilt(x, z) {
+    return x * x + z * z < VILLAGE_BUILT * VILLAGE_BUILT;
   }
 
   /** 바다까지 남은 정도. 0이면 육지, 1이면 완전한 바다 */
