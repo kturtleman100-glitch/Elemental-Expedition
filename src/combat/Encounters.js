@@ -1,4 +1,7 @@
 import { Enemy } from "./Enemy.js";
+import { rngAt } from "../world/Noise.js";
+import { BIOME } from "../world/Biome.js";
+import { CHUNK_SIZE } from "../world/Chunk.js";
 
 // 적 배치와 리스폰.
 //
@@ -8,6 +11,7 @@ import { Enemy } from "./Enemy.js";
 // 마을 안(반경 20m)에는 적을 두지 않는다 — 대화하러 온 사람이 얻어맞으면 안 된다.
 
 const RESPAWN_DELAY = 22;
+const MAX_WILD = 42;   // 동시에 살아 있을 수 있는 적의 상한
 const SLEEP_RANGE = 34; // 이 거리를 넘으면 갱신도 렌더도 멈춘다
 
 // 감지 범위가 9.5m이므로 서로 20m 이상 띄운다. 그래야 한 번에 한 마리씩
@@ -54,6 +58,32 @@ export const SPAWNS = [
   { elementId: "br", x: -6, z: 122, level: 4 },
 ];
 
+// 바이옴마다 어떤 것이 사는가.
+//
+// 아무 원소나 흩뿌리지 않는다. 그 땅에서 나올 법한 것이 나와야
+// 지형과 전투가 같은 이야기를 하게 된다.
+//   방사성 황무지 — 추방된 방사성 원소들이 실제로 사는 곳
+//   숲·초원      — 전자 친화팀이 약한 것부터 노린다
+//   소금 평원    — 염소가 제 고향처럼 돌아다닌다
+const BIOME_ENEMIES = {
+  [BIOME.PLAIN]:     ["br", "cl"],
+  [BIOME.FOREST]:    ["br", "cl", "as"],
+  [BIOME.LIMESTONE]: ["as", "cl", "hg"],
+  [BIOME.SALTFLAT]:  ["cl", "br"],
+  [BIOME.IRONLAND]:  ["hg", "as", "cl"],
+  [BIOME.CRYSTAL]:   ["as", "hg"],
+  [BIOME.SULFUR]:    ["br", "as"],
+  [BIOME.RADIANT]:   ["po", "tc", "u", "es"],
+  [BIOME.NOBLE]:     ["hg", "cl"],
+  [BIOME.SEA]:       [],
+};
+
+/** 원점에서 멀수록, 험한 바이옴일수록 강하다 */
+function wildLevel(biome, x, z) {
+  const dist = Math.hypot(x, z);
+  return Math.min(28, 2 + (biome.danger ?? 0) * 2 + Math.floor(dist / 240));
+}
+
 export class Encounters {
   /**
    * @param {THREE.Scene} scene
@@ -81,6 +111,7 @@ export class Encounters {
     });
     this.scene.add(e.mesh);
     e._spec = spec;
+    if (spec._chunk) e._chunk = spec._chunk;
     this.enemies.push(e);
 
     // VRM이 있으면 자리표시를 교체한다. 없으면 절차적 생성 그대로.
@@ -117,7 +148,7 @@ export class Encounters {
       if (e.state === "dead" && e.deadTimer > 2.5) {
         e.dispose(this.scene);
         this.enemies.splice(i, 1);
-        this._dead.push({ spec: e._spec, timer: RESPAWN_DELAY });
+        this._dead.push({ spec: { ...e._spec, _chunk: e._chunk }, timer: RESPAWN_DELAY });
       }
     }
 
@@ -128,6 +159,55 @@ export class Encounters {
         this._dead.splice(i, 1);
       }
     }
+  }
+
+  /**
+   * 청크 하나에 야생 적을 세운다.
+   *
+   * 손으로 둔 SPAWNS는 1장의 무대라 마을 근처에 고정되어 있다. 대륙이
+   * 무한해진 이상 그것만으로는 나가 봐야 텅 비어 있다.
+   * 배치는 청크 좌표에서 결정되므로, 떠났다 돌아와도 같은 자리에 선다.
+   */
+  populateChunk(chunk) {
+    // 청크가 마흔 개씩 떠 있으므로 한 청크에 두어 마리씩만 나와도 금세 백 마리가
+    // 된다. 그만큼을 매 틱 돌리면 이동만으로 프레임이 죽는다.
+    if (this.enemies.length >= MAX_WILD) return;
+    const size = CHUNK_SIZE;
+    const biome = chunk.biome;
+    const pool = BIOME_ENEMIES[biome.id] ?? [];
+    if (!pool.length) return;
+
+    const terrain = chunk.terrain;
+    const rand = rngAt(terrain.seed + 8181, chunk.cx, chunk.cz);
+    // 험한 땅일수록 많다. 초원은 한 마리 나올까 말까 한 정도로 둔다.
+    const want = Math.floor(rand() * 2) + Math.round((biome.danger ?? 0) * 0.6);
+    const ox = chunk.cx * size, oz = chunk.cz * size;
+
+    for (let i = 0; i < want; i++) {
+      const x = ox + rand() * size, z = oz + rand() * size;
+      // 손으로 지은 마을 근처에는 세우지 않는다 — 그쪽은 SPAWNS가 맡는다
+      if (terrain.isHandBuilt(x, z)) continue;
+      if (terrain.slopeAt(x, z) > 0.5) continue;
+
+      const spec = {
+        elementId: pool[Math.floor(rand() * pool.length)],
+        x, z,
+        level: wildLevel(biome, x, z),
+      };
+      const e = this._spawn(spec);
+      e._chunk = chunk.key;   // 청크가 사라질 때 함께 걷어내려고
+    }
+  }
+
+  /** 청크가 버려질 때 그 땅의 적도 함께 거둔다 */
+  clearChunk(key) {
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      if (this.enemies[i]._chunk !== key) continue;
+      this.enemies[i].dispose(this.scene);
+      this.enemies.splice(i, 1);
+    }
+    // 부활 대기 중인 것도 없앤다 — 없는 땅에서 되살아나면 안 된다
+    this._dead = this._dead.filter((d) => d.spec._chunk !== key);
   }
 
   get alive() { return this.enemies.filter((e) => e.alive); }

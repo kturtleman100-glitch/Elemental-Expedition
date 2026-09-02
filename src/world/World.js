@@ -73,7 +73,7 @@ export class World {
     // 만들면 모양이 같아도 따로 그려지므로, 반복되는 소품은 여기서 공유한다.
     this._geoCache = new Map();
 
-    makeSky(scene, device, PALETTE);
+    this.sky = makeSky(scene, device, PALETTE);
     this.lights = setupLighting(scene, device);
 
     // 지형은 시드 하나에서 나온다. 이것만 저장하면 세계 전체가 복원된다.
@@ -107,9 +107,10 @@ export class World {
     this.chunks.preload(this.spawnPoint.x, this.spawnPoint.z, 2);
   }
 
-  /** 그림자 카메라를 플레이어 근처로 옮긴다 (프레임당 1회) */
-  followLight(x, z) {
+  /** 그림자 카메라와 하늘을 플레이어 근처로 옮긴다 (프레임당 1회) */
+  followLight(x, z, y = 0) {
     this.lights?.key?.userData?.follow?.(x, z);
+    this.sky?.userData?.follow?.(x, y, z);
   }
 
   /** 플레이어를 따라 청크를 만들고 버린다 (프레임당 1회) */

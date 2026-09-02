@@ -9,12 +9,15 @@ import { COMPOUNDS, availableCompounds, missingFor } from "../data/bonds.js";
 
 export class Inventory {
   /**
-   * @param {import('../player/Player.js').Player} player
+   * @param {object} player
    * @param {(msg:string,color?:string)=>void} toast
+   * @param {import('../combat/Compound.js').CompoundCaster} [caster]
+   *   익힌 화합물 중 무엇을 손에 들지 여기에 기록한다
    */
-  constructor(player, toast) {
+  constructor(player, toast, caster = null) {
     this.player = player;
     this.toast = toast;
+    this.caster = caster;
     this.root = document.getElementById("inventory");
     this.listEl = document.getElementById("inv-compounds");
     this.detailEl = document.getElementById("inv-detail");
@@ -38,12 +41,16 @@ export class Inventory {
     this.listEl.innerHTML = COMPOUNDS.map((c) => {
       const can = ready.includes(c);
       const need = missingFor(c, owned);
-      return `<button class="inv-row${can ? " ready" : ""}" type="button" data-id="${c.id}"
+      const held = this.caster?.active === c.id;
+      return `<button class="inv-row${can ? " ready" : ""}${held ? " held" : ""}" type="button" data-id="${c.id}"
                 aria-pressed="${this.selected === c.id}">
                 <span class="inv-formula">${c.formula}</span>
                 <span class="inv-name">${c.name}</span>
                 <span class="inv-need">${
-                  can ? "제작 가능" : need.map((e) => e.ko).join(" · ") + " 필요"
+                  held ? "손에 들고 있음"
+                  : this.player.progress.compounds?.has(c.id) ? "익힘"
+                  : can ? "제작 가능"
+                  : need.map((e) => e.ko).join(" · ") + " 필요"
                 }</span>
               </button>`;
     }).join("");
@@ -69,6 +76,8 @@ export class Inventory {
     if (!c) return;
 
     const can = ready.includes(c);
+    const known = !!this.player.progress.compounds?.has(c.id);
+    const inHand = this.caster?.active === c.id;
     const parts = c.needs.map((n) => {
       const el = getElement(n);
       const have = owned.includes(n);
@@ -93,19 +102,28 @@ export class Inventory {
         <p class="inv-sub">${c.chem.bond}</p>
         <p class="inv-chem">${c.chem.fact}</p>` : ""}
       <button class="inv-make" type="button" ${can ? "" : "disabled"}>
-        ${can ? "제작" : "원소가 부족합니다"}
+        ${!can ? "원소가 부족합니다"
+          : !known ? "익히기"
+          : inHand ? "손에 들고 있음 (R 로 사용)"
+          : "손에 들기"}
       </button>`;
 
     const make = this.detailEl.querySelector(".inv-make");
     make?.addEventListener("click", () => {
-      // 6단계에서 실제 소모품으로 이어진다. 지금은 해금과 안내까지.
+      // 익히면 손에 들려주고, 이미 익힌 것을 다시 누르면 손에 든 것을 바꾼다
       this.player.progress.compounds ??= new Set();
       if (this.player.progress.compounds.has(c.id)) {
-        this.toast(`${c.name}은(는) 이미 익혔습니다`, "#9a9488");
+        if (this.caster) {
+          this.caster.active = c.id;
+          this.toast(`${c.name} (${c.formula}) 를 손에 들었다 — R 로 사용`, "#56ccf2");
+          this._render();
+        }
         return;
       }
       this.player.progress.compounds.add(c.id);
-      this.toast(`${c.name} (${c.formula}) 제작법을 익혔다`, "#56ccf2");
+      // 익히자마자 손에 들려준다. 따로 또 고르게 하면 "만들었는데 어떻게 쓰지"가 된다
+      if (this.caster) this.caster.active = c.id;
+      this.toast(`${c.name} (${c.formula}) 를 익혀 손에 들었다 — R 로 사용`, "#56ccf2");
       this._render();
     });
   }

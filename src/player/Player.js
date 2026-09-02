@@ -198,7 +198,10 @@ export class Player {
 
   takeDamage(result, source) {
     if (this.dead || this.invuln > 0) return;
-    this.hp -= result.amount;
+    // 화합물의 차폐(방연석 등)가 걸려 있으면 여기서 깎인다.
+    // 납이 방사선을 막는 것은 밀도의 문제라 무엇에게 맞든 똑같이 줄어든다.
+    const taken = Math.max(1, Math.round(result.amount * (this.damageTakenMult ?? 1)));
+    this.hp -= taken;
     this.invuln = 0.5;      // 무적 시간을 늘려 연타에 갈리지 않게
     this.outOfCombat = 4;   // 맞았으니 회복 대기
     this.onDamaged?.(result, source);

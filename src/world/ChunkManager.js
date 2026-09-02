@@ -35,6 +35,10 @@ export class ChunkManager {
     /** @type {Chunk[]} 만들기를 기다리는 청크 (가까운 것부터) */
     this.queue = [];
 
+    // 청크가 나고 질 때 바깥에 알린다 (적 배치 등)
+    this.onLoad = ctx.onLoad ?? null;
+    this.onUnload = ctx.onUnload ?? null;
+
     this.lastCx = null;
     this.lastCz = null;
     this.stats = { loaded: 0, queued: 0, built: 0 };
@@ -96,6 +100,7 @@ export class ChunkManager {
       if (dx * dx + dz * dz <= D * D) continue;
       chunk.dispose(this.scene, this.collision);
       this.loaded.delete(key);
+      this.onUnload?.(chunk);
     }
     // 큐에 남아 있던 것도 이미 멀어졌으면 버린다
     this.queue = this.queue.filter((c) => {
@@ -113,6 +118,7 @@ export class ChunkManager {
       chunk.build(this.collision);
       this.scene.add(chunk.group);
       this.loaded.set(chunk.key, chunk);
+      this.onLoad?.(chunk);
       this.stats.built++;
       n++;
     }
@@ -132,6 +138,7 @@ export class ChunkManager {
         chunk.build(this.collision);
         this.scene.add(chunk.group);
         this.loaded.set(key, chunk);
+        this.onLoad?.(chunk);
       }
     }
     this.lastCx = cx;

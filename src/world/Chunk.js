@@ -68,8 +68,8 @@ export class Chunk {
 
     const pos = geo.attributes.position;
     const colors = new Float32Array(pos.count * 3);
-    const c1 = new THREE.Color(biome.ground);
-    const c2 = new THREE.Color(biome.groundAlt);
+    const c1 = new THREE.Color();
+    const c2 = new THREE.Color();
     const tmp = new THREE.Color();
 
     for (let i = 0; i < pos.count; i++) {
@@ -77,6 +77,15 @@ export class Chunk {
       const z = pos.getZ(i) + oz + size / 2;
       const h = terrain.heightAt(x, z);
       pos.setY(i, h);
+
+      // 색은 청크의 대표 바이옴이 아니라 **이 정점 자리의** 바이옴에서 가져온다.
+      //
+      // 청크 하나를 한 색으로 칠하면 옆 청크와 색이 뚝 끊겨 64m짜리 네모가
+      // 격자무늬로 드러난다. 정점마다 물어보면 경계가 지형을 따라 구불구불해지고,
+      // 삼각형 안쪽은 GPU가 알아서 보간해 주므로 자연스럽게 섞인다.
+      const b = terrain.biomeAt(x, z);
+      c1.setHex(b.ground);
+      c2.setHex(b.groundAlt);
 
       // 높은 곳은 밝게, 낮은 곳은 어둡게 — 굴곡이 눈에 들어온다
       const t = Math.min(1, Math.max(0, (h + 6) / 14));
@@ -132,22 +141,40 @@ export class Chunk {
       (spec.transparent ? transparent : opaque).push({ geo: g, color: spec.color });
     };
 
-    for (const [kind, count] of Object.entries(biome.props ?? {})) {
+    // 청크의 대표 바이옴만 보면 안 된다. 청크는 64m짜리 네모인데 바이옴 경계는
+    // 그 안을 비스듬히 가로지를 수 있어서, 숲 청크의 절반이 소금 평원인데도
+    // 소금밭에 나무가 빽빽이 서는 일이 생긴다.
+    //
+    // 그래서 이웃 바이옴의 소품까지 후보로 넣어두고, 실제로 놓을 때
+    // **그 자리의 바이옴이 그 소품을 갖고 있는지** 확인한다. 그러면 경계가
+    // 네모가 아니라 지형을 따라 구불구불해진다.
+    const half = size / 2;
+    const kinds = new Map();
+    for (const b of [biome,
+      terrain.biomeAt(ox, oz), terrain.biomeAt(ox + size, oz),
+      terrain.biomeAt(ox, oz + size), terrain.biomeAt(ox + size, oz + size)]) {
+      for (const [kind, count] of Object.entries(b.props ?? {})) {
+        // 여러 바이옴에 같은 소품이 있으면 가장 빽빽한 쪽을 기준으로 뿌린다.
+        // 실제 배치는 아래에서 자리별로 걸러지므로 과하게 나오지 않는다.
+        kinds.set(kind, Math.max(kinds.get(kind) ?? 0, count));
+      }
+    }
+
+    for (const [kind, count] of kinds) {
+      const spec = PROP_SPECS[kind];
+      if (!spec) continue;
       const n = Math.round(count * ctx.density);
       for (let i = 0; i < n; i++) {
-        const lx = rand() * size, lz = rand() * size;
-        const x = ox + lx, z = oz + lz;
+        const x = ox + rand() * size, z = oz + rand() * size;
 
         // 마을 안에는 아무것도 놓지 않는다. 손으로 지은 것을 덮으면 안 된다.
-        // 지형이 평평한 범위(108m)보다 넓게 잡는다 — 길이 118m까지 뻗어 있다
         if (terrain.isHandBuilt(x, z)) continue;
+        // 이 자리의 바이옴에 없는 소품이면 놓지 않는다
+        if (!terrain.biomeAt(x, z).props?.[kind]) continue;
         // 절벽에는 세우지 않는다 — 비탈에 수직으로 박힌 나무는 금방 눈에 띈다
         if (terrain.slopeAt(x, z) > 0.55) continue;
 
-        const y = terrain.heightAt(x, z);
-        const spec = PROP_SPECS[kind];
-        if (!spec) continue;
-        spec(this, { x, y, z, rand, add, collision });
+        spec(this, { x, y: terrain.heightAt(x, z), z, rand, add, collision });
       }
     }
 

@@ -1083,9 +1083,18 @@ html, body {
 }
 
 /* ---------- 보스 체력 ---------- */
+
+/* 나침반이 차지하는 높이. 보스 바와 붕괴 타이머가 이 아래로 내려가야
+   방향과 거리가 가려지지 않는다. 예전에는 6vmin으로 어림잡았는데,
+   화면이 낮으면 나침반과 정확히 겹쳤다. */
+:root { --compass-reserve: calc(max(0.6rem, env(safe-area-inset-top, 0px)) + 34px + 0.8rem); }
+@media (max-width: 700px) {
+  :root { --compass-reserve: calc(0.4rem + 30px + 0.6rem); }
+}
+
 #boss-bar {
   position: absolute;
-  top: 6vmin;
+  top: var(--compass-reserve);
   left: 50%;
   transform: translateX(-50%);
   width: min(560px, 76vw);
@@ -1112,7 +1121,8 @@ html, body {
 
 #doom-timer {
   position: absolute;
-  top: 13vmin;
+  /* 보스 바(이름 + 막대 + 페이즈 = 약 62px) 바로 아래 */
+  top: calc(var(--compass-reserve) + 62px);
   left: 50%;
   transform: translateX(-50%);
   font-family: Consolas, monospace;
@@ -1289,3 +1299,34 @@ html, body {
   font-size: 0.83em; line-height: 1.7; color: #cfc9bb;
 }
 .cx-exc b { display: block; margin-bottom: 0.3rem; color: #e2b34a; letter-spacing: 0.05em; }
+
+/* 손에 든 화합물 — 목록에서 한눈에 구분되어야 R을 눌렀을 때 무엇이 나갈지 안다 */
+.inv-row.held {
+  border-color: rgba(86, 204, 242, .6);
+  background: rgba(86, 204, 242, .1);
+}
+.inv-row.held .inv-need { color: #56ccf2; }
+
+/* 손에 든 화합물 — 체력·전자 바 바로 아래. R을 눌렀을 때 무엇이 나갈지 늘 보인다 */
+#compound-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+  margin-top: 0.3vmin;
+  padding: 0.25em 0.5em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(86, 204, 242, 0.35);
+  font-size: 0.72rem;
+  text-shadow: 0 1px 2px #000;
+}
+#compound-key {
+  padding: 0 0.4em;
+  border-radius: 3px;
+  background: rgba(86, 204, 242, 0.25);
+  color: #56ccf2;
+  font-weight: 700;
+}
+#compound-name { color: #dcd6c8; }
+#compound-cd { margin-left: auto; color: #9a9488; font-family: Consolas, monospace; }
+#compound-slot.cooling { opacity: 0.55; border-color: rgba(255, 255, 255, 0.15); }

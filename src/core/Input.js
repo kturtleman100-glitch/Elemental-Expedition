@@ -4,7 +4,7 @@
 //
 // 동작 목록(액션 이름은 계획서의 조작표를 그대로 따른다):
 //   attack, interact, jump, inventory, party, codex, quest,
-//   view, targetNext, menu
+//   view, targetNext, menu, stance, compound
 
 const KEY_TO_ACTION = {
   Space: "jump",
@@ -16,6 +16,7 @@ const KEY_TO_ACTION = {
   KeyF: "interact", // 트랙패드 두 손가락 탭 대체 키
   Tab: "targetNext",
   KeyT: "stance", // 하이브리드 원소의 무기/마법 자세 전환
+  KeyR: "compound", // 인벤토리에서 고른 화합물을 쓴다
   Escape: "menu",
   Digit1: "slot1",
   Digit2: "slot2",

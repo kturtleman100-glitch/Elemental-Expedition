@@ -450,6 +450,18 @@ export function makeSky(scene, device, palette) {
     fog: false,
   });
   const sky = new THREE.Mesh(geo, mat);
+  // 하늘은 플레이어를 따라다녀야 한다.
+  //
+  // 원점에 고정해 두면 반경 400m 바깥으로 걸어 나갔을 때 하늘돔 밖으로
+  // 나가 버려, 뒤를 돌아보면 거대한 검은 반구가 서 있다.
+  // 예전에는 보이지 않는 벽이 178m에 있어 이 일이 생길 수 없었지만,
+  // 대륙이 무한해지면서 걸어서 벗어날 수 있게 됐다.
+  //
+  // 절두체 컬링도 꺼야 한다 — 중심이 계속 움직이는데 컬링이 옛 경계로
+  // 판단하면 하늘이 통째로 사라지는 프레임이 생긴다.
+  sky.frustumCulled = false;
+  sky.renderOrder = -1;
+  sky.userData.follow = (x, y, z) => sky.position.set(x, y, z);
   scene.add(sky);
 
   scene.fog = new THREE.Fog(

@@ -10,6 +10,9 @@ import net from "net";
 const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const URL_ = process.argv[2] ?? "http://localhost:3100";
 const WAIT = Number(process.argv[3] ?? 25000);
+// 넷째 인자로 임의의 식을 넘기면 그 결과도 함께 보여준다.
+// 화면 배치처럼 눈으로만 알 수 있던 것을 숫자로 확인할 때 쓴다.
+const EXTRA_EXPR = process.argv[4] ?? null;
 const PORT = 9223;
 
 const chrome = spawn(CHROME, [
@@ -158,6 +161,17 @@ try {
   console.log("  타이틀 표시    :", s.title);
   console.log("  HUD 표시       :", s.hud);
   if (s.error) console.log("\n  화면의 오류 상자:\n" + s.error.split("\n").map((l) => "    " + l).join("\n"));
+
+  if (EXTRA_EXPR) {
+    // 게임을 시작해야 씬에 월드가 들어찬다. 타이틀에서 재면 아무것도 없다.
+    await evalJS(`document.getElementById("btn-beta")?.click()`);
+    await sleep(3500);
+    const extra = await evalJS(EXTRA_EXPR);
+    console.log("\n" + "=".repeat(64));
+    console.log("  추가 측정");
+    console.log("=".repeat(64));
+    console.log(typeof extra === "string" ? extra : JSON.stringify(extra, null, 2));
+  }
 
   console.log("\n" + "=".repeat(64));
   console.log("  콘솔 (" + logs.length + "건)");

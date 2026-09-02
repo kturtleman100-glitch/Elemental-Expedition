@@ -25,7 +25,7 @@ import { Inventory } from "./ui/Inventory.js";
 import { Minimap } from "./ui/Minimap.js";
 import { QuestUI } from "./ui/Quest.js";
 import { QuestLog } from "./data/quests.js";
-import { bondBonuses } from "./data/bonds.js";
+import { bondBonuses, getCompound } from "./data/bonds.js";
 import { SaveMenu } from "./ui/SaveMenu.js";
 import * as Save from "./core/SaveData.js";
 import { ZoneManager } from "./world/Zone.js";
@@ -34,6 +34,7 @@ import { availableBosses } from "./data/bosses.js";
 import { resolveEnding } from "./data/endings.js";
 import { Cinematic } from "./ui/Cinematic.js";
 import { PartyManager } from "./characters/PartyMember.js";
+import { CompoundCaster } from "./combat/Compound.js";
 
 // ---------------------------------------------------------------
 // 1단계: 움직이는 3D 월드. 렌더러 세팅 → 월드/플레이어/카메라 구성 →
@@ -128,7 +129,13 @@ async function boot() {
       if (r.kind === "cast") {
         // 마법 — 투사체를 날린다. 맞았을 때 피해가 계산된다.
         projectiles.fire({
-          from: { x: player.position.x, y: 1.15, z: player.position.z },
+          from: {
+            x: player.position.x,
+            // 발밑이 아니라 얼굴에서 나간다. 지형이 오르내리므로
+            // 절대 높이를 쓰면 언덕에서는 땅속에서 발사된다.
+            y: player.position.y + player.eyeHeight,
+            z: player.position.z,
+          },
           toward: r.aimAt,
           speed: r.style.projectileSpeed ?? 22,
           element: player.element,
@@ -136,17 +143,40 @@ async function boot() {
           fromPlayer: true,
           target: r.target,
         });
-        particles.burst({ x: player.position.x, y: 1.15, z: player.position.z },
-          player.element.family, 0.35);
+        particles.burst({
+          x: player.position.x,
+          y: player.position.y + player.eyeHeight,
+          z: player.position.z,
+        }, player.element.family, 0.35);
         return;
       }
 
       if (r.kind === "melee" && r.hit) {
-        hud.popDamage({ x: r.hit.position.x, y: 1.4, z: r.hit.position.z }, r.result);
-        particles.burst({ x: r.hit.position.x, y: 1.1, z: r.hit.position.z },
+        hud.popDamage({ x: r.hit.position.x, y: r.hit.position.y + 1.4, z: r.hit.position.z }, r.result);
+        particles.burst({ x: r.hit.position.x, y: r.hit.position.y + 1.1, z: r.hit.position.z },
           player.element.family, r.result.mult >= 1.7 ? 1.5 : 1);
         if (r.died) onEnemyDown(r.hit);
       }
+      return;
+    }
+    if (action === "compound") {
+      if (!compounds.active) {
+        hud.toast("인벤토리(E)에서 화합물을 골라 두세요", "#9a9488");
+        return;
+      }
+      const r = compounds.use(compounds.active, {
+        player,
+        enemies: allEnemies(),
+        particles,
+        projectiles,
+        aimYaw: cameraRig.yawRadians,
+        onHit: (enemy, result, died) => {
+          hud.popDamage({ x: enemy.position.x, y: enemy.position.y + 1.4, z: enemy.position.z }, result);
+          if (died) onEnemyDown(enemy);
+        },
+      });
+      hud.toast(r.ok ? r.text : r.reason, r.ok ? "#56ccf2" : "#9a9488");
+      if (r.ok) compounds.lastUsed = compounds.active;
       return;
     }
     if (action === "stance") {
@@ -233,6 +263,8 @@ async function boot() {
   const codex = new Codex();
   const questLog = new QuestLog();
   const cine = new Cinematic();
+  // 익힌 화합물을 실제로 쓰는 장치. 인벤토리에서 고르고 R로 쓴다.
+  const compounds = new CompoundCaster();
   const party = new PartyManager(scene, charLoader, world.terrain);
 
   // 지역 — 안개와 조명이 서서히 바뀐다
@@ -252,7 +284,7 @@ async function boot() {
   });
 
   const partyUI = new PartyUI(player, (m, c) => hud.toast(m, c));
-  const inventory = new Inventory(player, (m, c) => hud.toast(m, c));
+  const inventory = new Inventory(player, (m, c) => hud.toast(m, c), compounds);
   const minimap = new Minimap(document.getElementById("minimap"), player, cameraRig);
   const questUI = new QuestUI(questLog);
 
@@ -347,6 +379,13 @@ async function boot() {
   const encounters = new Encounters(scene, {
     outlines: device.tierName !== "low", loader: charLoader, terrain: world.terrain,
   });
+
+  // 청크가 나고 질 때 그 땅의 적도 함께 나고 진다.
+  // World가 만들어질 때는 Encounters가 아직 없으므로 여기서 이어 붙인다.
+  world.chunks.onLoad = (c) => encounters.populateChunk(c);
+  world.chunks.onUnload = (c) => encounters.clearChunk(c.key);
+  // 미리 만들어 둔 청크는 이 연결 전에 생겼으므로 지금 한 번 채운다
+  for (const c of world.chunks.loaded.values()) encounters.populateChunk(c);
   const projectiles = new Projectiles(scene, particles);
   const targetLock = new TargetLock();
   const hud = new HUD(camera);
@@ -371,7 +410,7 @@ async function boot() {
   }
 
   player.onDamaged = (result) => {
-    hud.popDamage({ x: player.position.x, y: 1.2, z: player.position.z }, result);
+    hud.popDamage({ x: player.position.x, y: player.position.y + 1.2, z: player.position.z }, result);
   };
   player.onDeath = () => {
     hud.toast("쓰러졌다… 마을로 돌아간다", "#eb5757");
@@ -510,14 +549,17 @@ async function boot() {
         party.update(dt, player, allEnemies(), world.collision, {
           particles, projectiles,
           onHit: (enemy, result, died) => {
-            hud.popDamage({ x: enemy.position.x, y: 1.4, z: enemy.position.z }, result);
+            hud.popDamage({ x: enemy.position.x, y: enemy.position.y + 1.4, z: enemy.position.z }, result);
             if (died) onEnemyDown(enemy);
           },
         });
         zones.update(dt, player.position.x, player.position.z);
+        compounds.update(dt);
+        // 지속 효과가 실제로 피해를 줄이도록 플레이어에게 넘긴다
+        player.damageTakenMult = compounds.damageTaken;
         projectiles.update(dt, allEnemies(), player, (enemy, dmg) => {
           const { result, died } = player.resolveHit(enemy, dmg?.critical);
-          hud.popDamage({ x: enemy.position.x, y: 1.4, z: enemy.position.z }, result);
+          hud.popDamage({ x: enemy.position.x, y: enemy.position.y + 1.4, z: enemy.position.z }, result);
           if (died) onEnemyDown(enemy);
         });
       }
@@ -550,7 +592,7 @@ async function boot() {
 
       player.syncMesh(alpha);
       party.setVisible(player.mesh.visible);
-      world.followLight(player.position.x, player.position.z);
+      world.followLight(player.position.x, player.position.z, player.position.y);
       // 플레이어를 따라 땅을 만들고 버린다. 논리 틱이 아니라 렌더에서 도는 이유는
       // 청크 생성이 무겁고, 한 프레임에 여러 번 돌 이유가 없기 때문이다.
       world.streamAround(player.position.x, player.position.z);
@@ -560,6 +602,7 @@ async function boot() {
       minimap.npcs = npcs.map((n) => ({ x: n.x, z: n.z }));
       minimap.render();
       questUI.render({ flags, codexSize: codex.found.size });
+      renderCompoundSlot();
       cine.update(dt);
       cine.updateBoss(bossFight.boss);
       dialogue.update(dt);
@@ -667,6 +710,33 @@ async function boot() {
   }
 
   let betaMode = false;
+  // 손에 든 화합물 표시 — 무엇이 R로 나가는지, 언제 다시 쓸 수 있는지
+  const compoundSlot = document.getElementById("compound-slot");
+  const compoundName = document.getElementById("compound-name");
+  const compoundCd = document.getElementById("compound-cd");
+  let lastCompound = null, lastCd = -1;
+
+  function renderCompoundSlot() {
+    const id = compounds.active;
+    if (!id) {
+      if (compoundSlot.hidden !== true) compoundSlot.hidden = true;
+      return;
+    }
+    if (compoundSlot.hidden) compoundSlot.hidden = false;
+    if (id !== lastCompound) {
+      lastCompound = id;
+      const c = getCompound(id);
+      compoundName.textContent = c ? c.formula + " " + c.name : id;
+    }
+    // 0.1초 단위로만 고쳐 쓴다 — 매 프레임 DOM을 건드리면 그것만으로 느려진다
+    const cd = Math.ceil(compounds.cooldown * 10) / 10;
+    if (cd !== lastCd) {
+      lastCd = cd;
+      compoundCd.textContent = cd > 0 ? cd.toFixed(1) + "초" : "";
+      compoundSlot.classList.toggle("cooling", cd > 0);
+    }
+  }
+
   const btnContinue = document.getElementById("btn-continue");
   const slotInfoEl = document.getElementById("title-slotinfo");
 
