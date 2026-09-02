@@ -46,7 +46,7 @@ export class Enemy {
    * @param {number} [opts.level]
    * @param {boolean} [opts.authority] 이 개체의 판정을 내가 하는가
    */
-  constructor({ elementId, x, z, level = 1, authority = true, outlines = true }) {
+  constructor({ elementId, x, z, level = 1, authority = true, outlines = true, terrain = null }) {
     this.element = getElement(elementId);
     this.level = level;
     this.authority = authority;
@@ -67,8 +67,11 @@ export class Enemy {
       windup: base.windup * TUNING.windup,
     };
 
-    this.position = new THREE.Vector3(x, 0, z);
-    this.home = new THREE.Vector3(x, 0, z);
+    // 지형이 있으면 그 높이에 세운다. 없으면 평지로 친다.
+    this.terrain = terrain;
+    const y = this.terrain ? this.terrain.heightAt(x, z) : 0;
+    this.position = new THREE.Vector3(x, y, z);
+    this.home = new THREE.Vector3(x, y, z);
     this.yaw = Math.random() * Math.PI * 2;
     this.state = ENEMY_STATE.IDLE;
     this.cooldown = 0;
@@ -109,8 +112,9 @@ export class Enemy {
 
     if (this.state === ENEMY_STATE.DEAD) {
       this.deadTimer += dt;
-      // 쓰러지며 가라앉는다
-      this.mesh.position.y = -Math.min(2.2, this.deadTimer * 1.6);
+      // 쓰러지며 가라앉는다. 기준은 0이 아니라 자기가 선 땅이다 —
+      // 언덕 위에서 죽으면 땅속이 아니라 허공으로 꺼지게 된다
+      this.mesh.position.y = this.position.y - Math.min(2.2, this.deadTimer * 1.6);
       this.mesh.rotation.z = Math.min(Math.PI / 2, this.deadTimer * 2.2);
       return;
     }
@@ -150,6 +154,11 @@ export class Enemy {
         moveSpeed = Math.hypot(r.x - this.position.x, r.z - this.position.z) / (sp * dt || 1);
         this.position.x = r.x;
         this.position.z = r.z;
+        // 언덕을 오르내린다. 그대로 대입하면 비탈에서 몸이 튀므로 부드럽게 좇는다
+        if (this.terrain) {
+          const g = this.terrain.heightAt(r.x, r.z);
+          this.position.y += (g - this.position.y) * Math.min(1, dt * 12);
+        }
       }
 
       // ---- 공격 ----

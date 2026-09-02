@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { Collision } from "./Collision.js";
+import { Terrain } from "./Terrain.js";
+import { ChunkManager } from "./ChunkManager.js";
 import { toonMaterial, makeOutline, setupLighting, makeSky, InstancedBatch, MergedBatch } from "../fx/Style.js";
 import { woodGrain, plaster, roofTile, grassField, dirtPath, stoneBlock, foliage } from "../fx/Textures.js";
 
@@ -74,6 +76,16 @@ export class World {
     makeSky(scene, device, PALETTE);
     this.lights = setupLighting(scene, device);
 
+    // 지형은 시드 하나에서 나온다. 이것만 저장하면 세계 전체가 복원된다.
+    this.terrain = new Terrain();
+    this.chunks = new ChunkManager(scene, this.terrain, this.collision, {
+      tex: this.tex,
+      geoCache: (k, f) => this._geo(k, f),
+      density: this.density,
+      outlines: this.outlines,
+      tier: device.tierName,
+    });
+
     this._buildGround();
     this._buildVillage();
     this._buildWilderness();
@@ -87,7 +99,12 @@ export class World {
       drawCalls: inst.drawCalls + merge.drawCalls,
       instances: inst.instances,
       mergedFrom: merge.source,
+      chunks: this.chunks.stats,
     };
+
+    // 시작 지점 주변은 미리 만들어 둔다. 안 그러면 시작하자마자
+    // 허공에 떠 있다가 땅이 생긴다.
+    this.chunks.preload(this.spawnPoint.x, this.spawnPoint.z, 2);
   }
 
   /** 그림자 카메라를 플레이어 근처로 옮긴다 (프레임당 1회) */
@@ -95,12 +112,25 @@ export class World {
     this.lights?.key?.userData?.follow?.(x, z);
   }
 
+  /** 플레이어를 따라 청크를 만들고 버린다 (프레임당 1회) */
+  streamAround(x, z) {
+    this.chunks.update(x, z);
+  }
+
+  /** 이 자리의 지면 높이 — 플레이어·적이 발을 디딜 곳 */
+  heightAt(x, z) { return this.terrain.heightAt(x, z); }
+
+  /** 이 자리의 바이옴 */
+  biomeAt(x, z) { return this.terrain.biomeAt(x, z); }
+
   // ================= 지형 =================
 
   _buildGround() {
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(560, 560),
-      toonMaterial(0xffffff, { map: this.tex.grass, repeat: [86, 86] })
+      // 마을을 덮을 만큼만. 이 바깥은 청크가 지형을 만든다 —
+      // 예전처럼 560m 판을 깔면 청크 지형과 겹쳐 z-파이팅이 난다
+      new THREE.PlaneGeometry(150, 150),
+      toonMaterial(0xffffff, { map: this.tex.grass, repeat: [23, 23] })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
@@ -1116,13 +1146,9 @@ export class World {
   // ================= 경계 =================
 
   _buildBoundary() {
-    // 지금은 토룡마을만 있으므로 빈 평야로 나가지 않게 막는다.
-    // 7단계에서 지역이 이어지면 해당 방향의 벽을 연다.
-    const R = 178, seg = 40;
-    for (let i = 0; i < seg; i++) {
-      const a = (i / seg) * Math.PI * 2;
-      this.collision.addBox(Math.sin(a) * R, Math.cos(a) * R, 40, 40, 0, 18);
-    }
+    // 벽이 없다. 대륙은 청크로 끝없이 이어지고, 아주 멀리 나가면
+    // 지형이 바다로 내려앉아 스스로 발길을 돌리게 된다.
+    // (예전에는 반경 178m에 보이지 않는 벽을 둘렀다)
   }
 
   // ================= 공용 =================

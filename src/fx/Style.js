@@ -43,7 +43,7 @@ function texKey(tex) {
  *          repeat?:[number,number], side?:number}} [opts]
  */
 export function toonMaterial(color, opts = {}) {
-  const key = `${color}|${opts.emissive || 0}|${opts.opacity ?? 1}|${texKey(opts.map)}|${opts.repeat || ""}|${opts.side || 0}`;
+  const key = `${color}|${opts.emissive || 0}|${opts.opacity ?? 1}|${texKey(opts.map)}|${opts.repeat || ""}|${opts.side || 0}|${opts.vertexColors ? "v" : ""}`;
   const cached = materialCache.get(key);
   if (cached) return cached;
 
@@ -63,6 +63,9 @@ export function toonMaterial(color, opts = {}) {
     transparent: opts.transparent || (opts.opacity !== undefined && opts.opacity < 1),
     opacity: opts.opacity ?? 1,
     side: opts.side || THREE.FrontSide,
+    // 청크 지형이 높이에 따라 색을 달리하려고 쓴다. 정점마다 색을 담으면
+    // 청크 하나가 재질 하나로 다양한 땅빛을 낼 수 있다
+    vertexColors: !!opts.vertexColors,
   });
 
   // MergedBatch가 "같은 원본 텍스처를 쓰는 재질"끼리 묶으려면 원본과 반복 횟수를

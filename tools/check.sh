@@ -28,4 +28,8 @@ echo ""
 echo "=== 화학 검사 ==="
 node tools/check-chemistry.mjs | tail -4
 
+echo ""
+echo "=== 지형 검사 ==="
+node tools/check-terrain.mjs | tail -3
+
 exit $fail

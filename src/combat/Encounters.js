@@ -64,6 +64,7 @@ export class Encounters {
     this.outlines = opts.outlines !== false;
     this.authority = opts.authority !== false;
     this.loader = opts.loader ?? null;
+    this.terrain = opts.terrain ?? null;
     this.enemies = [];
     this._dead = []; // { spec, timer }
     // 같은 원소의 VRM을 여러 마리가 공유할 수 없다(본이 따로 놀아야 한다).
@@ -76,6 +77,7 @@ export class Encounters {
       ...spec,
       authority: this.authority,
       outlines: this.outlines,
+      terrain: this.terrain,
     });
     this.scene.add(e.mesh);
     e._spec = spec;

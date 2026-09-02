@@ -26,6 +26,9 @@ export class Player {
    */
   constructor(spawnPos, collision, opts = {}) {
     this.collision = collision;
+    // 지형이 있으면 그 높이를 따라 걷는다. 없으면 평지로 친다 —
+    // 이 인자를 필수로 두면 시험 코드에서 Player만 떼어 쓰기 어려워진다.
+    this.terrain = opts.terrain ?? null;
 
     this.position = spawnPos.clone();
     this.prevPosition = spawnPos.clone();
@@ -272,26 +275,33 @@ export class Player {
       this.yaw = Math.atan2(dirX, dirZ);
     }
 
-    // 점프 / 중력 (지형이 y=0 평지뿐인 1단계 기준)
+    // 점프 / 중력
     if (input.justPressed("jump") && this.onGround) {
       this.velocityY = JUMP_SPEED;
       this.onGround = false;
     }
     this.velocityY += GRAVITY * dt;
     this.position.y += this.velocityY * dt;
-    if (this.position.y <= 0) {
-      this.position.y = 0;
-      this.velocityY = 0;
-      this.onGround = true;
-    }
 
-    // 충돌 보정 (수평만)
+    // 충돌 보정 (수평만) — 지면 판정보다 먼저 해야 한다.
+    // 밀려난 자리의 높이를 봐야 벽에 밀리며 언덕에 파묻히지 않는다.
     const resolved = this.collision.resolve(
       this.position.x, this.position.z, RADIUS,
       this.position.y, this.position.y + HEIGHT
     );
     this.position.x = resolved.x;
     this.position.z = resolved.z;
+
+    const ground = this.terrain ? this.terrain.heightAt(this.position.x, this.position.z) : 0;
+    if (this.position.y <= ground) {
+      // 비탈을 뛰어 내려갈 때 매번 착지 처리를 하면 걸음이 끊긴다.
+      // 조금 파고든 정도는 그냥 지면에 붙여 준다.
+      this.position.y = ground;
+      this.velocityY = 0;
+      this.onGround = true;
+    } else if (this.position.y - ground > 0.05) {
+      this.onGround = false;
+    }
 
     // 실제 이동한 거리로 걷기 강도를 정한다 — 벽에 막혀 제자리면 걷지 않는다
     const dx = this.position.x - this.prevPosition.x;

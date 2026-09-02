@@ -73,7 +73,10 @@ async function boot() {
   const world = new World(scene, device);
 
   setLoadingProgress(75, "플레이어 준비 중...");
-  const player = new Player(world.spawnPoint, world.collision, { outlines: device.tierName !== "low" });
+  const player = new Player(world.spawnPoint, world.collision, {
+    outlines: device.tierName !== "low",
+    terrain: world.terrain,
+  });
   scene.add(player.mesh);
 
   const cameraRig = new CameraRig(camera, player);
@@ -223,16 +226,22 @@ async function boot() {
   const codex = new Codex();
   const questLog = new QuestLog();
   const cine = new Cinematic();
-  const party = new PartyManager(scene, charLoader);
+  const party = new PartyManager(scene, charLoader, world.terrain);
 
   // 지역 — 안개와 조명이 서서히 바뀐다
   const zoneNameEl = document.getElementById("zone-title");
-  const zones = new ZoneManager(scene, world.lights, (zn) => {
+  const zones = new ZoneManager(scene, world.lights, world.terrain, (zn, first) => {
     document.getElementById("zone-name").textContent = zn.name;
     document.getElementById("zone-sub").textContent = zn.sub ?? "";
     zoneNameEl.hidden = true;
     void zoneNameEl.offsetWidth; // 애니메이션 재시작
     zoneNameEl.hidden = false;
+
+    // 처음 밟는 땅에서만 그 땅의 화학을 한 번 알려준다.
+    // 올 때마다 뜨면 잔소리가 되고, 아예 없으면 그냥 색만 다른 땅이 된다.
+    if (first && zn.teaches) {
+      setTimeout(() => cine.say(zn.name, zn.teaches, 0x8fd1d4), 2200);
+    }
   });
 
   const partyUI = new PartyUI(player, (m, c) => hud.toast(m, c));
@@ -328,7 +337,9 @@ async function boot() {
   }
 
   const particles = new Particles(scene);
-  const encounters = new Encounters(scene, { outlines: device.tierName !== "low", loader: charLoader });
+  const encounters = new Encounters(scene, {
+    outlines: device.tierName !== "low", loader: charLoader, terrain: world.terrain,
+  });
   const projectiles = new Projectiles(scene, particles);
   const targetLock = new TargetLock();
   const hud = new HUD(camera);
@@ -531,6 +542,9 @@ async function boot() {
       player.syncMesh(alpha);
       party.setVisible(player.mesh.visible);
       world.followLight(player.position.x, player.position.z);
+      // 플레이어를 따라 땅을 만들고 버린다. 논리 틱이 아니라 렌더에서 도는 이유는
+      // 청크 생성이 무겁고, 한 프레임에 여러 번 돌 이유가 없기 때문이다.
+      world.streamAround(player.position.x, player.position.z);
       cameraRig.render(alpha);
       compass.render();
       minimap.enemies = allEnemies();
@@ -612,6 +626,9 @@ async function boot() {
       `FPS ${info.fps.toFixed(0)}  틱 ${info.tickHz}Hz  등급 ${info.tier}  부하 ${(info.loadRatio * 100).toFixed(0)}%\n` +
       `드로우콜 ${r.calls}  삼각형 ${(r.triangles / 1000).toFixed(0)}k  텍스처 ${renderer.info.memory.textures}\n` +
       `병합 ${world.stats.mergedFrom}→${world.stats.drawCalls}  인스턴스 ${world.stats.instances}\n` +
+      `청크 ${world.chunks.stats.loaded} (대기 ${world.chunks.stats.queued})  ` +
+      `${world.biomeAt(player.position.x, player.position.z).name}  ` +
+      `고도 ${world.heightAt(player.position.x, player.position.z).toFixed(1)}m\n` +
       `${device.isTouch ? "터치" : "마우스/키보드"} 입력`;
   }
 

@@ -1,127 +1,98 @@
-// 지역(Zone) 정의와 분위기 전환.
-//
-// 아직 다른 지역의 지형은 없다. 하지만 토룡마을 안팎이 이미 넓어서,
-// 어디에 있느냐에 따라 안개 색과 조명이 달라지면 장소가 다르게 느껴진다.
-// 7단계의 지역 시스템을 여기서 시작해, 나중에 실제 지형이 붙으면
-// 좌표만 바꿔 끼우면 되도록 만들어 둔다.
-
 import * as THREE from "three";
+import { blendAmbience } from "./Biome.js";
 
-export const ZONES = [
-  {
-    id: "village",
-    name: "토룡마을",
-    sub: "대륙 동쪽 끝",
-    center: [0, 0], radius: 70,
-    fog: 0xd2e0dc, fogNear: 40, fogFar: 150,
-    light: 1.45, ambient: 0x51607a,
-    owner: "ca",
-  },
-  {
-    id: "plateau",
-    name: "석회암 고원",
-    sub: "저승 · 추방지 방면",
-    center: [0, -115], radius: 78,
-    // 척박한 곳이라 빛이 하얗게 튀고 안개가 가깝다
-    fog: 0xdcd8cc, fogNear: 26, fogFar: 110,
-    light: 1.6, ambient: 0x6a6a72,
-    danger: 2,
-  },
-  {
-    id: "river",
-    name: "강 건너 숲",
-    sub: "아르곤 시티 방면",
-    center: [110, 0], radius: 74,
-    // 나무 그늘이라 어둡고 푸르다
-    fog: 0xa8c4c0, fogNear: 22, fogFar: 95,
-    light: 1.15, ambient: 0x44607a,
-    danger: 2,
-  },
-  {
-    id: "ruins",
-    name: "옛 폐허",
-    sub: "철의 요새 방면",
-    center: [-104, 26], radius: 70,
-    // 먼지가 낀 누런 공기
-    fog: 0xc8bda4, fogNear: 24, fogFar: 100,
-    light: 1.3, ambient: 0x6a6250,
-    danger: 3,
-  },
-  {
-    id: "shore",
-    name: "바닷가 평원",
-    sub: "불안정한 바다 방면",
-    center: [0, 128], radius: 80,
-    // 바다가 가까워 습하고 밝다
-    fog: 0xdce8ea, fogNear: 44, fogFar: 165,
-    light: 1.5, ambient: 0x5a7086,
-    danger: 1,
-  },
-];
+// 지역의 분위기 전환.
+//
+// 예전에는 좌표에 원을 다섯 개 그려 두고 그 안에 들어가면 안개를 바꿨다.
+// 대륙이 무한해지면서 그 방식은 못 쓴다 — 원을 무한히 그릴 수는 없다.
+// 이제는 지형이 알려주는 바이옴을 그대로 따른다. 바이옴이 곧 지역이다.
+//
+// 여전히 중요한 원칙 하나는 그대로다. 경계에서 즉시 바꾸면 화면이 번쩍이므로
+// 언제나 보간한다. 게다가 이제는 경계 자체가 노이즈라 들쭉날쭉해서,
+// 주변 네 점을 함께 보고 섞어야 경계를 오갈 때 깜빡이지 않는다.
 
-const DEFAULT = ZONES[0];
-
-export function zoneAt(x, z) {
-  let best = DEFAULT;
-  let bestD = Infinity;
-  for (const zn of ZONES) {
-    const d = Math.hypot(x - zn.center[0], z - zn.center[1]);
-    if (d > zn.radius) continue;
-    if (d < bestD) { bestD = d; best = zn; }
-  }
-  return best;
-}
-
-/**
- * 지역이 바뀌면 안개와 조명을 서서히 옮긴다.
- *
- * 즉시 바꾸면 경계를 넘는 순간 화면이 번쩍인다. 늘 보간해야 한다.
- */
 export class ZoneManager {
   /**
    * @param {THREE.Scene} scene
    * @param {{key:THREE.DirectionalLight}} lights
-   * @param {(zone:object)=>void} onEnter 새 지역에 들어섰을 때
+   * @param {import('./Terrain.js').Terrain} terrain
+   * @param {(biome:object, first:boolean)=>void} onEnter 새 바이옴에 들어섰을 때
    */
-  constructor(scene, lights, onEnter) {
+  constructor(scene, lights, terrain, onEnter) {
     this.scene = scene;
     this.lights = lights;
+    this.terrain = terrain;
     this.onEnter = onEnter;
-    this.current = DEFAULT;
-    this.visited = new Set([DEFAULT.id]);
 
-    this._fog = new THREE.Color(DEFAULT.fog);
-    this._amb = new THREE.Color(DEFAULT.ambient);
-    this._near = DEFAULT.fogNear;
-    this._far = DEFAULT.fogFar;
-    this._light = DEFAULT.light;
+    this.current = terrain.biomeAt(0, 0);
+    this.visited = new Set([this.current.id]);
 
-    this.ambient = scene.children.find((o) => o.isAmbientLight) ?? null;
+    const a = this.current.ambience;
+    this._fog = new THREE.Color(a.fog);
+    this._near = a.near;
+    this._far = a.far;
+    this._ambient = a.ambient;
+    this._sun = a.sun;
+
+    this.ambientLight = scene.children.find((o) => o.isAmbientLight) ?? null;
+    // 기준 밝기를 기억해 둔다. 바이옴 값은 이것에 곱하는 배율이다 —
+    // 절댓값으로 두면 나중에 조명을 손볼 때 바이옴을 전부 다시 맞춰야 한다.
+    this._baseSun = lights?.key?.intensity ?? 1.45;
+    this._baseAmbient = this.ambientLight?.intensity ?? 0.6;
+
+    this._tick = 0;
   }
 
   update(dt, x, z) {
-    const zn = zoneAt(x, z);
-    if (zn.id !== this.current.id) {
-      this.current = zn;
-      const first = !this.visited.has(zn.id);
-      this.visited.add(zn.id);
-      this.onEnter?.(zn, first);
+    // 바이옴 판정은 노이즈 계산이라 매 틱 돌릴 만큼 싸지 않다.
+    // 0.2초에 한 번이면 걸어서는 경계를 눈치채지 못한다.
+    this._tick -= dt;
+    if (this._tick <= 0) {
+      this._tick = 0.2;
+      this._sample(x, z);
     }
 
-    // 지역 값으로 서서히 수렴
-    const k = Math.min(1, dt * 0.8);
-    this._fog.lerp(new THREE.Color(zn.fog), k);
-    this._amb.lerp(new THREE.Color(zn.ambient), k);
-    this._near += (zn.fogNear - this._near) * k;
-    this._far += (zn.fogFar - this._far) * k;
-    this._light += (zn.light - this._light) * k;
+    // 목표값으로 서서히 수렴
+    const k = Math.min(1, dt * 0.7);
+    const t = this._target ?? this.current.ambience;
+    this._fog.lerp(new THREE.Color(t.fog), k);
+    this._near += (t.near - this._near) * k;
+    this._far += (t.far - this._far) * k;
+    this._ambient += (t.ambient - this._ambient) * k;
+    this._sun += (t.sun - this._sun) * k;
 
     if (this.scene.fog) {
       this.scene.fog.color.copy(this._fog);
       this.scene.fog.near = this._near;
       this.scene.fog.far = this._far;
     }
-    if (this.ambient) this.ambient.color.copy(this._amb);
-    if (this.lights?.key) this.lights.key.intensity = this._light;
+    if (this.ambientLight) this.ambientLight.intensity = this._baseAmbient * this._ambient;
+    if (this.lights?.key) this.lights.key.intensity = this._baseSun * this._sun;
   }
+
+  /** 주변을 둘러보고 목표 분위기를 정한다 */
+  _sample(x, z) {
+    const { biome, neighbors } = this.terrain.sampleAround(x, z);
+
+    // 이웃 중 다른 바이옴이 얼마나 되는지로 섞는 정도를 정한다.
+    // 경계 한복판이면 절반씩 섞여 부드럽게 넘어간다.
+    const other = neighbors.find((n) => n.id !== biome.id);
+    if (other) {
+      const share = neighbors.filter((n) => n.id !== biome.id).length / neighbors.length;
+      this._target = blendAmbience(biome, other, share * 0.5);
+    } else {
+      this._target = biome.ambience;
+    }
+
+    if (biome.id !== this.current.id) {
+      this.current = biome;
+      const first = !this.visited.has(biome.id);
+      this.visited.add(biome.id);
+      this.onEnter?.(biome, first);
+    }
+  }
+
+  /** 저장에 남길 것 — 어떤 땅을 봤는지 */
+  toJSON() { return [...this.visited]; }
+  fromJSON(arr) { this.visited = new Set(arr || []); }
 }

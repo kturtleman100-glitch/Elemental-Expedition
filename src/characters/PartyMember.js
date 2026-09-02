@@ -130,6 +130,14 @@ export class PartyMember {
       this.moveSpeed01 += (0 - this.moveSpeed01) * Math.min(1, dt * 8);
     }
 
+    // 지면을 따라간다. 지형에 높이가 생겼으므로 y를 두면 공중에 뜨거나 묻힌다.
+    // 계단처럼 툭툭 끊기지 않게 부드럽게 좇는다 — 발밑이 갑자기 솟는 비탈에서
+    // 그대로 대입하면 몸이 튀어 보인다.
+    if (this.terrain) {
+      const g = this.terrain.heightAt(this.position.x, this.position.z);
+      this.position.y += (g - this.position.y) * Math.min(1, dt * 12);
+    }
+
     // ---- 시선 ----
     const lookAt = target ?? player;
     const lx = lookAt.position.x - this.position.x;
@@ -213,9 +221,11 @@ export class PartyMember {
  * VRM 로드가 끼어 있어서 자주 부르면 같은 파일을 반복해 붙이게 된다.
  */
 export class PartyManager {
-  constructor(scene, loader) {
+  /** @param {import('../world/Terrain.js').Terrain} [terrain] 지면을 따라 걷게 한다 */
+  constructor(scene, loader, terrain = null) {
     this.scene = scene;
     this.loader = loader;
+    this.terrain = terrain;
     this.members = [];
     this._sig = "";
   }
@@ -239,7 +249,9 @@ export class PartyManager {
     built.forEach((b, i) => {
       if (!b) return;
       this.scene.add(b.model);
-      this.members.push(new PartyMember(b.el, b.model, i, level));
+      const m = new PartyMember(b.el, b.model, i, level);
+      m.terrain = this.terrain;
+      this.members.push(m);
     });
   }
 
