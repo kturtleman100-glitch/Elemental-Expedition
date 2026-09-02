@@ -237,25 +237,20 @@
       function show(msg) {
         if (shown++ > 5) return; // 매 프레임 터지면 화면이 덮인다
         box.hidden = false;
-        txt.textContent += msg + "
-
-";
+        txt.textContent += msg + "\n\n";
+      }
+      function frames(stack) {
+        return stack ? "\n" + stack.split("\n").slice(1, 4).join("\n") : "";
       }
       window.addEventListener("error", function (e) {
-        show((e.message || "오류") + "
-  " + (e.filename || "").split("/").slice(-2).join("/") + ":" + e.lineno +
-             (e.error && e.error.stack ? "
-" + e.error.stack.split("
-").slice(1, 4).join("
-") : ""));
+        show((e.message || "오류") + "\n  " +
+             (e.filename || "").split("/").slice(-2).join("/") + ":" + e.lineno +
+             frames(e.error && e.error.stack));
       });
       window.addEventListener("unhandledrejection", function (e) {
         var r = e.reason;
         show("처리되지 않은 Promise: " + (r && r.message ? r.message : r) +
-             (r && r.stack ? "
-" + r.stack.split("
-").slice(1, 4).join("
-") : ""));
+             frames(r && r.stack));
       });
     })();
   </script>
