@@ -252,6 +252,34 @@
         show("처리되지 않은 Promise: " + (r && r.message ? r.message : r) +
              frames(r && r.stack));
       });
+
+      // ---- 로딩이 멈췄을 때 스스로 원인을 말하게 한다 ----
+      //
+      // 예전에는 로딩 화면이 0%에서 멈춰도 화면에 아무 말이 없어서,
+      // 브라우저를 직접 보지 않고는 무엇이 잘못됐는지 알 수가 없었다.
+      // 원인은 대개 셋 중 하나이고 셋 다 여기서 구분할 수 있다.
+      window.__bootStarted = false;
+
+      // file:// 로 열면 ES 모듈이 CORS로 막혀 아무것도 실행되지 않는다.
+      // 가장 흔한 실수이고 증상은 "0%에서 멈춤"이라 원인을 짐작하기 어렵다.
+      if (location.protocol === "file:") {
+        document.getElementById("loading-text").innerHTML =
+          "<b style='color:#eb5757'>file:// 로는 실행되지 않습니다</b><br><br>" +
+          "브라우저 보안 규칙(CORS) 때문에 이 방식으로는 게임 코드를 불러올 수 없습니다.<br>" +
+          "프로젝트 폴더에서 <code>npx serve -l 3100</code> 을 실행한 뒤<br>" +
+          "<b>http://localhost:3100</b> 으로 접속해 주세요.";
+      } else {
+        setTimeout(function () {
+          if (window.__bootStarted) return;
+          var why = navigator.onLine
+            ? "게임 코드를 읽는 중에 문제가 생겼습니다. 대개 브라우저에 남은 옛 파일이 원인입니다."
+            : "인터넷 연결이 끊겨 three.js를 내려받지 못했습니다.";
+          document.getElementById("loading-text").innerHTML =
+            "<b style='color:#e2b34a'>시작하지 못했습니다</b><br><br>" + why +
+            "<br><br><b>Ctrl+Shift+R</b> 로 강제 새로고침해 보세요.<br>" +
+            "그래도 안 되면 F12 → Console 의 빨간 글씨를 알려주세요.";
+        }, 8000);
+      }
     })();
   </script>
   <script type="module" src="src/main.js"></script>

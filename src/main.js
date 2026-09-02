@@ -55,6 +55,9 @@ function setLoadingProgress(pct, label) {
 }
 
 async function boot() {
+  // index.html의 진단 타이머에게 "모듈은 무사히 실행됐다"고 알린다.
+  // 이게 없으면 8초 뒤 엉뚱한 안내가 뜬다.
+  window.__bootStarted = true;
   setLoadingProgress(10, "기기 사양 확인 중...");
   const device = new Device();
   setupTouchControls(device);
