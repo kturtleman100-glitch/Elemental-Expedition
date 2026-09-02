@@ -176,7 +176,9 @@ async function boot() {
         },
       });
       hud.toast(r.ok ? r.text : r.reason, r.ok ? "#56ccf2" : "#9a9488");
-      if (r.ok) compounds.lastUsed = compounds.active;
+      // 브로민화은은 "직전에 쓴 다른 화합물"을 다시 쓴다. 자기 자신을 기억하면
+      // 아무 일도 일어나지 않으므로 기록에서 제외한다.
+      if (r.ok && r.compound?.effect.kind !== "record") compounds.lastUsed = compounds.active;
       return;
     }
     if (action === "stance") {
@@ -366,9 +368,11 @@ async function boot() {
       spawnBosses();
       if (rw.element) {
         const el = getElement(rw.element);
-        if (el && player.progress.acquire(rw.element)) {
+        const got = el && player.progress.acquire(rw.element);
+        if (got?.isNew) {
           codex.discover(rw.element);
-          hud.toast(el.ko + "(" + el.sym + ")이(가) 동료가 되었다", "#56ccf2");
+          hud.toast(el.ko + "(" + el.sym + ")이(가) 동료가 되었다" +
+            (got.autoEquipped ? "" : " — P 로 편성"), "#56ccf2");
           applyBonds();
         }
       }
@@ -400,9 +404,11 @@ async function boot() {
       hud.toast(`레벨 ${player.progress.level}`, "#8fe388");
     }
     // 쓰러뜨린 원소를 얻는다 — 이 게임의 성장은 원소 수집이다
-    if (player.progress.acquire(enemy.element.id)) {
+    const got = player.progress.acquire(enemy.element.id);
+    if (got.isNew) {
       codex.discover(enemy.element.id);
-      hud.toast(`${enemy.element.ko}(${enemy.element.sym})의 힘을 얻었다`, "#56ccf2");
+      hud.toast(`${enemy.element.ko}(${enemy.element.sym})의 힘을 얻었다` +
+        (got.autoEquipped ? "" : " — P 로 편성"), "#56ccf2");
       applyBonds();
     }
     questLog.onDefeat(enemy.element.id);
@@ -543,7 +549,8 @@ async function boot() {
       cameraRig.update(dt);
 
       if (!uiOpen) {
-        player.update(dt, input, cameraRig.yawRadians);
+        // 락온 중이면 몸이 그 상대를 향하게 한다
+        player.update(dt, input, cameraRig.yawRadians, lockTarget?.alive ? lockTarget : null);
         encounters.update(dt, player, particles, world.collision, projectiles);
         bossFight.update(dt, player, particles, world.collision, projectiles);
         party.update(dt, player, allEnemies(), world.collision, {
@@ -554,9 +561,11 @@ async function boot() {
           },
         });
         zones.update(dt, player.position.x, player.position.z);
-        compounds.update(dt);
-        // 지속 효과가 실제로 피해를 줄이도록 플레이어에게 넘긴다
+        compounds.update(dt, player);
+        // 지속 효과가 실제로 화면과 전투에 반영되도록 넘긴다
         player.damageTakenMult = compounds.damageTaken;
+        player.compoundSpeed = compounds.speedMult;
+        minimap.revealRadius = compounds.revealRadius;
         projectiles.update(dt, allEnemies(), player, (enemy, dmg) => {
           const { result, died } = player.resolveHit(enemy, dmg?.critical);
           hud.popDamage({ x: enemy.position.x, y: enemy.position.y + 1.4, z: enemy.position.z }, result);
@@ -697,7 +706,8 @@ async function boot() {
     player.progress.level = 30;
     player.progress.chapter = 7;
     // 편성은 비워 둔다 — 파티 UI에서 직접 골라 보게 하려고
-    player.progress.equipped = [];
+    // 슬롯은 길이 4를 유지해야 한다. 빈 배열로 두면 편성 화면이 칸을 못 찾는다.
+    player.progress.equipped = [null, null, null, null];
     // 엔딩·보스 분기를 다 열어 둔다
     for (const f of ["sided_noblesse", "persuaded_chlorine", "oganesson_ally"]) flags.add(f);
     player._recalcStats();

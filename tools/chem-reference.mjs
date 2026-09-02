@@ -117,6 +117,10 @@ export const REAL_COMPOUNDS = {
     formula: "H2O", elements: ["h", "o"], name: "물",
     bond: "극성 공유", fact: "산소가 전자를 더 세게 당겨 굽은 극성 분자가 된다. 그래서 물이 무언가를 잘 녹인다.",
   },
+  ice: {
+    formula: "H2O", elements: ["h", "o"], name: "얼음 (물의 고체)",
+    bond: "극성 공유 + 수소 결합", fact: "물과 같은 분자인데 상태만 다르다. 얼면 수소 결합이 성긴 육각 격자를 짜 밀도가 낮아지므로 물에 뜬다.",
+  },
   rust: {
     formula: "Fe2O3", elements: ["fe", "o"], name: "산화 철(III)",
     bond: "이온", fact: "철이 산소에 전자를 빼앗겨 녹이 된다. 산화란 곧 전자를 잃는 일이다.",

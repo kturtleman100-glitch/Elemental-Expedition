@@ -18,6 +18,11 @@ const RADIUS = 0.3;
 const HEIGHT = BODY.height;
 const EYE_HEIGHT = BODY.headY;
 
+// 물 — 이 깊이를 넘으면 발이 닿지 않아 헤엄친다
+const SWIM_DEPTH = 1.35;
+const SWIM_SUBMERGE = 1.05;   // 수면 아래로 이만큼 잠긴 채 뜬다
+const WATER_SURFACE = -1.2;   // Terrain.WATER_LEVEL 과 같아야 한다
+
 export class Player {
   /**
    * @param {THREE.Vector3} spawnPos
@@ -200,7 +205,15 @@ export class Player {
     if (this.dead || this.invuln > 0) return;
     // 화합물의 차폐(방연석 등)가 걸려 있으면 여기서 깎인다.
     // 납이 방사선을 막는 것은 밀도의 문제라 무엇에게 맞든 똑같이 줄어든다.
-    const taken = Math.max(1, Math.round(result.amount * (this.damageTakenMult ?? 1)));
+    let taken = Math.max(1, Math.round(result.amount * (this.damageTakenMult ?? 1)));
+    // 수정 장벽이 서 있으면 그것이 먼저 깎인다. 다 깎이면 남은 만큼만 몸으로 받는다.
+    if (this.barrier > 0) {
+      const absorbed = Math.min(this.barrier, taken);
+      this.barrier -= absorbed;
+      taken -= absorbed;
+      this.onBarrierHit?.(absorbed, this.barrier);
+      if (taken <= 0) { this.invuln = 0.5; return; }
+    }
     this.hp -= taken;
     this.invuln = 0.5;      // 무적 시간을 늘려 연타에 갈리지 않게
     this.outOfCombat = 4;   // 맞았으니 회복 대기
@@ -238,7 +251,14 @@ export class Player {
    * @param {import('../core/Input.js').Input} input
    * @param {number} cameraYaw 카메라가 바라보는 수평각 — 이동을 이 기준 상대좌표로 변환
    */
-  update(dt, input, cameraYaw) {
+  /**
+   * @param {number} dt
+   * @param {object} input
+   * @param {number} cameraYaw
+   * @param {{position:{x:number,z:number}}|null} [faceTarget]
+   *   락온한 상대. 있으면 몸이 늘 그쪽을 본다 — 옆으로 걸어도 상대를 마주 본다.
+   */
+  update(dt, input, cameraYaw, faceTarget = null) {
     this.prevPosition.copy(this.position);
 
     this.cooldown = Math.max(0, this.cooldown - dt);
@@ -257,7 +277,11 @@ export class Player {
     if (pool.selfDamage > 0 && !this.dead) {
       this.hp = Math.max(1, this.hp - pool.selfDamage);
     }
-    const speedMult = pool.speedMult;
+    // 전자 상태에 따른 배율 × 화합물(얼음길) 배율.
+    // 둘을 곱해야 "전자가 마른 채로 얼음을 타면 여전히 느리다"가 성립한다.
+    // 물속에서는 느려진다. 헤엄은 걷기보다도 느리다.
+    const waterDrag = this.swimming ? 0.5 : this.inWater ? 0.72 : 1;
+    const speedMult = pool.speedMult * (this.compoundSpeed ?? 1) * waterDrag;
 
 
     const { x: mx, z: mz } = input.moveVector;
@@ -278,6 +302,24 @@ export class Player {
       this.yaw = Math.atan2(dirX, dirZ);
     }
 
+    // 락온 중에는 이동 방향이 아니라 상대를 본다.
+    //
+    // 움직이는 쪽을 향하면 옆걸음질할 때 등을 보이게 되어, 분명 조준하고
+    // 있는데 엉뚱한 데를 보고 때리는 것처럼 보인다. 각도는 부드럽게 좇는다 —
+    // 즉시 돌리면 상대가 옆을 스칠 때 몸이 홱 꺾인다.
+    if (faceTarget) {
+      const tx = faceTarget.position.x - this.position.x;
+      const tz = faceTarget.position.z - this.position.z;
+      if (tx * tx + tz * tz > 0.04) {
+        const want = Math.atan2(tx, tz);
+        // -pi~pi로 감아 최단 방향으로 돈다
+        let diff = want - this.yaw;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        this.yaw += diff * Math.min(1, dt * 12);
+      }
+    }
+
     // 점프 / 중력
     if (input.justPressed("jump") && this.onGround) {
       this.velocityY = JUMP_SPEED;
@@ -296,6 +338,25 @@ export class Player {
     this.position.z = resolved.z;
 
     const ground = this.terrain ? this.terrain.heightAt(this.position.x, this.position.z) : 0;
+
+    // ---- 물 ----
+    //
+    // 지형이 수면보다 파여 있으면 그만큼 물이 고여 있다.
+    // 얕으면 그냥 걸어 들어가고(첨벙거릴 뿐), 키를 넘게 깊으면 뜬다.
+    // 바닥까지 가라앉히면 숨 시스템이 필요해지는데, 그건 이 게임의 이야기가 아니다.
+    const depth = this.terrain ? this.terrain.waterDepth(this.position.x, this.position.z) : 0;
+    this.inWater = depth > 0.35;
+    this.swimming = depth > SWIM_DEPTH;
+
+    if (this.swimming) {
+      // 수면에 턱까지 잠긴 채로 뜬다
+      const float = WATER_SURFACE - SWIM_SUBMERGE;
+      this.position.y += (float - this.position.y) * Math.min(1, dt * 6);
+      this.velocityY = 0;
+      this.onGround = false;
+      return this._finishUpdate(dt);
+    }
+
     if (this.position.y <= ground) {
       // 비탈을 뛰어 내려갈 때 매번 착지 처리를 하면 걸음이 끊긴다.
       // 조금 파고든 정도는 그냥 지면에 붙여 준다.
@@ -306,6 +367,16 @@ export class Player {
       this.onGround = false;
     }
 
+    this._finishUpdate(dt);
+  }
+
+  /**
+   * 걷기 강도와 애니메이션.
+   *
+   * 헤엄칠 때는 위쪽에서 일찍 빠져나가므로, 두 경로가 함께 지나가도록
+   * 따로 떼어 뒀다. 안 그러면 물에서 팔다리가 멈춘 채 떠 있게 된다.
+   */
+  _finishUpdate(dt) {
     // 실제 이동한 거리로 걷기 강도를 정한다 — 벽에 막혀 제자리면 걷지 않는다
     const dx = this.position.x - this.prevPosition.x;
     const dz = this.position.z - this.prevPosition.z;

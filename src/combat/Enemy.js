@@ -56,6 +56,11 @@ export class Enemy {
     this.hp = this.hpMax;
     this.attack = s.attack;
     this.defense = s.defense;
+    this.baseDefense = s.defense;   // 약화가 풀릴 때 되돌릴 값
+    /** 화합물이 건 약화 { stat, amount, timer } */
+    this.debuff = null;
+    /** 매혹 남은 시간(초). 0보다 크면 플레이어를 적으로 보지 않는다 */
+    this.charmed = 0;
     this.electrons = new ElectronPool(this.element, s.electronsMax);
     this.role = electronRole(this.element);
 
@@ -106,6 +111,18 @@ export class Enemy {
    */
   update(dt, player, particles, collision, projectiles) {
     this.time += dt;
+
+    // 약화 — 녹이 금속을 삭히는 동안 방어가 깎여 있다
+    if (this.debuff) {
+      this.debuff.timer -= dt;
+      if (this.debuff.timer <= 0) {
+        this.debuff = null;
+        this.defense = this.baseDefense;
+      } else if (this.debuff.stat === "defense") {
+        this.defense = Math.max(0, Math.round(this.baseDefense * (1 + this.debuff.amount)));
+      }
+    }
+    if (this.charmed > 0) this.charmed = Math.max(0, this.charmed - dt);
     this.cooldown = Math.max(0, this.cooldown - dt);
     this.attackAnim = Math.max(0, this.attackAnim - dt);
     this.hurtFlash = Math.max(0, this.hurtFlash - dt);

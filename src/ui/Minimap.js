@@ -84,6 +84,8 @@ export class Minimap {
     this.player = player;
     this.cameraRig = cameraRig;
     this.enemies = [];
+    /** 형석(CaF2)이 비추는 반경. 0이면 꺼져 있다 */
+    this.revealRadius = 0;
     this.npcs = [];
     this.markers = [];   // 퀘스트 목표 등 {x,z,color}
     this._built = false;
@@ -269,7 +271,18 @@ export class Minimap {
 
     for (const m of this.markers) dot(m.x, m.z, 3.5, m.color ?? "#f2c94c");
     for (const n of this.npcs) dot(n.x, n.z, 2.6, "#8fd1d4");
-    for (const e of this.enemies) { if (e.alive) dot(e.position.x, e.position.z, 2.6, "#eb5757"); }
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      dot(e.position.x, e.position.z, 2.6, "#eb5757");
+      // 형석이 비추는 동안에는 더 크고 밝게 — 은신 해제가 눈에 보여야 한다
+      if (this.revealRadius > 0) {
+        const dx = e.position.x - this.player.position.x;
+        const dz = e.position.z - this.player.position.z;
+        if (dx * dx + dz * dz <= this.revealRadius * this.revealRadius) {
+          dot(e.position.x, e.position.z, 5, "rgba(226,179,74,0.5)");
+        }
+      }
+    }
 
     ctx.restore();
 

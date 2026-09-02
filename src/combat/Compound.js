@@ -14,7 +14,7 @@ import { computeDamage } from "./DamageCalc.js";
 /** 화합물 하나를 쓰는 데 드는 전자 (효과 종류별) */
 const COST = {
   pierce: 18, aoe: 22, knockback: 16, debuff: 14,
-  barrier: 20, shield: 18, heal: 16, reveal: 10,
+  barrier: 20, shield: 18, heal: 16, reveal: 10, glide: 14,
   charm: 26, record: 12,
 };
 
@@ -29,11 +29,18 @@ export class CompoundCaster {
     this.buffs = [];
   }
 
-  update(dt) {
+  /** @param {object} [player] 장벽처럼 플레이어에 얹힌 효과를 거두기 위해 */
+  update(dt, player = null) {
     this.cooldown = Math.max(0, this.cooldown - dt);
     for (let i = this.buffs.length - 1; i >= 0; i--) {
-      this.buffs[i].timer -= dt;
-      if (this.buffs[i].timer <= 0) this.buffs.splice(i, 1);
+      const b = this.buffs[i];
+      b.timer -= dt;
+      if (b.timer > 0) continue;
+      // 시간이 다 된 장벽은 남은 몫까지 걷어낸다. 안 그러면 영영 남는다.
+      if (b.kind === "barrier" && player) {
+        player.barrier = Math.max(0, (player.barrier ?? 0) - b.hp);
+      }
+      this.buffs.splice(i, 1);
     }
   }
 
@@ -45,6 +52,19 @@ export class CompoundCaster {
   }
 
   has(kind) { return this.buffs.some((b) => b.kind === kind); }
+
+  /** 그 종류의 효과 하나를 돌려준다 (없으면 null) */
+  get(kind) { return this.buffs.find((b) => b.kind === kind) ?? null; }
+
+  /** 형석이 비추는 반경. 꺼져 있으면 0 */
+  get revealRadius() { return this.get("reveal")?.radius ?? 0; }
+
+  /** 이동 속도 배율 — 얼음 위를 미끄러지는 동안 빨라진다 */
+  get speedMult() {
+    let m = 1;
+    for (const b of this.buffs) if (b.kind === "glide") m *= b.speed;
+    return m;
+  }
 
   /**
    * @returns {{ok:boolean, reason?:string, compound?:object}}
@@ -178,8 +198,19 @@ export class CompoundCaster {
 
       // 수정은 그물 구조라 단단하다 — 앞을 막는 벽
       case "barrier": {
+        // 버프 목록에만 넣어 두면 아무 일도 일어나지 않는다.
+        // 플레이어가 실제로 피해를 받아낼 몫으로 얹어 준다.
+        player.barrier = (player.barrier ?? 0) + (e.hp ?? 60);
         this.buffs.push({ kind: "barrier", hp: e.hp ?? 60, timer: e.duration ?? 10 });
-        return `${c.name}(${c.formula}) — ${e.duration ?? 10}초간 장벽`;
+        return `${c.name}(${c.formula}) — 장벽 ${e.hp ?? 60}`;
+      }
+
+      // 얼음은 마찰이 거의 없다 — 미끄러져 멀리 간다
+      case "glide": {
+        this.buffs.push({ kind: "glide", speed: e.speed ?? 2.1, timer: e.duration ?? 9 });
+        particles?.burst({ x: player.position.x, y: player.position.y + 0.2, z: player.position.z },
+          player.element.family, 1.0);
+        return `${c.name}(${c.formula}) — ${e.duration ?? 9}초간 미끄러진다`;
       }
 
       // 형석은 자외선에 빛난다 — 주변을 드러낸다

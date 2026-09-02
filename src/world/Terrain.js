@@ -24,6 +24,12 @@ const SEA_START = 1800;     // 이 거리부터 바다로 내려간다. 사실�
 const SEA_FULL = 2100;
 
 /** 바이옴을 고르는 격자 크기(m). 클수록 한 바이옴이 넓게 이어진다 */
+// 물이 차는 높이. 지형이 이 아래로 파이면 그만큼 물이 고인다.
+// 하나의 상수로 두는 이유는, 물의 수면이 여기저기 다른 높이면 어디가 물인지
+// 눈으로 가늠할 수 없기 때문이다 — 현실의 해수면도 하나다.
+export const WATER_LEVEL = -1.2;
+
+/** 물에 잠긴 정도(m). 0이면 뭍 */
 const BIOME_SCALE = 460;
 const HEIGHT_SCALE = 260;
 
@@ -44,6 +50,14 @@ export class Terrain {
     if (d >= VILLAGE_FLAT + VILLAGE_BLEND) return 0;
     const t = (d - VILLAGE_FLAT) / VILLAGE_BLEND;
     return 1 - t * t * (3 - 2 * t);   // 부드럽게 0으로
+  }
+
+  /**
+   * 이 자리의 물 깊이(m). 0이면 뭍이다.
+   * 지형이 수면보다 얼마나 파였는지가 곧 깊이다.
+   */
+  waterDepth(x, z) {
+    return Math.max(0, WATER_LEVEL - this.heightAt(x, z));
   }
 
   /** 손으로 지은 구역인가 — 절차적 소품을 놓지 말아야 할 곳 */
@@ -105,12 +119,16 @@ export class Terrain {
 
     // 완만한 기복 — 대륙 전체에 걸친 큰 파도
     let h = fbm(this.seed + 33, nx, nz, 3) * 7.0 * b.height;
-    // 바위 지대의 날카로운 능선
+    // 바위 지대의 날카로운 능선.
+    // 옥타브를 4로 늘리면 봉우리 하나하나에 잔결이 붙어, 같은 높이라도
+    // 칼로 자른 듯한 면이 덜 보인다.
     if (b.rough > 0.05) {
-      h += (ridged(this.seed + 555, nx * 2.1, nz * 2.1, 3) - 0.5) * 14 * b.rough * b.height;
+      h += (ridged(this.seed + 555, nx * 2.1, nz * 2.1, 4) - 0.5) * 14 * b.rough * b.height;
     }
-    // 작은 요철 — 완전히 매끈하면 인공적으로 보인다
-    h += valueNoise(this.seed + 71, x / 26, z / 26) * 0.55;
+    // 작은 요철 — 완전히 매끈하면 인공적으로 보인다.
+    // 두 파장을 겹쳐 한 가지 주기가 눈에 띄지 않게 한다.
+    h += valueNoise(this.seed + 71, x / 34, z / 34) * 0.5;
+    h += valueNoise(this.seed + 907, x / 13, z / 13) * 0.18;
 
     // 마을 가장자리에서는 0으로 끌어내린다
     h *= 1 - village;

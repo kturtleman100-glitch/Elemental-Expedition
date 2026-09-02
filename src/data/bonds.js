@@ -152,6 +152,15 @@ export const COMPOUNDS = [
     },
   },
   {
+    id: "ice", name: "얼음", formula: "H₂O", needs: ["h", "o"],
+    desc: "물을 얼려 길을 낸다. 마찰이 거의 없어 멀리 미끄러진다.",
+    effect: { kind: "glide", speed: 2.1, duration: 9, note: "9초간 이동 속도 2.1배" },
+    chem: {
+      bond: "극성 공유 결합 + 분자 사이의 수소 결합",
+      fact: "분자 안은 물과 똑같은 극성 공유 결합이고, 분자끼리를 붙드는 것이 수소 결합이다. 물과 얼음은 같은 H₂O인데 상태만 다르다. 0도 아래에서 분자들이 수소 결합으로 육각형 격자를 짜는데, 그 격자가 액체보다 성기어서 얼음이 물에 뜬다. 대부분의 물질은 얼면 가라앉으니 물이 유별난 것이다.",
+    },
+  },
+  {
     id: "rust", name: "녹", formula: "Fe₂O₃", needs: ["fe", "o"],
     desc: "철이 산소를 만나 부식된다.",
     effect: { kind: "debuff", stat: "defense", amount: -0.4, duration: 8, note: "적 방어력 −40%" },

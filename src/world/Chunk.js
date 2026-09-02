@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { toonMaterial } from "../fx/Style.js";
-import { rngAt, hash3 } from "./Noise.js";
+import { rngAt } from "./Noise.js";
+import { WATER_LEVEL } from "./Terrain.js";
 
 // 청크 하나 — 세계를 이루는 정사각형 조각.
 //
@@ -13,7 +14,9 @@ import { rngAt, hash3 } from "./Noise.js";
 // 스물다섯 청크를 띄워도 백 개 아래로 유지된다.
 
 export const CHUNK_SIZE = 64;      // 한 변(m)
-const GRID = 16;                   // 지형 격자 분할. 16x16이면 4m마다 한 점
+// 지형 격자 분할. 64m를 24칸으로 나누면 2.7m마다 한 점이다.
+// 4m 간격이면 26m 파장의 잔굴곡이 삼각형 몇 개로 근사되어 언덕이 각져 보인다.
+const GRID = 24;
 
 export class Chunk {
   /**
@@ -49,6 +52,7 @@ export class Chunk {
     this.built = true;
 
     this._ground();
+    this._water();
     this._props(collision);
 
     this.group.position.set(0, 0, 0);
@@ -109,6 +113,36 @@ export class Chunk {
     mesh.receiveShadow = true;
     // 지형은 그림자를 드리우지 않는다 — 넓은 면이 그림자 맵을 다 먹는다
     mesh.castShadow = false;
+    this.group.add(mesh);
+    this.disposables.push(geo);
+  }
+
+  /**
+   * 물 표면.
+   *
+   * 지형이 수면보다 파인 곳이 있을 때만 만든다. 청크마다 무조건 깔면
+   * 산꼭대기에도 물판이 한 장씩 생겨 드로우콜만 늘어난다.
+   */
+  _water() {
+    const size = CHUNK_SIZE;
+    const ox = this.cx * size, oz = this.cz * size;
+
+    // 모서리와 중심만 찍어 본다. 물은 넓게 고이므로 이 정도로 놓치지 않는다.
+    let wet = false;
+    for (const [px, pz] of [[0, 0], [size, 0], [0, size], [size, size], [size / 2, size / 2]]) {
+      if (this.terrain.heightAt(ox + px, oz + pz) < WATER_LEVEL) { wet = true; break; }
+    }
+    if (!wet) return;
+
+    const geo = new THREE.PlaneGeometry(size, size, 1, 1);
+    geo.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(geo, waterMaterial());
+    mesh.name = "chunk-water:" + this.key;
+    mesh.position.set(ox + size / 2, WATER_LEVEL, oz + size / 2);
+    mesh.receiveShadow = false;
+    mesh.castShadow = false;
+    // 물은 반투명이라 나중에 그려야 아래가 비친다
+    mesh.renderOrder = 1;
     this.group.add(mesh);
     this.disposables.push(geo);
   }
@@ -404,11 +438,15 @@ const PROP_LOOK = {
 };
 
 // 모든 청크가 이 둘만 나눠 쓴다. 그래서 청크당 드로우콜이 지형 1 + 소품 2다.
-let _solid = null, _glass = null;
+let _solid = null, _glass = null, _water = null;
 
 function solidMaterial() {
   return _solid ??= toonMaterial(0xffffff, { vertexColors: true });
 }
 function glassMaterial() {
   return _glass ??= toonMaterial(0xffffff, { vertexColors: true, opacity: 0.75 });
+}
+function waterMaterial() {
+  // 양면으로 그린다 — 물에 빠지면 수면을 아래에서 올려다보게 된다
+  return _water ??= toonMaterial(0x4a86a8, { opacity: 0.62, side: THREE.DoubleSide });
 }

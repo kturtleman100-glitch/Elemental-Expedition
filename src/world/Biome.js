@@ -105,7 +105,10 @@ export const BIOMES = {
   [BIOME.RADIANT]: {
     id: BIOME.RADIANT, name: "방사성 황무지", sub: "추방된 자들의 땅",
     ground: 0x4a5240, groundAlt: 0x353c2e, tex: "dirt",
-    height: 1.4, rough: 0.55, danger: 5,
+    // 능선 노이즈를 줄였다. 0.55에서는 뾰족한 이빨 같은 봉우리가 솟아
+    // 자연 지형이라기보다 오려 붙인 것처럼 보였다. 여긴 버려진 황무지이지
+    // 바위산이 아니다 — 완만한 구릉이 어울린다.
+    height: 1.2, rough: 0.22, danger: 5,
     props: { rock: 5, glowrock: 6, deadtree: 3 },
     ambience: { fog: 0x7a8c60, near: 18, far: 110, ambient: 0.5, sun: 0.7 },
     element: "u",

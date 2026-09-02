@@ -136,7 +136,21 @@ export class Encounters {
         continue;
       }
       if (!e.mesh.visible) e.mesh.visible = true;
-      e.update(dt, player, particles, collision, projectiles);
+
+      // 매혹된 적은 플레이어가 아니라 가장 가까운 동료를 노린다.
+      // Enemy.update는 "위치·피해받기·원소·방어"만 있으면 되므로 적을 그대로 넘길 수 있다.
+      let target = player;
+      if (e.charmed > 0) {
+        let best = null, bestD = 400;
+        for (const o of this.enemies) {
+          if (o === e || !o.alive || o.charmed > 0) continue;
+          const ox = o.position.x - e.position.x, oz = o.position.z - e.position.z;
+          const d = ox * ox + oz * oz;
+          if (d < bestD) { bestD = d; best = o; }
+        }
+        if (best) target = best;
+      }
+      e.update(dt, target, particles, collision, projectiles);
     }
 
     // 겹쳐 선 적을 서로 밀어낸다. 갱신 뒤에 해야 이번 프레임 위치에 반영된다.

@@ -58,8 +58,9 @@ export class PartyUI {
         const i = Number(btn.dataset.slot);
         // 같은 칸을 다시 누르면 비운다
         if (i === this.pickedSlot && equipped[i]) {
-          prog.equipped[i] = null;
-          prog.equipped = prog.equipped.filter(Boolean);
+          // 자리를 유지한 채 비운다. 걷어내면 뒤 슬롯이 앞으로 밀려
+          // 애써 정한 편성이 흐트러진다.
+          prog.unequip(i);
           this.player._recalcStats();
         }
         this.pickedSlot = i;
