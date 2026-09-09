@@ -5,6 +5,7 @@ import { animateVRM, updateCharacter } from "../characters/CharacterLoader.js";
 import { statsFor, styleOf, canAttack } from "./CombatStyle.js";
 import { ElectronPool, electronRole, ELECTRON_ROLE } from "./Electron.js";
 import { computeDamage } from "./DamageCalc.js";
+import { makeNameplate, fadeNameplate } from "../fx/Nameplate.js";
 
 // 적 — 원소가 적으로 나온다.
 //
@@ -94,6 +95,10 @@ export class Enemy {
     this.mesh = buildCharacter(this.element, { outlines });
     this.mesh.position.copy(this.position);
     this.speed = 3.4;
+
+    // 머리 위 이름표. 마을 사람과 겉보기가 같아 다가가 맞아 봐야 적인 줄 알았다
+    this.plate = makeNameplate(`${this.element.ko} Lv.${this.level}`, "ENEMY");
+    this.mesh.add(this.plate);
   }
 
   get alive() { return this.state !== ENEMY_STATE.DEAD; }
@@ -101,10 +106,12 @@ export class Enemy {
   /** 절차적 자리표시를 VRM으로 교체한다 (비동기 로드 후 Encounters가 호출) */
   setModel(model, scene) {
     this.mesh?.userData?.releaseVRM?.();
+    if (this.plate) this.mesh?.remove(this.plate);   // 옛 모델과 함께 사라지지 않게
     scene.remove(this.mesh);
     this.mesh = model;
     this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.yaw;
+    if (this.plate) this.mesh.add(this.plate);
     scene.add(this.mesh);
   }
 
@@ -115,6 +122,11 @@ export class Enemy {
    * @param {import('../world/Collision.js').Collision} collision
    */
   update(dt, player, particles, collision, projectiles) {
+    // 표식이 화면을 뒤덮으면 오히려 아무것도 안 보인다. 멀면 흐려지고 아주 멀면 숨긴다
+    if (this.plate) {
+      fadeNameplate(this.plate, this.position.distanceTo(player.position));
+      this.plate.visible = this.plate.visible && this.alive;
+    }
     this.time += dt;
 
     // 약화 — 녹이 금속을 삭히는 동안 방어가 깎여 있다

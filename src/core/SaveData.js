@@ -101,6 +101,7 @@ export function save(slot, ctx) {
     },
 
     codex: ctx.codex.toJSON(),
+    travel: ctx.travel?.toJSON() ?? [],   // 찾아 둔 쉼터
     flags: [...ctx.flags],
     reputation: ctx.reputation.toJSON(),
     quests: ctx.questLog.toJSON(),
@@ -176,6 +177,7 @@ export function apply(data, ctx) {
   p.hybridMode = d.hybridMode ?? "striker";
 
   ctx.codex.fromJSON(data.codex ?? []);
+  ctx.travel?.fromJSON(data.travel ?? []);
 
   ctx.flags.clear();
   for (const f of data.flags ?? []) ctx.flags.add(f);

@@ -226,8 +226,14 @@ export class Minimap {
     const dpr = this.dpr;
     const px = this.player.position.x;
     const pz = this.player.position.z;
-    // 위쪽이 항상 진행 방향이 되게 회전한다 — 지도를 머릿속에서 돌리지 않아도 된다
+    // 위쪽이 항상 진행 방향이 되게 회전한다 — 지도를 머릿속에서 돌리지 않아도 된다.
+    //
+    // yaw만 넣으면 정확히 180° 뒤집힌다. 카메라 전방은 (sin y, cos y)인데
+    // 미니맵은 월드 x를 캔버스 x로, 월드 z를 캔버스 y로 그대로 쓴다.
+    // 캔버스는 y가 아래로 자라므로 그대로 돌리면 앞이 아래로 간다.
+    // π를 더해 뒤집는다 — 앞 10m 지점이 네 방위 모두에서 화면 위로 온다.
     const yaw = this.cameraRig.yawRadians;
+    const rot = yaw + Math.PI;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, S, S);
@@ -241,7 +247,7 @@ export class Minimap {
     // 정적 지도 — 플레이어를 중심에 두고 yaw만큼 돌려 붙인다
     const scale = (S / 2) / (VIEW_R * this.staticPx);
     ctx.translate(S / 2, S / 2);
-    ctx.rotate(yaw);          // +Z가 위로 오도록
+    ctx.rotate(rot);          // 진행 방향이 위로 오도록
     ctx.scale(scale, scale);
     ctx.translate(
       -(px + WORLD_R) * this.staticPx,
@@ -256,7 +262,7 @@ export class Minimap {
     ctx.arc(S / 2, S / 2, S / 2 - 1, 0, Math.PI * 2);
     ctx.clip();
     ctx.translate(S / 2, S / 2);
-    ctx.rotate(yaw);
+    ctx.rotate(rot);
 
     const k = (S / 2) / VIEW_R; // 월드 → 화면 배율
     const dot = (x, z, r, color) => {
@@ -286,16 +292,31 @@ export class Minimap {
 
     ctx.restore();
 
-    // 플레이어 — 항상 중앙, 위를 향하는 삼각형
+    // 플레이어 — 항상 중앙, 위를 향하는 화살촉.
+    // 점 여럿 사이에서 "내가 여기"가 한눈에 보여야 해서 테두리를 두르고
+    // 옅은 시야 부채꼴을 깐다. 어느 쪽을 보고 있는지가 방향 감각의 절반이다
     ctx.save();
     ctx.translate(S / 2, S / 2);
-    ctx.fillStyle = "#f2c94c";
+
+    // 시야 부채꼴 — 위쪽(진행 방향)으로 60도
+    ctx.fillStyle = "rgba(242, 201, 76, 0.13)";
     ctx.beginPath();
-    ctx.moveTo(0, -5.5);
-    ctx.lineTo(-4, 4);
-    ctx.lineTo(4, 4);
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, S / 2 - 2, -Math.PI / 2 - Math.PI / 6, -Math.PI / 2 + Math.PI / 6);
     ctx.closePath();
     ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(0, -7);
+    ctx.lineTo(-5, 5);
+    ctx.lineTo(0, 2.5);
+    ctx.lineTo(5, 5);
+    ctx.closePath();
+    ctx.fillStyle = "#f2c94c";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(20,24,30,0.9)";
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
     ctx.restore();
 
     // 테두리와 북쪽 표시
@@ -305,7 +326,7 @@ export class Minimap {
     ctx.arc(S / 2, S / 2, S / 2 - 1, 0, Math.PI * 2);
     ctx.stroke();
 
-    const nAngle = yaw + Math.PI; // 북(−Z)의 화면상 방향
+    const nAngle = rot;           // 지도와 같이 돈다. 북은 월드 −Z 쪽
     ctx.fillStyle = "#e8a05a";
     ctx.font = "700 9px 'Noto Sans KR', system-ui, sans-serif";
     ctx.textAlign = "center";

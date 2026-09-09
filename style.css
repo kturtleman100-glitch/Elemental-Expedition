@@ -733,17 +733,45 @@ html, body {
 }
 
 /* ---------- 미니맵 ---------- */
-#minimap {
+/* 미니맵과 현재 위치를 한 덩어리로 */
+#map-box {
   position: absolute;
   top: max(env(safe-area-inset-top), 1.5vmin);
   right: max(env(safe-area-inset-right), 1.5vmin);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  pointer-events: none;
+}
+#minimap {
   width: clamp(110px, 15vmin, 168px);
   height: clamp(110px, 15vmin, 168px);
   border-radius: 50%;
   background: rgba(10, 14, 18, 0.55);
-  pointer-events: none;
 }
-@media (max-width: 700px) { #minimap { width: 92px; height: 92px; top: 3.4rem; } }
+/* "지금 어디인가" — 지역 이름이 진입할 때만 뜨면 답이 안 된다.
+   좌표까지 붙여 두면 길을 물어보거나 되찾아 갈 때 쓸 수 있다 */
+#map-where {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(10, 14, 18, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  line-height: 1.25;
+  text-align: center;
+}
+#map-place { font-size: 0.74rem; font-weight: 700; color: #e8c07a; white-space: nowrap; }
+#map-coord { font-size: 0.62rem; opacity: 0.55; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 700px) {
+  #map-box { top: 3.4rem; }
+  #minimap { width: 92px; height: 92px; }
+  #map-place { font-size: 0.66rem; }
+  #map-coord { display: none; }
+}
 
 /* ---------- 퀘스트 추적 ---------- */
 #quest-panel {
@@ -1504,3 +1532,38 @@ html, body {
   .cx-fam-watch { margin-top: 0.4rem !important; }
   .cx-reward-why { display: none; }
 }
+
+/* ---------- 빠른 이동 ---------- */
+/* 무한 대륙을 걸어서만 다니면 같은 길을 몇 번씩 되짚는다.
+   그 시간은 탐험이 아니라 그냥 이동이다 */
+#travel {
+  position: absolute; inset: 0; z-index: 72;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(5, 6, 10, 0.8);
+  padding: 2vmin; pointer-events: auto;
+}
+.tv-panel {
+  width: min(420px, 92vw); max-height: 80dvh;
+  display: flex; flex-direction: column;
+  background: #0e1218; border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 10px; padding: 1rem 1.1rem 1.1rem; overflow: hidden;
+}
+.tv-top { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.3rem; }
+.tv-top h2 { margin: 0; font-size: 1.05rem; }
+#travel-close { margin-left: auto; }
+#travel-hint { margin: 0 0 0.7rem; font-size: 0.78rem; opacity: 0.65; }
+#travel-list { display: flex; flex-direction: column; gap: 0.4rem; overflow-y: auto; }
+.tv-item {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.6rem 0.8rem; border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: #eae6da; font-family: inherit; font-size: 0.88rem;
+  cursor: pointer; text-align: left;
+}
+.tv-item:hover:not([disabled]) { background: rgba(242,201,76,0.14); border-color: rgba(242,201,76,0.5); }
+.tv-item[disabled] { opacity: 0.45; cursor: default; }
+.tv-item.here { border-color: rgba(242,201,76,0.55); }
+.tv-name { font-weight: 600; }
+.tv-note { margin-left: auto; font-size: 0.72rem; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.tv-empty { margin: 0; font-size: 0.82rem; opacity: 0.6; }

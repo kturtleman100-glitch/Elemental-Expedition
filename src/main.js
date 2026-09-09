@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { familyInfo } from "./data/families.js";
+import { FastTravel } from "./ui/FastTravel.js";
 import { Device } from "./core/Device.js";
 import { Input } from "./core/Input.js";
 import { Loop } from "./core/Loop.js";
@@ -104,6 +105,10 @@ async function boot() {
     }
     if (uiRefs?.codex.open) {
       if (action === "codex" || action === "menu") uiRefs.codex.hide();
+      return;
+    }
+    if (uiRefs?.travel?.open) {
+      if (action === "travel" || action === "menu") uiRefs.travel.hide();
       return;
     }
     if (uiRefs?.party.open) {
@@ -217,6 +222,14 @@ async function boot() {
       return;
     }
     if (action === "view") cameraRig.toggleView();
+    else if (action === "travel") {
+      if (!travel.available) {
+        hud.toast("쉼터나 마을 광장에서만 쓸 수 있어요", "#8fd1d4");
+      } else {
+        input.exitPointerLock?.();
+        travel.show();
+      }
+    }
     else if (action === "codex") {
       document.exitPointerLock?.();
       uiRefs?.codex.show();
@@ -267,6 +280,23 @@ async function boot() {
   // 6단계에서 SaveData가 이 셋을 그대로 직렬화한다.
   const flags = new Set();
   const reputation = new Reputation();
+  // 빠른 이동 — 이미 세워 둔 야영지와 광장을 거점으로 쓴다.
+  // 새 오브젝트를 만들지 않아도 "화덕에서 화덕으로"가 설명 없이 이해된다
+  const travel = new FastTravel([
+    { x: 0, z: 0, name: "마을 광장" },
+    ...(world.campsites ?? []).map((c, i) => ({
+      ...c, name: ["남서쪽 쉼터", "북동쪽 쉼터", "북서쪽 쉼터", "남동쪽 쉼터"][i] ?? `쉼터 ${i + 1}`,
+    })),
+  ]);
+  travel.onTravel = (dest) => {
+    player.position.x = dest.x;
+    player.position.z = dest.z;
+    player.position.y = world.heightAt(dest.x, dest.z) + 0.1;
+    player.velocity?.set?.(0, 0, 0);
+    world.streamAround(dest.x, dest.z);
+    hud.toast(`${dest.name}(으)로 이동했다`, "#f2c94c");
+  };
+
   const codex = new Codex();
   // 족 해설을 처음 펼쳐 보면 전자를 조금 준다.
   // 아이가 "읽으면 보상이 있으면 좋겠다"고 해서 넣었다. 작게 두는 이유는
@@ -288,6 +318,9 @@ async function boot() {
   const zones = new ZoneManager(scene, world.lights, world.terrain, (zn, first) => {
     document.getElementById("zone-name").textContent = zn.name;
     document.getElementById("zone-sub").textContent = zn.sub ?? "";
+    // 미니맵 아래 상시 표시도 함께. 진입 자막은 곧 사라지므로 이쪽이 본체다
+    const placeEl = document.getElementById("map-place");
+    if (placeEl) placeEl.textContent = zn.name;
     zoneNameEl.hidden = true;
     void zoneNameEl.offsetWidth; // 애니메이션 재시작
     zoneNameEl.hidden = false;
@@ -520,7 +553,7 @@ async function boot() {
   let autoSaveTimer = 60;
 
   const saveContext = () => ({
-    player, codex, flags, reputation, questLog, playtime,
+    player, codex, travel, flags, reputation, questLog, playtime,
   });
 
   const settings = Save.loadSettings();
@@ -540,7 +573,7 @@ async function boot() {
     // 지운 슬롯이 타이틀의 '이어하기'에 남아 있으면 안 된다
     onDeleted: () => refreshTitle(),
     onLoad: (data) => {
-      Save.apply(data, { player, codex, flags, reputation, questLog, onLoaded: applyBonds });
+      Save.apply(data, { player, codex, travel, flags, reputation, questLog, onLoaded: applyBonds });
       cameraRig.yaw = player.yaw;
       targetLock.clear();
       // 불러온 진행에 맞는 보스로 바꿔 세운다. 안 그러면 전 회차의 보스가 그대로 서 있다
@@ -567,7 +600,7 @@ async function boot() {
     }
   }
 
-  uiRefs = { dialogue, codex, party: partyUI, inventory, questUI, saveMenu, talkTo, nearestTalkable };
+  uiRefs = { dialogue, codex, party: partyUI, inventory, questUI, saveMenu, travel, talkTo, nearestTalkable };
   applyBonds();
 
   // 논리는 update(고정 틱), 표시는 render(프레임당 1회).
@@ -693,6 +726,9 @@ async function boot() {
       minimap.enemies = allEnemies();
       minimap.npcs = npcs.map((n) => ({ x: n.x, z: n.z }));
       minimap.render();
+      updateWhere();
+      const found = travel.update(player.position.x, player.position.z);
+      if (found) hud.toast(`쉼터를 찾았다 · ${found} (M)`, "#8fd1d4");
       questUI.render({ flags, codexSize: codex.found.size });
       renderCompoundSlot();
       renderPersuadeHint();
@@ -775,6 +811,20 @@ async function boot() {
       `${world.biomeAt(player.position.x, player.position.z).name}  ` +
       `고도 ${world.heightAt(player.position.x, player.position.z).toFixed(1)}m\n` +
       `${device.isTouch ? "터치" : "마우스/키보드"} 입력`;
+  }
+
+  // 미니맵 아래 좌표. 매 프레임 DOM을 건드릴 이유가 없어 1m 단위로 바뀔 때만 쓴다
+  const coordEl = document.getElementById("map-coord");
+  {
+    // 지역 콜백은 경계를 넘을 때만 불린다. 시작하자마자 "—"가 뜨지 않게 채워 둔다
+    const el = document.getElementById("map-place");
+    if (el) el.textContent = world.biomeAt(player.position.x, player.position.z)?.name ?? "토룡마을";
+  }
+  let lastCoord = "";
+  function updateWhere() {
+    if (!coordEl) return;
+    const t = `${Math.round(player.position.x)}, ${Math.round(player.position.z)}`;
+    if (t !== lastCoord) { coordEl.textContent = t; lastCoord = t; }
   }
 
   /**
@@ -908,7 +958,7 @@ async function boot() {
     const data = slot >= 0 ? Save.load(slot) : null;
     startGame();
     if (data) {
-      Save.apply(data, { player, codex, flags, reputation, questLog, onLoaded: applyBonds });
+      Save.apply(data, { player, codex, travel, flags, reputation, questLog, onLoaded: applyBonds });
       cameraRig.yaw = player.yaw;
       playtime = data.playtime ?? 0;
       // startGame이 세운 보스는 빈 진행 기준이다. 불러온 진행으로 다시 고른다

@@ -12,6 +12,7 @@ const KEY_TO_ACTION = {
   KeyP: "party",
   KeyK: "codex",
   KeyJ: "quest",
+  KeyM: "travel",  // 쉼터에서 다른 쉼터로
   KeyV: "view",
   KeyF: "interact", // 트랙패드 두 손가락 탭 대체 키
   Tab: "targetNext",

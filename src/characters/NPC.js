@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { animateCharacter } from "./CharacterBuilder.js";
 import { updateCharacter, animateVRM } from "./CharacterLoader.js";
 import { getElement } from "../data/elements.js";
+import { makeNameplate, fadeNameplate } from "../fx/Nameplate.js";
 
 // 마을에 서 있는 원소 캐릭터.
 //
@@ -33,6 +34,10 @@ export class NPC {
     // 마을은 평지라 대개 0이지만, 밖에 세울 NPC를 위해 지형을 따른다
     model.position.set(this.x, this.y ?? 0, this.z);
     model.rotation.y = this.yaw;
+
+    // 이름표. 적은 붉고 이쪽은 푸르러서 색만으로 먼저 구분된다
+    this.plate = makeNameplate(this.element.ko, "NPC");
+    model.add(this.plate);
   }
 
   /** @param {THREE.Vector3} playerPos */
@@ -52,6 +57,7 @@ export class NPC {
     if (!this.model.visible) this.model.visible = true;
     this.time += dt;
     this.distance = dist;
+    fadeNameplate(this.plate, dist);
     this.nearPlayer = dist < LOOK_RANGE;
     this.inTalkRange = dist < TALK_RANGE;
 
