@@ -12,6 +12,17 @@ import { Progress } from "./Progress.js";
 // 움직임이 매끄럽다. (계획서: 적응형 고정 틱 루프)
 
 const MOVE_SPEED = 5.2; // m/s
+
+/** 한 걸음의 최대 거리. 플레이어 반지름보다 작아야 벽을 건너뛰지 않는다 */
+const SUBSTEP_DIST = 0.35;
+/**
+ * 한 틱에 나눌 수 있는 걸음 수 상한.
+ *
+ * 1000배면 한 틱에 86.7m를 간다. 걸음당 0.35m를 지키려면 248걸음이 필요하고,
+ * 48로 막았더니 걸음당 1.81m가 되어 얇은 벽은 여전히 뚫렸다.
+ * 충돌 계산은 가벼우니 상한을 넉넉히 준다 — 안 뚫리는 쪽이 중요하다.
+ */
+const MAX_SUBSTEPS = 260;
 const JUMP_SPEED = 6.0;
 const GRAVITY = -18;
 const RADIUS = 0.3;
@@ -318,8 +329,30 @@ export class Player {
       const len = Math.hypot(worldX, worldZ) || 1;
       const dirX = worldX / len, dirZ = worldZ / len;
 
-      this.position.x += dirX * MOVE_SPEED * speedMult * dt;
-      this.position.z += dirZ * MOVE_SPEED * speedMult * dt;
+      // 한 번에 옮기지 않고 잘게 나눠 옮긴다.
+      //
+      // 예전에는 좌표를 한 번에 더했다. 느릴 때는 문제가 없었지만 얼음길이
+      // 1000배가 되면서 한 틱에 90m를 건너뛰게 됐고, 충돌은 도착한 자리에서만
+      // 보므로 벽도 건물도 그냥 통과했다. 지나온 길을 한 걸음씩 짚어야
+      // 빨라도 벽에 막힌다.
+      const dist = MOVE_SPEED * speedMult * dt;
+      const steps = Math.min(MAX_SUBSTEPS, Math.max(1, Math.ceil(dist / SUBSTEP_DIST)));
+      const sx = (dirX * dist) / steps;
+      const sz = (dirZ * dist) / steps;
+
+      for (let i = 0; i < steps; i++) {
+        this.position.x += sx;
+        this.position.z += sz;
+        // 한 걸음마다 벽을 본다. 막히면 거기서 멈춘다
+        const r = this.collision.resolve(
+          this.position.x, this.position.z, RADIUS,
+          this.position.y, this.position.y + HEIGHT
+        );
+        const blocked = r.x !== this.position.x || r.z !== this.position.z;
+        this.position.x = r.x;
+        this.position.z = r.z;
+        if (blocked) break;
+      }
       this.yaw = Math.atan2(dirX, dirZ);
     }
 

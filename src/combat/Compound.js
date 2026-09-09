@@ -21,6 +21,9 @@ const COST = {
 // 같은 효과를 겹쳐 쓸 때 붙는 보너스. 2배+2배가 4배가 아니라 6배가 되는 값이다.
 const STACK_BONUS = 1.5;
 
+/** 이동 배율 상한. 얼음 하나가 1000배라 겹침까지 곱하면 세계를 벗어난다 */
+const MAX_SPEED_MULT = 1000;
+
 /**
  * 쿨다운(초). 종류마다 다르다.
  *
@@ -96,7 +99,12 @@ export class CompoundCaster {
       m *= b.speed;
       n++;
     }
-    return n > 1 ? m * Math.pow(STACK_BONUS, n - 1) : m;
+    const stacked = n > 1 ? m * Math.pow(STACK_BONUS, n - 1) : m;
+
+    // 겹쳐도 1000배를 넘기지 않는다.
+    // 얼음 하나가 이미 1000배라, 둘을 겹치면 1,500,000배가 되어 한 틱에
+    // 지구 반 바퀴를 돈다. 그러면 청크가 못 따라와 화면이 빈 땅이 된다.
+    return Math.min(stacked, MAX_SPEED_MULT);
   }
 
   /**
@@ -244,7 +252,10 @@ export class CompoundCaster {
         particles?.burst({ x: player.position.x, y: player.position.y + 0.2, z: player.position.z },
           player.element.family, 1.0);
         const n = this.buffs.filter((x) => x.kind === "glide").length;
-        return `${c.name}(${c.formula}) — ${this.speedMult.toFixed(1)}배` +
+        // 1000배에서 "1000.0배"로 보이면 어수선하다. 정수면 소수점을 뗀다
+        const mult = this.speedMult;
+        const shown = Number.isInteger(mult) ? mult : mult.toFixed(1);
+        return `${c.name}(${c.formula}) — ${shown}배` +
           (n > 1 ? ` (겹침 ${n})` : "");
       }
 
