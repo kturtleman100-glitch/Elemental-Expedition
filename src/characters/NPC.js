@@ -89,6 +89,21 @@ export class NPC {
       animateCharacter(this.model, this.time, 0, null);
     }
   }
+  /**
+   * 모델을 갈아끼운다. VRM이 뒤늦게 도착했을 때 부른다.
+   *
+   * 자리와 방향을 그대로 옮겨야 갑자기 다른 데를 보고 서 있지 않는다.
+   * 씬에서 옛 모델을 빼는 일은 부르는 쪽이 한다 — 여기서 scene을 알면
+   * NPC가 렌더링 구조를 알게 된다.
+   */
+  swapModel(next) {
+    next.position.copy(this.model.position);
+    next.rotation.y = this.model.rotation.y;
+    next.visible = this.model.visible;
+    const old = this.model;
+    this.model = next;
+    return old;
+  }
 }
 
 /**

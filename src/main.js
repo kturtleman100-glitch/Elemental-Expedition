@@ -267,30 +267,30 @@ async function boot() {
   const charLoader = new CharacterLoader({ outlines: device.tierName !== "low" });
 
   // 플레이어 모델 — uue.vrm 이 있으면 절차적 자리표시를 교체한다.
-  // NPC와 함께 병렬로 받도록 여기서는 약속만 만들어 둔다.
   const playerModelPromise = charLoader.build(PLAYER_ELEMENT);
-  // VRM은 하나에 14~17MB다. for 안에서 await하면 넷을 줄줄이 기다려
-  // 부팅이 네 배로 길어진다. 한꺼번에 띄워 병렬로 받는다.
+
+  // VRM을 기다리지 않고 세계를 먼저 띄운다.
+  //
+  // 예전에는 여기서 Promise.all로 VRM 126MB를 전부 기다렸다. 느린 회선에서는
+  // 타이틀 화면이 뜨기까지 1분 45초가 걸렸고, 그동안 검은 화면만 보였다.
+  // 그때까지 만든 것이 아이에게 하나도 전달되지 않는 셈이었다.
+  //
+  // 절차적 캐릭터는 파일을 안 받으므로 즉시 나온다. 그걸로 먼저 세우고,
+  // VRM이 도착하는 대로 조용히 바꿔 끼운다. 도착하지 않아도 게임은 그대로 돈다.
   const specs = NPC_PLACEMENTS.map((spec) => ({ spec, el: getElement(spec.elementId) }))
     .filter((x) => x.el);
 
-  let loadedCount = 0;
-  const models = await Promise.all(
-    specs.map(({ el }) =>
-      charLoader.build(el).then((model) => {
-        loadedCount++;
-        setLoadingProgress(
-          85 + (loadedCount / specs.length) * 12,
-          "마을 사람들을 부르는 중... (" + loadedCount + "/" + specs.length + ")"
-        );
-        return model;
-      })
-    )
-  );
-
   const npcs = [];
-  specs.forEach(({ spec }, i) => {
-    const model = models[i];
+  specs.forEach(({ spec, el }, i) => {
+    const model = charLoader.buildDeferred(el, (better) => {
+      // VRM이 뒤늦게 왔다 — 자리를 물려주고 옛 모델을 씬에서 뺀다.
+      // 자리 번호로 찾는다. npcs는 이 forEach 순서 그대로 쌓이므로 어긋나지 않는다
+      const npc = npcs[i];
+      if (!npc) return;
+      const prev = npc.swapModel(better);
+      scene.remove(prev);
+      scene.add(better);
+    });
     scene.add(model);
     npcs.push(new NPC(model, spec));
     // NPC도 벽처럼 통과하지 못하게 막는다

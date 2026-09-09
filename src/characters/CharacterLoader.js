@@ -66,6 +66,38 @@ export class CharacterLoader {
     }
   }
 
+  /**
+   * 절차적 모델을 지금 돌려주고, VRM은 다 받아지면 알려 준다.
+   *
+   * 예전에는 타이틀 화면 전에 VRM 126MB를 전부 기다렸다. 느린 회선에서는
+   * 1분 45초 동안 검은 화면만 보이다가 아이가 떠났다 — 그때까지 만든 것이
+   * 하나도 전달되지 않았다.
+   *
+   * 절차적 캐릭터는 파일을 안 받으므로 즉시 나온다. 먼저 그걸로 세계를
+   * 띄우고, VRM이 도착하면 조용히 바꿔 끼운다. 바꿀 것이 없으면
+   * (파일이 없거나 실패하면) 절차적인 채로 두면 되므로 게임은 어느 쪽이든 돈다.
+   *
+   * @param {object} el 원소 데이터
+   * @param {(model:THREE.Object3D)=>void} onUpgrade VRM이 준비됐을 때 부른다
+   * @returns {THREE.Object3D} 지금 쓸 수 있는 절차적 모델
+   */
+  buildDeferred(el, onUpgrade) {
+    const placeholder = this._procedural(el);
+
+    // 파일이 없는 원소는 애초에 기다릴 것이 없다
+    if (!AVAILABLE.has(el.id)) return placeholder;
+
+    this.build(el)
+      .then((model) => {
+        // 절차적으로 떨어졌으면 바꿀 이유가 없다
+        if (model.userData.source !== "vrm") return;
+        onUpgrade?.(model);
+      })
+      .catch(() => { /* 실패하면 절차적인 채로 둔다 */ });
+
+    return placeholder;
+  }
+
   _procedural(el) {
     const model = buildCharacter(el, { outlines: this.outlines });
     model.userData.source = "procedural";
