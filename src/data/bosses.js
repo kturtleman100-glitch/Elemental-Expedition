@@ -131,7 +131,7 @@ export const BOSSES = [
     defeat: ["…내가 지킨 것은 아름다움이었을까, 나 자신이었을까.", "가져가. 나보다 잘 쓸 것 같으니."],
     phases: [
       { at: 1.0, name: "불변의 광휘", gimmick: "reflect", say: "백금은 왕수로만 녹는단다." },
-      { at: 0.4, name: "촉매", gimmick: "haste", say: "이 정도는 견뎌야지." },
+      { at: 0.4, name: "부추김", gimmick: "haste", say: "이 정도는 견뎌야지." },
     ],
   },
   {
@@ -175,7 +175,7 @@ export const BOSSES = [
     tier: BOSS_TIER.DOOM,
     chapter: 7,
     name: "폴로늄",
-    epithet: "한순간에 다 태우는 폭파공",
+    epithet: "삼키면 안 되는 것을 다루는 독약사",
     level: 25,
     hpMult: 8.0,
     x: 18, z: -142,    // 고원 끝, 붕괴가 시작되는 자리

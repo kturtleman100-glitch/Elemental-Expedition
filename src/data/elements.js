@@ -267,7 +267,7 @@ export const ELEMENTS = [
   {
     id: "u", z: 92, sym: "U", ko: "우라늄", en: "Uranium",
     family: FAMILY.RADIOACTIVE, combat: COMBAT.CASTER, silhouette: "glowing",
-    mass: 238.0, electroneg: 1.38, melt: 1132, boil: 4172,
+    mass: 238.0, electroneg: 1.38, melt: 1132, boil: 4131,
     faction: "exiled", role: "제 몸을 태워 물을 끓이는 화부",
     // 근거 A — 원자로 연료. 스스로 무너지며 내는 열로 물을 끓여 전기를 만든다.
     bio: "가만히 있어도 몸에서 열이 난다. 그 열로 물을 끓여 마을에 불을 밝히는데, 그러는 동안 자기 몸은 조금씩 줄어든다. 언제까지 버틸지 세어 본 적이 있다.",
@@ -279,11 +279,12 @@ export const ELEMENTS = [
     id: "po", z: 84, sym: "Po", ko: "폴로늄", en: "Polonium",
     family: FAMILY.RADIOACTIVE, combat: COMBAT.HYBRID, silhouette: "glowing",
     mass: 209, electroneg: 2.00, melt: 254, boil: 962,
-    faction: "exiled", role: "한순간에 다 태우는 폭파공",
-    // 근거 C — 폴로늄은 아주 짧은 동안 엄청난 열을 낸다. 반감기가 짧아
-    //   금세 사그라든다. 최종 보스의 조급함이 여기서 나온다.
-    bio: "한 번에 모든 것을 태워 버리는 일을 한다. 오래 못 가는 몸이라 늘 서두르고, 아껴 쓰는 법을 모른다. 천천히 하라는 말을 제일 싫어한다.",
-    quote: "천천히? 나한테 그럴 시간이 어디 있어.",
+    faction: "exiled", role: "삼키면 안 되는 것을 다루는 독약사",
+    // 근거 C — 폴로늄이 내는 알파선은 종이 한 장에도 막힌다. 그래서 밖에
+    //   서 있을 때는 순한 편인데, 몸 안에 들어가면 막을 것이 없어 무섭다.
+    //   "가까이 가도 괜찮은데 삼키면 안 된다"는 반전이 최종 보스에 어울린다.
+    bio: "겉보기에는 순하다. 곁에 서 있어도 별일 없어서 다들 방심한다. 그런데 한 번 몸속에 들어가면 그때부터는 막을 방법이 없다.",
+    quote: "봐, 아무 일도 없잖아? …삼키지만 않으면.",
     bonds: ["be", "u", "cm"],
     colors: { main: 0x3a3a6b, sub: 0x1a1a33, accent: 0x8ab4f0, hair: 0x6a5ac4 },
   },
@@ -386,7 +387,7 @@ export const ELEMENTS = [
   {
     id: "ca", z: 20, sym: "Ca", ko: "칼슘", en: "Calcium",
     family: FAMILY.ALKALINE, combat: COMBAT.STRIKER, silhouette: "civilian",
-    mass: 40.1, electroneg: 1.00, melt: 842, boil: 1503,
+    mass: 40.1, electroneg: 1.00, melt: 842, boil: 1484,
     faction: "neutral", role: "마을의 뼈대를 세운 촌장",
     // 근거 E — 뼈와 조개껍데기, 석회암을 이룬다. 대륙의 뼈대라는 말이 실제다.
     bio: "이 마을의 뼈대를 세운 사람이다. 사람 뼈도 조개껍데기도 이 마을 절벽도 다 같은 것으로 되어 있어서, 어디를 딛든 자기 몸을 밟는 기분이라고 한다. 몸이 자유롭지 못해 늘 앉아 있다.",
@@ -467,7 +468,7 @@ export const ELEMENTS = [
   {
     id: "as", z: 33, sym: "As", ko: "비소", en: "Arsenic",
     family: FAMILY.METALLOID, combat: COMBAT.CASTER, silhouette: "sharp",
-    mass: 74.9, electroneg: 2.18, melt: 817, boil: 603,
+    mass: 74.9, electroneg: 2.18, melt: 817, boil: 614,
     faction: "neutral", role: "연기로 사라지는 도망꾼",
     // 근거 B — 비소는 끓는점이 녹는점보다 낮다. 물렁해지기 전에
     //   곧장 연기가 되어 날아간다.
@@ -492,7 +493,7 @@ export const ELEMENTS = [
   {
     id: "nb", z: 41, sym: "Nb", ko: "나이오븀", en: "Niobium",
     family: FAMILY.TRANSITION, combat: COMBAT.STRIKER, silhouette: "civilian",
-    mass: 92.9, electroneg: 1.60, melt: 2468, boil: 4742,
+    mass: 92.9, electroneg: 1.60, melt: 2477, boil: 4742,
     faction: "neutral", role: "아주 차게 식히면 저항이 사라지는 냉각공",
     // 근거 B — 나이오븀-타이타늄 합금은 초전도 자석 재료다.
     //   탄탈럼과 같은 광석에서 함께 나와 분리가 극히 어렵다.
@@ -504,7 +505,7 @@ export const ELEMENTS = [
   {
     id: "ta", z: 73, sym: "Ta", ko: "탄탈럼", en: "Tantalum",
     family: FAMILY.TRANSITION, combat: COMBAT.STRIKER, silhouette: "civilian",
-    mass: 180.9, electroneg: 1.50, melt: 2985, boil: 5510,
+    mass: 180.9, electroneg: 1.50, melt: 3017, boil: 5458,
     faction: "neutral", role: "어떤 산에도 녹지 않는 그릇장이",
     // 근거 C — 탄탈럼은 웬만한 산에 녹지 않아 화학 장비와 몸속 이식물에 쓴다.
     bio: "무엇을 담아도 삭지 않는 그릇을 만든다. 쇠를 녹이는 물을 부어도 멀쩡해서, 위험한 것을 다루는 사람들이 이 그릇만 찾는다. 나이오븀과 늘 함께 나온다.",
