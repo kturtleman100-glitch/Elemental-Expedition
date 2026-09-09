@@ -135,7 +135,7 @@ export function bondedWith(id) {
 export const COMPOUNDS = [
   {
     id: "nacl", name: "소금", formula: "NaCl", needs: ["na", "cl"],
-    desc: "이온 결합 결정. 단단해서 꿰뚫는다.",
+    desc: "하나가 주고 하나가 받아서 딱 붙었다. 그래서 단단하고, 꿰뚫는다.",
     effect: { kind: "pierce", power: 1.4, note: "관통 — 뒤에 선 적까지 맞힌다" },
     chem: {
       bond: "이온 결합",

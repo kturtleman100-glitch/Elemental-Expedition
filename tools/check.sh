@@ -36,4 +36,9 @@ echo ""
 echo "=== 스토리 검사 ==="
 node tools/check-story.mjs | tail -3
 
+# 읽기 난이도 — 정확한데 안 읽히는 글은 이 프로젝트에서 틀린 글과 같다
+echo ""
+echo "=== 읽기 검사 ==="
+node tools/check-reading.mjs | tail -3
+
 exit $fail
