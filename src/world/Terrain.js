@@ -20,6 +20,21 @@ import { BIOME, BIOMES, getBiome } from "./Biome.js";
 const VILLAGE_FLAT = 225;   // 이 반경 안은 완전한 평지
 const VILLAGE_BLEND = 120;  // 여기서부터 345m까지 서서히 지형이 살아난다
 const VILLAGE_BUILT = 240;  // 절차적 소품을 놓지 않는 범위 (평지보다 조금 넓게)
+/**
+ * 바깥 마을 넷. 손으로 지은 건물이 서 있으므로 이 안도 평지여야 한다.
+ *
+ * 석회 마을과 같은 이유다 — 절차적 지형과 손으로 둔 것이 같은 좌표를
+ * 두고 다투면 건물 밑동이 묻히거나 허공에 뜬다.
+ * World._outposts()의 좌표와 반드시 같이 움직여야 한다.
+ */
+const OUTPOSTS = [
+  { x: 120, z: 8, r: 42 },     // 아르곤 고원 마을
+  { x: -124, z: 6, r: 44 },    // 철의 요새
+  { x: -16, z: -136, r: 40 },  // 쌍광 골짜기
+  { x: 12, z: 150, r: 38 },    // 바닷가 나루
+];
+const OUTPOST_BLEND = 40;   // 이만큼에 걸쳐 본래 지형으로 돌아간다
+
 const SEA_START = 1800;     // 이 거리부터 바다로 내려간다. 사실상 무한이지만 끝은 있다
 const SEA_FULL = 2100;
 
@@ -46,10 +61,23 @@ export class Terrain {
    */
   villageMask(x, z) {
     const d = Math.hypot(x, z);
-    if (d <= VILLAGE_FLAT) return 1;
-    if (d >= VILLAGE_FLAT + VILLAGE_BLEND) return 0;
-    const t = (d - VILLAGE_FLAT) / VILLAGE_BLEND;
-    return 1 - t * t * (3 - 2 * t);   // 부드럽게 0으로
+    let m = 0;
+    if (d <= VILLAGE_FLAT) m = 1;
+    else if (d < VILLAGE_FLAT + VILLAGE_BLEND) {
+      const t = (d - VILLAGE_FLAT) / VILLAGE_BLEND;
+      m = 1 - t * t * (3 - 2 * t);   // 부드럽게 0으로
+    }
+
+    // 바깥 마을도 같은 방식으로 평지를 만든다. 가장 강한 값을 쓴다 —
+    // 겹치는 자리에서 더 낮은 쪽을 따르면 마을 한가운데가 파인다
+    for (const o of OUTPOSTS) {
+      const od = Math.hypot(x - o.x, z - o.z);
+      if (od >= o.r + OUTPOST_BLEND) continue;
+      if (od <= o.r) return 1;
+      const t = (od - o.r) / OUTPOST_BLEND;
+      m = Math.max(m, 1 - t * t * (3 - 2 * t));
+    }
+    return m;
   }
 
   /**

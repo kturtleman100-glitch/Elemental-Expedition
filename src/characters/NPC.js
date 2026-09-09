@@ -114,7 +114,7 @@ export const NPC_PLACEMENTS = [
   // 금 — 서쪽 폐허가 그가 스스로를 가둔 신전 터. 수은(-100,28)의 감지 범위 밖에 둔다
   { elementId: "au", x: -120, z: 28, yaw: 1.4 },
   // 오가네손·니호늄 — 남쪽 모래사장. 플레이어가 떠밀려 온 곳에 배를 댔다
-  { elementId: "og", x: 4, z: 136, yaw: Math.PI },
+  { elementId: "og", x: 14, z: 142, yaw: Math.PI },   // 바닷가 나루 — 배를 대는 곳
   { elementId: "nh", x: -4, z: 141, yaw: Math.PI * 0.9 },
 
   // ---- 주민 ----
@@ -139,9 +139,9 @@ export const NPC_PLACEMENTS = [
   { elementId: "bi", x: -90, z: 2, yaw: 0.9 },        // 폐허 입구 — 자기가 지은 것을 본다
   { elementId: "ag", x: 98, z: -8, yaw: -1.4 },       // 강 건너 숲 — 거울 나라 입구
   { elementId: "rn", x: 66, z: -46, yaw: -1.0 },      // 동북 — 온천 리조트
-  { elementId: "ne", x: 28, z: -66, yaw: 2.4 },       // 북쪽 — 순회 재판
-  { elementId: "ar", x: 0, z: -84, yaw: Math.PI },    // 북쪽 길 — 낮잠
+  { elementId: "ne", x: 128, z: -2, yaw: 2.4 },       // 아르곤 마을 — 회의소       // 북쪽 — 순회 재판
+  { elementId: "ar", x: 118, z: 14, yaw: Math.PI },   // 아르곤 마을 광장    // 북쪽 길 — 낮잠
   { elementId: "sb", x: -16, z: -88, yaw: 0.4 },      // 고원 초입 — 수도사
-  { elementId: "nb", x: -44, z: -122, yaw: 0.5 },     // 고원 깊은 곳 — 저승 부자
-  { elementId: "ta", x: -40, z: -118, yaw: 0.3 },
+  { elementId: "nb", x: -22, z: -130, yaw: 0.5 },     // 쌍광 골짜기 — 갱구 앞     // 고원 깊은 곳 — 저승 부자
+  { elementId: "ta", x: -10, z: -128, yaw: 0.3 },     // 쌍광 골짜기 — 늘 함께
 ];

@@ -812,6 +812,101 @@ export class World {
     this._outerForest();
     this._signposts();
     this._campsites();
+    this._outposts();
+  }
+
+  /**
+   * 이정표가 가리키던 네 곳.
+   *
+   * 여태 이정표만 서 있고 그 끝에는 아무것도 없었다. "저쪽에 무엇이 있다"고
+   * 알려 놓고 가 보면 빈 땅이면 세계가 거짓말을 하는 셈이다.
+   *
+   * 규모는 석회 마을의 4분의 3쯤. 마을이 다섯이 되면 중심이 흐려지므로
+   * 석회 마을이 여전히 제일 크고, 나머지는 각자 한 가지 성격만 갖는다.
+   * 방향과 바이옴에 맞춰 짓는다 — 북쪽 고원에 시장을 두면 어색하다.
+   */
+  _outposts() {
+    this._argonTown(120, 8);      // 동 — 강 건너, 반응하지 않는 이들의 마을
+    this._ironFort(-124, 6);      // 서 — 폐허 너머 대장간 요새
+    this._twinMine(-16, -136);    // 북 — 갈라내기 어려운 광맥
+    this._shoreCamp(12, 150);     // 남 — 바다로 나가는 배가 서는 곳
+  }
+
+  /**
+   * 동 — 아르곤 고원 마을.
+   * 18족은 아무것과도 섞이지 않는다. 그래서 담이 높고 문이 적다
+   */
+  _argonTown(cx, cz) {
+    this._well(cx, cz);
+    this._house(cx - 13, cz + 10, 5.0, 3.2, 4.4, -0.5, { chief: true });
+    this._house(cx + 13, cz + 9, 4.4, 2.9, 4.0, 0.5);
+    this._house(cx - 11, cz - 12, 4.6, 3.0, 4.2, Math.PI - 0.3);
+    this._house(cx + 12, cz - 11, 4.4, 2.9, 4.0, Math.PI + 0.4);
+    this._house(cx, cz + 20, 4.8, 3.1, 4.4, 0.1);
+    this._house(cx - 22, cz - 2, 4.2, 2.8, 3.8, -1.2);
+
+    this._stall(cx - 6, cz + 6, 0.4, PALETTE.clothAlt);
+    this._noticeBoard(cx + 5, cz - 7, -0.3);
+
+    // 높은 담 — 섞이지 않는다는 성질을 마을 모양으로 옮겼다
+    this._fence([cx - 26, cz - 18], [cx + 26, cz - 18]);
+    this._fence([cx + 26, cz - 18], [cx + 26, cz + 24]);
+    this._fence([cx - 26, cz - 18], [cx - 26, cz + 24]);
+
+    for (let i = 0; i < 4; i++) this._crate(cx + 8 + i * 1.4, 0, cz + 15);
+  }
+
+  /**
+   * 서 — 철의 요새.
+   * 전이 금속은 녹는점이 높아 다루려면 불이 있어야 한다. 대장간이 중심이다
+   */
+  _ironFort(cx, cz) {
+    this._barn(cx, cz - 4, 0.2);               // 대장간
+    this._house(cx - 14, cz + 8, 5.2, 3.3, 4.6, -0.4, { chief: true });
+    this._house(cx + 14, cz + 7, 4.6, 3.0, 4.2, 0.45);
+    this._house(cx - 12, cz + 20, 4.4, 2.9, 4.0, Math.PI - 0.2);
+    this._house(cx + 13, cz + 19, 4.4, 2.9, 4.0, Math.PI + 0.3);
+    this._house(cx, cz + 28, 4.8, 3.1, 4.4, Math.PI);
+
+    this._noticeBoard(cx - 4, cz + 3, 0.2);
+    this._fence([cx - 24, cz + 32], [cx + 24, cz + 32]);
+
+    for (let i = 0; i < 6; i++) this._crate(cx - 10 + i * 1.5, 0, cz + 1);
+    for (let i = 0; i < 3; i++) this._crate(cx + 9, i * 0.9, cz + 2);
+  }
+
+  /**
+   * 북 — 쌍광 골짜기.
+   * 나이오븀과 탄탈럼은 같은 돌에서 함께 나오고 갈라내기가 몹시 어렵다.
+   * 광부 마을이라 살림집보다 창고와 갱구가 많다
+   */
+  _twinMine(cx, cz) {
+    this._barn(cx - 8, cz, -0.3);
+    this._barn(cx + 9, cz + 2, 0.35);
+    this._house(cx, cz + 14, 5.0, 3.2, 4.4, Math.PI, { chief: true });
+    this._house(cx - 15, cz + 16, 4.2, 2.8, 3.8, Math.PI - 0.5);
+    this._house(cx + 15, cz + 15, 4.2, 2.8, 3.8, Math.PI + 0.5);
+
+    this._noticeBoard(cx + 3, cz + 9, Math.PI);
+    for (let i = 0; i < 8; i++) this._crate(cx - 12 + i * 1.6, 0, cz + 6);
+    for (let i = 0; i < 4; i++) this._crate(cx + 6 + (i % 2) * 1.5, Math.floor(i / 2) * 0.9, cz - 5);
+  }
+
+  /**
+   * 남 — 바닷가 나루.
+   * 오가네손이 안정의 섬을 찾아 떠나는 곳. 배를 대는 자리라 창고와 좌판이 있다
+   */
+  _shoreCamp(cx, cz) {
+    this._house(cx, cz - 10, 4.8, 3.1, 4.4, 0, { chief: true });
+    this._house(cx - 14, cz - 4, 4.4, 2.9, 4.0, -0.6);
+    this._house(cx + 14, cz - 5, 4.4, 2.9, 4.0, 0.6);
+    this._barn(cx - 6, cz + 8, 0.15);
+
+    this._stall(cx + 6, cz + 6, -0.35, PALETTE.cloth);
+    this._stall(cx - 2, cz + 12, 0.5, PALETTE.clothAlt);
+    this._noticeBoard(cx + 8, cz - 2, -0.4);
+
+    for (let i = 0; i < 5; i++) this._crate(cx - 10 + i * 1.5, 0, cz + 14);
   }
 
   /** 북 — 석회암이 솟은 척박한 고원. 나중에 저승·추방지로 이어진다 */
@@ -1011,9 +1106,9 @@ export class World {
   /** 이정표 — 길 끝에서 다음 지역을 알려준다 */
   _signposts() {
     const posts = [
-      { x: 0, z: -96, ry: 0, lines: ["북 — 석회암 고원", "저승 · 추방지 방면"] },
-      { x: 96, z: 0, ry: Math.PI / 2, lines: ["동 — 강 건너 숲", "아르곤 시티 방면"] },
-      { x: 0, z: 118, ry: Math.PI, lines: ["남 — 바닷가 평원", "불안정한 바다 방면"] },
+      { x: 0, z: -96, ry: 0, lines: ["북 — 석회암 고원", "쌍광 골짜기 방면"] },
+      { x: 96, z: 0, ry: Math.PI / 2, lines: ["동 — 강 건너 숲", "아르곤 고원 마을 방면"] },
+      { x: 0, z: 118, ry: Math.PI, lines: ["남 — 바닷가 평원", "바닷가 나루 방면"] },
       { x: -96, z: 0, ry: -Math.PI / 2, lines: ["서 — 옛 폐허", "철의 요새 방면"] },
     ];
 
