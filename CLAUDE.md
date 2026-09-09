@@ -75,6 +75,7 @@ bash tools/check.sh
 node tools/probe.mjs [주소] [대기ms] ["평가할 JS"]   # 콘솔 오류 + 화면 상태
 node tools/probe-walk.mjs [주소] [초]                # 베타로 시작해 걸어 본다
 node tools/probe-ground.mjs [주소]                   # 지면과 소품 높이를 잰다
+node tools/probe-npc.mjs [주소]                      # NPC에게 다가갈 수 있는지 잰다
 ```
 
 `window.__debug = { scene, world, player, camera, renderer }` 가 열려 있다.
