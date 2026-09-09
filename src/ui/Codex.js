@@ -136,7 +136,10 @@ export class Codex {
       ["전투 유형", COMBAT_LABEL[getCombatType(el)]],
       ["소속", faction.name],
       ["원자량", el.mass ?? "—"],
-      ["전기음성도", el.electroneg ?? "정의되지 않음"],
+      // 아이가 읽는 이름을 앞에 두고 진짜 이름을 괄호로 붙인다.
+      // 이 한 줄이 해설의 「당기는 힘」과 화면의 숫자를 잇는다 —
+      // 나중에 학교에서 '전기음성도'를 만났을 때 되살아나야 하는 다리다
+      ["당기는 힘 <em>(전기음성도)</em>", el.electroneg ?? "잴 수 없음"],
       ["녹는점", el.melt != null ? `${el.melt}°C` : "—"],
       ["끓는점", el.boil != null ? `${el.boil}°C` : "—"],
     ];

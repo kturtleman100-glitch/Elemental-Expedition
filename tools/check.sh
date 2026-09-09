@@ -22,23 +22,33 @@ rm -rf "$tmp"
 
 echo ""
 echo "=== import 검사 ==="
-node tools/check-imports.mjs
+node tools/check-imports.mjs || fail=1
 
 echo ""
 echo "=== 화학 검사 ==="
 node tools/check-chemistry.mjs | tail -4
+[ ${PIPESTATUS[0]} -eq 0 ] || fail=1
 
 echo ""
 echo "=== 지형 검사 ==="
 node tools/check-terrain.mjs | tail -3
+[ ${PIPESTATUS[0]} -eq 0 ] || fail=1
 
 echo ""
 echo "=== 스토리 검사 ==="
 node tools/check-story.mjs | tail -3
+[ ${PIPESTATUS[0]} -eq 0 ] || fail=1
 
 # 읽기 난이도 — 정확한데 안 읽히는 글은 이 프로젝트에서 틀린 글과 같다
 echo ""
 echo "=== 읽기 검사 ==="
 node tools/check-reading.mjs | tail -3
+[ ${PIPESTATUS[0]} -eq 0 ] || fail=1
 
+echo ""
+if [ $fail -eq 0 ]; then
+  echo "=== 전부 통과 ==="
+else
+  echo "=== 실패한 검사가 있다 — 위를 확인할 것 ==="
+fi
 exit $fail

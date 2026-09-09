@@ -40,6 +40,13 @@ const TARGETS = [
   { file: "src/data/elements.js", fields: ["bio", "quote", "role", "exception"] },
   { file: "src/data/bonds.js", fields: ["desc", "flavor"] },
   { file: "src/data/factions.js", fields: ["creed", "desc"] },
+  // 대화가 빠져 있었다. 아이는 도감보다 대화를 먼저 읽는데, 데이터 파일에서만
+  // 어려운 말을 지우고 정작 먼저 읽는 글은 검사하지 않고 있었다
+  { file: "src/data/dialogue.js", fields: ["lines", "text"] },
+  { file: "src/data/dialogue_residents.js", fields: ["lines", "text"] },
+  { file: "src/data/bosses.js", fields: ["intro", "defeat", "say", "epithet"] },
+  { file: "src/data/quests.js", fields: ["title", "text", "desc"] },
+  { file: "src/data/endings.js", fields: ["lines", "title", "name"] },
 ];
 
 let errors = 0;
@@ -50,12 +57,23 @@ function warn(msg) { console.log("  \x1b[33m!\x1b[0m " + msg); warns++; }
 
 /** 큰따옴표 문자열 필드를 뽑는다. CRLF가 섞여 있어 \r을 먼저 없앤다 */
 function extract(src, field) {
-  const re = new RegExp(`${field}:\\s*"((?:[^"\\\\]|\\\\.)*)"`, "g");
   const out = [];
+
+  // field: "문자열"
+  const re = new RegExp(`${field}:\\s*"((?:[^"\\\\]|\\\\.)*)"`, "g");
   let m;
   while ((m = re.exec(src)) !== null) {
-    const line = src.slice(0, m.index).split("\n").length;
-    out.push({ text: m[1], line });
+    out.push({ text: m[1], line: src.slice(0, m.index).split("\n").length });
+  }
+
+  // field: [ "문자열", "문자열" ] — 대사는 대개 이 꼴이라 이걸 안 보면
+  // 정작 아이가 읽는 글을 통째로 지나친다
+  const reArr = new RegExp(`${field}:\\s*\\[([\\s\\S]*?)\\]`, "g");
+  while ((m = reArr.exec(src)) !== null) {
+    const base = src.slice(0, m.index).split("\n").length;
+    for (const q of m[1].matchAll(/"((?:[^"\\\\]|\\\\.)*)"/g)) {
+      out.push({ text: q[1], line: base });
+    }
   }
   return out;
 }
