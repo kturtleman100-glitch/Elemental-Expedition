@@ -25,12 +25,13 @@ import { Inventory } from "./ui/Inventory.js";
 import { Minimap } from "./ui/Minimap.js";
 import { QuestUI } from "./ui/Quest.js";
 import { QuestLog } from "./data/quests.js";
+import { Progress } from "./player/Progress.js";
 import { bondBonuses, getCompound } from "./data/bonds.js";
 import { SaveMenu } from "./ui/SaveMenu.js";
 import * as Save from "./core/SaveData.js";
 import { ZoneManager } from "./world/Zone.js";
 import { BossFight } from "./combat/Boss.js";
-import { availableBosses } from "./data/bosses.js";
+import { availableBosses, BOSS_TIER } from "./data/bosses.js";
 import { resolveEnding } from "./data/endings.js";
 import { Cinematic } from "./ui/Cinematic.js";
 import { PartyManager } from "./characters/PartyMember.js";
@@ -306,6 +307,9 @@ async function boot() {
   }
 
   // ---- 보스전 ----
+  // 파멸급 보스를 꺾은 뒤 엔딩까지의 여유(초). 격파 대사를 읽을 시간은 줘야 한다.
+  // setTimeout이 아니라 틱에서 세는 이유: 메뉴를 열어 둔 사이에 엔딩이 터지면 안 된다
+  let endingCountdown = 0;
   const bossFight = new BossFight(scene, {
     onIntro: (b) => {
       cine.showBoss(b);
@@ -320,6 +324,9 @@ async function boot() {
         flags.add("persuaded_chlorine");
         hud.toast("염소를 설득했다", "#8fd1d4");
       }
+      // 파멸급은 이야기의 끝이다. 예전에는 타이머가 다 됐을 때(붕괴)만 엔딩이 나와서
+      // 폴로늄을 이겨도 게임이 그냥 멈춰 있었다 — 좋은 엔딩 셋을 볼 방법이 없었다
+      if (b.tier === BOSS_TIER.DOOM) endingCountdown = 5.5;
       autoSave("보스 격파");
     },
     // 수은의 매혹 — 동료 하나가 잠시 싸움에서 빠진다
@@ -371,29 +378,39 @@ async function boot() {
     };
   }
 
+  /**
+   * 원소를 동료로 얻는다 — 퀘스트 보상과 대화 선택이 같은 길을 탄다.
+   * @returns {boolean} 처음 얻은 것인가
+   */
+  function grantElement(id, verb = "동료가 되었다") {
+    const el = getElement(id);
+    if (!el) return false;
+    const got = player.progress.acquire(id);
+    codex.discover(id);
+    if (!got.isNew) return false;
+    hud.toast(`${el.ko}(${el.sym})이(가) ${verb}` + (got.autoEquipped ? "" : " — P 로 편성"), "#56ccf2");
+    applyBonds();
+    return true;
+  }
+
   /** 퀘스트 완료 확인 — 보상 지급까지 */
   function checkQuests() {
     const done = questLog.checkComplete({ flags, codexSize: codex.found.size });
     for (const q of done) {
       hud.toast("[완료] " + q.title, "#8fe388");
-      autoSave(q.title);
       const rw = q.reward ?? {};
       if (rw.exp) {
         const g = player.progress.addExp(rw.exp);
         if (g.leveled) hud.toast("레벨 " + player.progress.level, "#8fe388");
       }
       if (rw.rep) reputation.add(rw.rep[0], rw.rep[1]);
+      // 장(章) 플래그가 여기서 서고, 보스 등장이 그것을 본다 — 플래그를 세운 뒤에 보스를 부른다
+      if (rw.flag) flags.add(rw.flag);
+      for (const f of rw.flags ?? []) flags.add(f);
+      player.progress.chapter = Math.max(player.progress.chapter, q.chapter);
+      if (rw.element) grantElement(rw.element);
       spawnBosses();
-      if (rw.element) {
-        const el = getElement(rw.element);
-        const got = el && player.progress.acquire(rw.element);
-        if (got?.isNew) {
-          codex.discover(rw.element);
-          hud.toast(el.ko + "(" + el.sym + ")이(가) 동료가 되었다" +
-            (got.autoEquipped ? "" : " — P 로 편성"), "#56ccf2");
-          applyBonds();
-        }
-      }
+      autoSave(q.title);
     }
   }
 
@@ -422,13 +439,7 @@ async function boot() {
       hud.toast(`레벨 ${player.progress.level}`, "#8fe388");
     }
     // 쓰러뜨린 원소를 얻는다 — 이 게임의 성장은 원소 수집이다
-    const got = player.progress.acquire(enemy.element.id);
-    if (got.isNew) {
-      codex.discover(enemy.element.id);
-      hud.toast(`${enemy.element.ko}(${enemy.element.sym})의 힘을 얻었다` +
-        (got.autoEquipped ? "" : " — P 로 편성"), "#56ccf2");
-      applyBonds();
-    }
+    grantElement(enemy.element.id, "힘을 넘겼다");
     questLog.onDefeat(enemy.element.id);
     checkQuests();
   }
@@ -447,9 +458,15 @@ async function boot() {
   const dialogue = new Dialogue({
     onEffect: (fx) => {
       if (fx.flag) flags.add(fx.flag);
+      for (const f of fx.flags ?? []) flags.add(f);
       if (fx.rep) reputation.add(fx.rep[0], fx.rep[1]);
+      for (const [id, n] of fx.reps ?? []) reputation.add(id, n);
       if (fx.codex) codex.discover(fx.codex);
+      // 대화로 힘을 빌려주는 주민 — 퀘스트 보상과 같은 길
+      if (fx.element) grantElement(fx.element, "힘을 빌려주었다");
       checkQuests();
+      // 편을 고르면 철/백금이 열린다. 퀘스트 완료가 아니어도 보스 목록이 바뀔 수 있다
+      spawnBosses();
     },
     onClose: () => {
       // 대화가 끝나면 다시 조작을 돌려준다.
@@ -516,6 +533,8 @@ async function boot() {
       Save.apply(data, { player, codex, flags, reputation, questLog, onLoaded: applyBonds });
       cameraRig.yaw = player.yaw;
       targetLock.clear();
+      // 불러온 진행에 맞는 보스로 바꿔 세운다. 안 그러면 전 회차의 보스가 그대로 서 있다
+      spawnBosses();
       hud.toast("불러왔습니다", "#8fe388");
     },
     onQuit: () => {
@@ -633,6 +652,11 @@ async function boot() {
         questLog.onMove(player.position.x, player.position.z);
         questTick -= dt;
         if (questTick <= 0) { questTick = 0.5; checkQuests(); }
+
+        if (endingCountdown > 0) {
+          endingCountdown -= dt;
+          if (endingCountdown <= 0) { endingCountdown = 0; showEnding(); return; }
+        }
 
         // 주기 자동 저장 — 60초마다. 진행이 바뀌는 순간에도 따로 부른다.
         autoSaveTimer -= dt;
@@ -758,8 +782,10 @@ async function boot() {
     // 편성은 비워 둔다 — 파티 UI에서 직접 골라 보게 하려고
     // 슬롯은 길이 4를 유지해야 한다. 빈 배열로 두면 편성 화면이 칸을 못 찾는다.
     player.progress.equipped = [null, null, null, null];
-    // 엔딩·보스 분기를 다 열어 둔다
-    for (const f of ["sided_noblesse", "persuaded_chlorine", "oganesson_ally"]) flags.add(f);
+    // 엔딩·보스 분기를 다 열어 둔다. 장 플래그가 없으면 3장 이후 보스가 안 나온다
+    for (const f of ["sided_noblesse", "faction_chosen", "heard_noblesse", "persuaded_chlorine",
+                     "oganesson_ally", "og_decided", "data_enough", "heard_prophecy",
+                     "chapter3", "chapter4", "chapter5", "chapter6", "chapter7"]) flags.add(f);
     player._recalcStats();
     // electrons는 ElectronPool 객체다. 숫자를 대입하면 풀 자체가 사라져
     // 다음 틱의 electrons.update()에서 터진다
@@ -831,10 +857,40 @@ async function boot() {
   titleScreen.hidden = false;
   refreshTitle();
 
+  /**
+   * 진행을 처음 상태로 되돌린다.
+   * 엔딩을 보고 타이틀로 나온 뒤 "새 게임"을 누르면 예전에는 플래그·퀘스트·원소가
+   * 그대로 남아 보스가 하나도 안 나왔다. 회차가 바뀌면 세계도 처음이어야 한다.
+   */
+  function resetProgress() {
+    flags.clear();
+    codex.fromJSON([]);
+    for (const k of Object.keys(reputation.values)) reputation.values[k] = 0;
+    const fresh = new QuestLog();
+    questLog.state = fresh.state;
+    questLog.counters = fresh.counters;
+    player.progress = new Progress();
+    player.progress.compounds = new Set();
+    player.hybridMode = "striker";
+    player._recalcStats();
+    player.revive(world.spawnPoint);
+    // revive는 "쓰러졌다 일어난" 값(절반)이다. 새 시작은 온전해야 한다
+    player.hp = player.hpMax;
+    player.electrons.value = player.electrons.max;
+    compounds.active = null;
+    compounds.lastUsed = null;
+    bondSig = "";
+    applyBonds();
+    playtime = 0;
+    endingCountdown = 0;
+    targetLock.clear();
+  }
+
   document.getElementById("btn-new-game").addEventListener("click", () => {
     betaMode = false;
     const slot = Save.latestSlot();
     if (slot >= 0 && !confirm("새로 시작하면 이어하기가 가리키는 저장이 덮어써질 수 있습니다. 계속할까요?")) return;
+    resetProgress();
     startGame();
   });
   btnContinue.addEventListener("click", () => {
@@ -845,6 +901,8 @@ async function boot() {
       Save.apply(data, { player, codex, flags, reputation, questLog, onLoaded: applyBonds });
       cameraRig.yaw = player.yaw;
       playtime = data.playtime ?? 0;
+      // startGame이 세운 보스는 빈 진행 기준이다. 불러온 진행으로 다시 고른다
+      spawnBosses();
     }
   });
 

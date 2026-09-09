@@ -1,4 +1,4 @@
-import { DIALOGUES, startNode } from "../data/dialogue.js";
+import { DIALOGUES, startNode, flagsMatch } from "../data/dialogue.js";
 import { getElement, FAMILY_LABEL } from "../data/elements.js";
 import { getFaction } from "../data/factions.js";
 
@@ -131,7 +131,14 @@ export class Dialogue {
   }
 
   _showChoices() {
-    const choices = this.node.choices ?? [{ text: "…", to: null }];
+    // when/unless로 진행 상황에 안 맞는 선택지를 숨긴다.
+    // 전부 숨겨지면 대화가 막히므로 "…"로라도 닫을 수 있게 한다
+    const all = this.node.choices ?? [];
+    let choices = all.filter((c) =>
+      flagsMatch(c.when, this.flags) &&
+      !(c.unless && (Array.isArray(c.unless) ? c.unless : [c.unless]).some((f) => this.flags.has(f)))
+    );
+    if (!choices.length) choices = [{ text: "…", to: null }];
     this.choicesEl.innerHTML = "";
     this.choicesEl.hidden = false;
 

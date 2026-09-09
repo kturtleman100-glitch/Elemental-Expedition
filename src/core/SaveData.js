@@ -187,6 +187,8 @@ export function apply(data, ctx) {
   const q = data.quests ?? {};
   Object.assign(ctx.questLog.state, q.state ?? {});
   Object.assign(ctx.questLog.counters, q.counters ?? {});
+  // 저장 뒤에 추가된 퀘스트가 사슬에 끼어들 수 있게
+  ctx.questLog.repair();
 
   // 장착 원소를 복원한 뒤 능력치를 다시 계산해야 순서가 맞다
   ctx.onLoaded?.();

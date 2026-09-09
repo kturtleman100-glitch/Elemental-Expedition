@@ -138,7 +138,8 @@ try {
   await sleep(WAIT);
 
   const evalJS = async (expr) => {
-    const r = await ws.send("Runtime.evaluate", { expression: expr, returnByValue: true });
+    // Promise를 돌려주는 식도 결과까지 기다린다 — "새 게임을 누르고 5초 뒤"를 잴 수 있어야 한다
+    const r = await ws.send("Runtime.evaluate", { expression: expr, returnByValue: true, awaitPromise: true });
     return r.result?.result?.value;
   };
 

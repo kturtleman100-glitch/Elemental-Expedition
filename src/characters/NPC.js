@@ -89,4 +89,39 @@ export const NPC_PLACEMENTS = [
   { elementId: "p", x: -38, z: 32, yaw: 0.3 },        // 대안통운 하역장
   { elementId: "c", x: -8.0, z: 9.5, yaw: -0.5 },     // 광장 좌판 근처
   { elementId: "si", x: -13, z: 15, yaw: -0.9 },      // 광장 서쪽, 혼자 떨어져
+
+  // ---- 이야기의 갈림길을 맡는 인물 ----
+  // 금 — 서쪽 폐허가 그가 스스로를 가둔 신전 터. 수은(-100,28)의 감지 범위 밖에 둔다
+  { elementId: "au", x: -120, z: 28, yaw: 1.4 },
+  // 오가네손·니호늄 — 남쪽 모래사장. 플레이어가 떠밀려 온 곳에 배를 댔다
+  { elementId: "og", x: 4, z: 136, yaw: Math.PI },
+  { elementId: "nh", x: -4, z: 141, yaw: Math.PI * 0.9 },
+
+  // ---- 주민 ----
+  // 도감 42종을 정식 플레이로 채우려면 만날 수 있는 얼굴이 이만큼은 있어야 한다.
+  // 집 안에 서지 않도록 World.js의 가옥 좌표에서 4m 이상 띄웠고,
+  // 적의 감지 범위(9.5m)에서도 벗어나게 뒀다 — 대화하러 왔다가 얻어맞으면 안 된다.
+  { elementId: "zn", x: 10, z: -8, yaw: 2.6 },        // 광장 북쪽 — 노래하는 자리
+  { elementId: "pb", x: -6, z: -6, yaw: 0.6 },        // 광장 — 즉석 무대
+  { elementId: "n", x: 3, z: 21, yaw: Math.PI },      // 광장 남쪽, 탄소 근처
+  { elementId: "na", x: -20, z: -14, yaw: 0.9 },      // 우물에서 떨어진 곳 — 물가는 안 된다
+  { elementId: "o", x: 10, z: -40, yaw: 0.3 },        // 촌장 집 옆 — 윤회를 맡는 대주교
+  { elementId: "be", x: -24, z: 34, yaw: -0.8 },      // 공방 구역 — 학자
+  { elementId: "mn", x: -40, z: 6, yaw: 0.8 },        // 대장간 앞
+  { elementId: "co", x: -24, z: 44, yaw: -1.2 },      // 군단 병사 둘 — 나란히
+  { elementId: "ni", x: -27, z: 48, yaw: -1.0 },
+  { elementId: "cu", x: 36, z: 26, yaw: -2.2 },       // 농가 사이 — 마을에 섞여 산다
+  { elementId: "k", x: 52, z: 44, yaw: -2.4 },        // 농경지 끝 — 밭을 지키는 노인
+  { elementId: "ti", x: 50, z: -18, yaw: -1.6 },      // 동쪽 길목 — 청소업체
+  { elementId: "sc", x: 40, z: 86, yaw: -0.4 },       // 남 평원 — 야구 연습
+  { elementId: "h", x: -4, z: 70, yaw: 0.2 },         // 남쪽 길 — 방랑자
+  { elementId: "s", x: -80, z: -8, yaw: 1.2 },        // 서쪽 — 온천 냄새
+  { elementId: "bi", x: -90, z: 2, yaw: 0.9 },        // 폐허 입구 — 자기가 지은 것을 본다
+  { elementId: "ag", x: 98, z: -8, yaw: -1.4 },       // 강 건너 숲 — 거울 나라 입구
+  { elementId: "rn", x: 66, z: -46, yaw: -1.0 },      // 동북 — 온천 리조트
+  { elementId: "ne", x: 28, z: -66, yaw: 2.4 },       // 북쪽 — 순회 재판
+  { elementId: "ar", x: 0, z: -84, yaw: Math.PI },    // 북쪽 길 — 낮잠
+  { elementId: "sb", x: -16, z: -88, yaw: 0.4 },      // 고원 초입 — 수도사
+  { elementId: "nb", x: -44, z: -122, yaw: 0.5 },     // 고원 깊은 곳 — 저승 부자
+  { elementId: "ta", x: -40, z: -118, yaw: 0.3 },
 ];

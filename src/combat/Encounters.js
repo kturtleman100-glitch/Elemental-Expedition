@@ -62,19 +62,23 @@ export const SPAWNS = [
 //
 // 아무 원소나 흩뿌리지 않는다. 그 땅에서 나올 법한 것이 나와야
 // 지형과 전투가 같은 이야기를 하게 된다.
-//   방사성 황무지 — 추방된 방사성 원소들이 실제로 사는 곳
+//   방사성 황무지 — 추방된 방사성 원소들이 실제로 사는 곳. 라돈은 우라늄이
+//                  무너져서 나오므로 같은 땅에 있다
 //   숲·초원      — 전자 친화팀이 약한 것부터 노린다
 //   소금 평원    — 염소가 제 고향처럼 돌아다닌다
+//   석회암·수정  — 형석(CaF₂)과 수정이 나는 땅이라 플루오린이 숨어 있다.
+//                  최흉의 전력이라 마을 근처 초원에는 두지 않는다
+//   유황 온천    — 라돈 온천. 실제로 온천물에 라돈이 녹아 있다
 const BIOME_ENEMIES = {
   [BIOME.PLAIN]:     ["br", "cl"],
   [BIOME.FOREST]:    ["br", "cl", "as"],
-  [BIOME.LIMESTONE]: ["as", "cl", "hg"],
+  [BIOME.LIMESTONE]: ["as", "cl", "hg", "f"],
   [BIOME.SALTFLAT]:  ["cl", "br"],
   [BIOME.IRONLAND]:  ["hg", "as", "cl"],
-  [BIOME.CRYSTAL]:   ["as", "hg"],
-  [BIOME.SULFUR]:    ["br", "as"],
-  [BIOME.RADIANT]:   ["po", "tc", "u", "es"],
-  [BIOME.NOBLE]:     ["hg", "cl"],
+  [BIOME.CRYSTAL]:   ["as", "hg", "f"],
+  [BIOME.SULFUR]:    ["br", "as", "rn"],
+  [BIOME.RADIANT]:   ["po", "tc", "u", "es", "rn"],
+  [BIOME.NOBLE]:     ["hg", "cl", "f"],
   [BIOME.SEA]:       [],
 };
 

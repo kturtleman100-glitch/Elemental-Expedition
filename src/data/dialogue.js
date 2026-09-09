@@ -1,3 +1,5 @@
+import { RESIDENT_DIALOGUES } from "./dialogue_residents.js";
+
 // 캐릭터별 대사.
 //
 // 참고자료의 성격·직업·말투를 그대로 옮겼다. 이 게임의 재미는 화학이
@@ -9,9 +11,14 @@
 //   마그네슘 — 자칭 숲의 주인. 정체는 세계수. 늘 졸고 있다
 //   철   — 군단 대장. 굳은 신념. 귀금속과 비금속의 평등
 //
-// 구조: nodes[키] = { lines: [...], choices: [{ text, to, effect }] }
+// 구조: nodes[키] = { lines: [...], choices: [{ text, to, effect, when, unless }] }
 //   to: 다음 노드 키. null이면 대화 종료
-//   effect: { rep: [세력, 증감], flag: "플래그이름", codex: "원소id" }
+//   effect: { rep: [세력, 증감], flag: "플래그", flags: [...], codex: "원소id", element: "원소id" }
+//     element — 그 원소가 동료가 된다. 퀘스트 보상과 같은 경로를 탄다
+//   when / unless: 그 플래그가 있어야(없어야) 보이는 선택지
+// starts: [{ when, unless, node }] — 진행 상황에 따라 다른 첫 노드로 들어간다.
+//   위에서부터 처음 맞는 것을 쓴다. 없으면 talked_ 여부로 start/repeat을 고른다.
+//   이게 없으면 3장에서 편을 고르는 대화를 1장 인물에게 붙일 방법이 없다
 
 export const DIALOGUES = {
   // ---------------- 칼슘 (Ca) — 토룡마을 촌장 ----------------
@@ -212,9 +219,11 @@ export const DIALOGUES = {
           "염소는 3.16이야. 그보다 낮은 원소는 전자를 빼앗기고, 높은 원소는 오히려 빼앗을 수 있어.",
           "…플루오린이 3.98로 가장 높지. 다만 그 아이를 건드리는 건 권하지 않는단다.",
           "규소에게 가 보렴. 그 아이라면 앞일을 계산해 줄 게다. 데이터만 있다면 말이지.",
+          "…아, 그리고 이건 입학 선물. 내 힘이란다. 생명은 전부 나로 만들어져 있으니, 어디서든 쓸모가 있을 게다.",
         ],
         choices: [
-          { text: "감사합니다", to: null, effect: { rep: ["neutral", 10] } },
+          // 탄소는 CO₂와 「생명의 뼈대」 인연의 재료다. 여기서 안 주면 정식 플레이로 영영 못 얻는다
+          { text: "감사합니다", to: null, effect: { rep: ["neutral", 10], element: "c" } },
         ],
       },
       repeat: {
@@ -230,7 +239,42 @@ export const DIALOGUES = {
   // ---------------- 규소 (Si) — 예언가 ----------------
   si: {
     start: "intro",
+    // 4장 — 도감이 차면 계산 결과를 들려준다. 염소를 "설득"할 수 있다는 사실을
+    // 여기서 처음 알려준다. 안 알려주면 설득 창이 열려도 그냥 때려 죽인다
+    starts: [
+      { when: "data_enough", unless: "heard_prophecy", node: "prophecy" },
+      { when: "heard_prophecy", node: "after_prophecy" },
+    ],
     nodes: {
+      prophecy: {
+        lines: [
+          "…왔군. 데이터는 충분해. 계산이 끝났다.",
+          "염소는 석회암 고원 깊은 곳에 있다. 서북쪽, 마른 웅덩이를 지나서.",
+          "그는 전자를 빨아들일수록 아르곤을 닮아가지만, 양성자 수는 그대로다. 결코 아르곤이 될 수 없어.",
+          "그래서 마지막에 반드시 무너진다. 그 순간 — 무너지기 직전에 — 공격을 멈추고 다가가라.",
+          "그때 네 말이 들릴 거다. 이름도 족도 없는 네 말이라면.",
+        ],
+        choices: [
+          { text: "설득할 수 있다는 건가요?", to: "prophecy2" },
+        ],
+      },
+      prophecy2: {
+        lines: [
+          "확률은 낮다. 하지만 0은 아니지. 0이 아니면 계산할 가치가 있다.",
+          "…그리고 하나 더. 남쪽 해변에 배가 한 척 와 있다. 이 대륙 것이 아니야.",
+          "네가 어디서 떠밀려 왔는지 알고 싶다면, 그 배의 주인을 만나 봐.",
+        ],
+        choices: [
+          { text: "고마워요, 규소", to: null, effect: { flag: "heard_prophecy", rep: ["neutral", 10] } },
+        ],
+      },
+      after_prophecy: {
+        lines: [
+          "…계산은 끝났다. 나머지는 네 몫이야.",
+          "무너지기 직전에 멈춘다. 잊지 마라.",
+        ],
+        choices: [{ text: "네", to: null }],
+      },
       intro: {
         lines: [
           "…….",
@@ -357,7 +401,86 @@ export const DIALOGUES = {
   // ---------------- 철 (Fe) — 전이 금속 군단 대장 ----------------
   fe: {
     start: "intro",
+    // 3장 — 편을 고르는 대화. 1장에서 "언젠가 선택해야 할 날이 온다"고 말한 것을
+    // 여기서 거둔다. 한 번 고르면 되돌릴 수 없다 (faction_chosen)
+    starts: [
+      { when: "boss_done_boss_fe", node: "fallen" },
+      { when: "sided_noblesse", node: "betrayed" },
+      { when: "sided_legion", node: "ally" },
+      { when: "stayed_neutral", node: "neutral" },
+      { when: "chapter3", unless: "faction_chosen", node: "crossroads" },
+    ],
     nodes: {
+      crossroads: {
+        lines: [
+          "…왔군. 그날이 왔다.",
+          "백금이 대성당에 귀족들을 모았다. 우리도 요새에서 병력을 정비했다.",
+          "네가 어느 쪽에 설지, 지금 듣고 싶다. 어느 족에도 속하지 않는 네 선택이라면 양쪽 다 무게를 둘 테니.",
+          "…서쪽 폐허의 황금 용도 만나 봤나? 저쪽 말도 듣고 정해라. 나는 강요하지 않는다.",
+        ],
+        choices: [
+          {
+            text: "군단과 함께 서겠습니다",
+            to: "chosen_legion",
+            when: "heard_noblesse",
+            // 엔딩 판정이 평판 50을 본다. 편을 든 것 자체가 그 문턱을 넘어야지,
+            // 주민 다섯을 더 만나야 넘는다면 "평판이 부족했다"가 기본 결말이 된다
+            effect: { flags: ["sided_legion", "faction_chosen"], rep: ["legion", 50], element: "fe" },
+          },
+          {
+            text: "어느 편에도 서지 않겠습니다",
+            to: "chosen_neutral",
+            when: "heard_noblesse",
+            effect: { flags: ["stayed_neutral", "faction_chosen"], reps: [["legion", 10], ["noblesse", 10]] },
+          },
+          { text: "금의 말을 먼저 듣고 오겠습니다", to: null, unless: "heard_noblesse" },
+          { text: "조금 더 생각해 보겠습니다", to: null, when: "heard_noblesse" },
+        ],
+      },
+      chosen_legion: {
+        lines: [
+          "…고맙다. 후회하게 하진 않겠다.",
+          "백금은 절대 스스로 내려오지 않는다. 그를 꺾어야 벽이 무너진다. 동쪽 숲 너머에 있다.",
+          "내 힘을 빌려주지. 녹슬어도 부러지지는 않는 힘이다.",
+        ],
+        choices: [{ text: "함께 가겠습니다", to: null }],
+      },
+      chosen_neutral: {
+        lines: [
+          "…그런가. 그것도 하나의 답이다.",
+          "어느 쪽에도 서지 않는다는 건, 양쪽을 다 본다는 뜻이기도 하니까.",
+          "네가 보는 것을 언젠가 나에게도 말해 다오. 나는 한쪽밖에 볼 수 없으니.",
+        ],
+        choices: [{ text: "그러겠습니다", to: null }],
+      },
+      ally: {
+        lines: [
+          "…동지여. 백금은 동쪽 숲 너머에 있다.",
+          "몸조심해라. 그 아이는 왕수로만 녹는다.",
+        ],
+        choices: [{ text: "네", to: null }],
+      },
+      neutral: {
+        lines: [
+          "…아직도 어느 쪽에도 서지 않았군.",
+          "그 눈으로 본 것을 잊지 마라. 그게 네 무기다.",
+        ],
+        choices: [{ text: "네", to: null }],
+      },
+      betrayed: {
+        lines: [
+          "…네가 저쪽에 섰다는 말을 들었다.",
+          "원망하지 않는다. 다만 다음에 만나는 곳은 여기가 아닐 거다. 서북쪽 요새 앞에서 기다리겠다.",
+        ],
+        choices: [{ text: "…", to: null }],
+      },
+      fallen: {
+        lines: [
+          "…졌다. 그래도 군단은 남는다.",
+          "내 신념이 옳다고 믿었지만, 정답이라고는 말하지 않았지. …그 말을 지킬 수 있어 다행이다.",
+        ],
+        choices: [{ text: "…", to: null }],
+      },
       intro: {
         lines: [
           "…처음 보는 얼굴이군.",
@@ -424,21 +547,259 @@ export const DIALOGUES = {
       },
     },
   },
+
+  // ---------------- 금 (Au) — 신전에 스스로를 가둔 황금 용 ----------------
+  // 서쪽 폐허가 그 신전 터다. 3장에서 귀족 쪽의 목소리를 맡는다.
+  // 백금은 보스로만 나오므로, 귀족의 말을 들려줄 사람이 따로 필요했다
+  au: {
+    start: "intro",
+    starts: [
+      { when: "boss_done_boss_pt", node: "mourning" },
+      { when: "sided_legion", node: "enemy" },
+      { when: "sided_noblesse", node: "ally" },
+      { when: "stayed_neutral", node: "neutral" },
+      { when: "chapter3", unless: "faction_chosen", node: "crossroads" },
+    ],
+    nodes: {
+      intro: {
+        lines: [
+          "…누구냐. 여기는 내가 스스로를 가둔 곳이다.",
+          "황금이 필요해서 왔다면 돌아가라. 나눠 준 황금이 어떻게 됐는지 아나? 전부 싸움의 씨앗이 됐다.",
+          "…흥. 이 정도는 아무것도 아냐. 내가 최고거든. 그러니 아무도 필요 없어.",
+        ],
+        choices: [
+          { text: "황금이 아니라 당신을 보러 왔어요", to: "lonely", effect: { codex: "au" } },
+          { text: "…돌아갈게요", to: null, effect: { codex: "au" } },
+        ],
+      },
+      lonely: {
+        lines: [
+          "…나를? 웃기는 소리.",
+          "…은과 구리. 내 형제들이다. 수천 년 전에 흩어졌지. 은은 거울 나라에, 구리는 어느 마을에.",
+          "가끔 생각한다. 우리 셋이 다시 한 자리에 서면 어떤 빛이 날까 하고.",
+          "…됐다. 이런 얘기 처음 해 봤군. 너, 냄새가 없구나. 어느 족도 아닌 냄새.",
+        ],
+        choices: [{ text: "형제분들을 만나 볼게요", to: null, effect: { rep: ["noblesse", 5] } }],
+      },
+      crossroads: {
+        lines: [
+          "…철이 병력을 모았다지. 백금은 대성당에 귀족들을 불렀고.",
+          "아름다운 것을 지키는 게 귀족의 의무다. 백금은 그렇게 믿는다. 나도… 한때는 그랬다.",
+          "하지만 아름다움을 나눠 주려다 싸움만 일으킨 나로서는, 어느 쪽이 옳은지 말할 자격이 없다.",
+          "그래도 묻겠다. 너는 어느 쪽에 서지?",
+        ],
+        choices: [
+          {
+            text: "귀족과 함께 서겠습니다",
+            to: "chosen_noblesse",
+            effect: { flags: ["sided_noblesse", "faction_chosen", "heard_noblesse"], rep: ["noblesse", 50], element: "au" },
+          },
+          {
+            text: "어느 편에도 서지 않겠습니다",
+            to: "chosen_neutral",
+            effect: { flags: ["stayed_neutral", "faction_chosen", "heard_noblesse"], reps: [["legion", 10], ["noblesse", 10]] },
+          },
+          { text: "철의 말을 다시 듣고 오겠습니다", to: null, effect: { flag: "heard_noblesse" } },
+        ],
+      },
+      chosen_noblesse: {
+        lines: [
+          "…그런가. 그럼 철이 막아설 거다. 서북쪽 요새 앞에서.",
+          "그는 녹슬어도 부러지지 않아. 각오해라.",
+          "…내 힘을 가져가라. 신전에 갇힌 황금이 밖에서 무슨 소용이겠나.",
+        ],
+        choices: [{ text: "감사합니다", to: null }],
+      },
+      chosen_neutral: {
+        lines: [
+          "…어느 쪽도 아니라. 나처럼 말인가.",
+          "아니, 나와는 다르군. 나는 도망친 거고, 너는 서 있는 거니까.",
+        ],
+        choices: [{ text: "…", to: null }],
+      },
+      ally: {
+        lines: ["…철은 서북쪽 요새 앞에 있다.", "가라. 나는 여기서 기다리지."],
+        choices: [{ text: "네", to: null }],
+      },
+      enemy: {
+        lines: [
+          "…철 쪽에 섰다고 들었다.",
+          "원망은 않는다. 다만 백금이 동쪽 숲 너머에서 널 기다린다. 그 아이는 물러서지 않아.",
+        ],
+        choices: [{ text: "…", to: null }],
+      },
+      neutral: {
+        lines: ["…아직 어느 쪽도 아니군.", "그 눈으로 끝까지 봐라. 나는 못 했던 일이다."],
+        choices: [{ text: "네", to: null }],
+      },
+      mourning: {
+        lines: [
+          "…백금이 졌다고.",
+          "그 아이가 지킨 게 아름다움이었는지 자기 자신이었는지, 나도 모르겠다. 나도 같았으니까.",
+        ],
+        choices: [{ text: "…", to: null }],
+      },
+      repeat: {
+        lines: ["…또 왔나.", "형제들은 만났나? …아니, 됐다. 묻지 않은 걸로 해라."],
+        choices: [{ text: "네", to: null }],
+      },
+    },
+  },
+
+  // ---------------- 오가네손 (Og) — 안정의 섬을 찾는 항해자 ----------------
+  // 남쪽 해변에 배를 대고 있다. 진엔딩 「안정의 섬」의 동행자.
+  // 염소를 죽인 사람과는 함께 가지 않는다 — 안정을 찾는 자가 붕괴를 고른 자와
+  // 같은 배를 탈 수는 없다
+  og: {
+    start: "intro",
+    starts: [
+      { when: "og_decided", node: "after" },
+      { when: "boss_done_boss_cl", node: "voyage" },
+    ],
+    nodes: {
+      intro: {
+        lines: [
+          "어이, 거기! 이 배 어때? 내가 직접 설계했어. 불안정한 바다를 건너온 유일한 배지.",
+          "나는 오가네손. 118번. 안정의 섬을 찾고 있어. 이르면 그 풍경을 화폭에 담을 거야.",
+          "…음? 너, 나랑 같은 냄새가 나는데. 바다 냄새. 저 너머에서 온 거지?",
+        ],
+        choices: [
+          { text: "안정의 섬이 뭔가요?", to: "island", effect: { codex: "og" } },
+          { text: "저도 제가 어디서 왔는지 몰라요", to: "same", effect: { codex: "og" } },
+        ],
+      },
+      island: {
+        lines: [
+          "우리 초중원소는 태어나자마자 무너져. 1초도 못 버티는 애들이 대부분이지.",
+          "그런데 계산상으로는 — 어딘가에 붕괴하지 않는 자리가 있어. 양성자와 중성자 수가 딱 맞는 곳.",
+          "그게 안정의 섬이야. 아직 아무도 못 갔어. 그래서 내가 가려는 거고.",
+        ],
+        choices: [{ text: "저도 제가 어디서 왔는지 몰라요", to: "same" }],
+      },
+      same: {
+        lines: [
+          "그럼 너도 우리 쪽이네. 119번 — 아직 아무도 못 본 자리.",
+          "…네가 어떻게 사는지 보고 싶어. 이 대륙이 무너지려는 걸 어떻게 대하는지.",
+          "염소라고 있지? 아르곤이 되려고 무너지는 애. 그 애를 어떻게 하는지 보고 나서 다시 얘기하자.",
+        ],
+        choices: [{ text: "알겠어요", to: null, effect: { flag: "met_oganesson" } }],
+      },
+      voyage: {
+        lines: [
+          "…돌아왔네. 염소 얘기 들었어.",
+        ],
+        choices: [
+          {
+            text: "염소를 설득했어요",
+            to: "offer",
+            when: "persuaded_chlorine",
+          },
+          {
+            text: "염소를… 쓰러뜨렸어요",
+            to: "refuse",
+            unless: "persuaded_chlorine",
+          },
+        ],
+      },
+      offer: {
+        lines: [
+          "죽이지 않고 멈추게 했다고? …그런 게 가능하구나.",
+          "그게 내가 찾던 거야. 무너지지 않는 자리. 부수지 않고 멈추는 방법.",
+          "결정했어. 안정의 섬에 갈 때 너랑 같이 가겠어. 이름 없는 자, 내 배에 타 줄래?",
+        ],
+        choices: [
+          { text: "함께 가요", to: "joined", effect: { flags: ["oganesson_ally", "og_decided"], element: "og", rep: ["superheavy", 40] } },
+          { text: "…아직은 여기 남을게요", to: "declined", effect: { flag: "og_decided" } },
+        ],
+      },
+      joined: {
+        lines: [
+          "좋아! 그럼 마지막 일을 끝내고 와. 폴로늄이라는 애가 뭘 만들고 있대. 대륙이 무너지면 섬도 없으니까.",
+          "고원 끝에서 기다린대. 다녀와. 배는 여기 있을 테니.",
+        ],
+        choices: [{ text: "다녀올게요", to: null }],
+      },
+      declined: {
+        lines: ["…그래. 마음이 바뀌면 와. 배는 여기 있을 테니까.", "폴로늄 조심해. 고원 끝이야."],
+        choices: [{ text: "네", to: null }],
+      },
+      refuse: {
+        lines: [
+          "…그랬구나.",
+          "탓하진 않을게. 그 애는 위험했으니까. 하지만 나는 무너뜨리는 방법을 찾는 게 아니야.",
+          "같이 갈 순 없겠다. 미안. …폴로늄 조심해. 고원 끝에서 뭔가 만들고 있어.",
+        ],
+        choices: [{ text: "…알겠어요", to: null, effect: { flags: ["og_decided", "og_refused"] } }],
+      },
+      after: {
+        lines: ["폴로늄은 고원 끝이야. 대륙이 무너지면 섬도 없어.", "…조심해."],
+        choices: [{ text: "네", to: null }],
+      },
+      repeat: {
+        lines: ["염소를 어떻게 하는지 보고 나서 다시 얘기하자.", "석회암 고원 깊은 곳이래."],
+        choices: [{ text: "네", to: null }],
+      },
+    },
+  },
+
+  // ---------------- 니호늄 (Nh) — 오가네손과 함께 온 초중원소 ----------------
+  nh: {
+    start: "intro",
+    nodes: {
+      intro: {
+        lines: [
+          "어, 어! 너! 처음 만난 순간 신비로운 인연을 느꼈어!",
+          "나는 니호늄. 113번. 오가네손 배 타고 왔어. 서두르지 않으면 안 돼. 우리는 오래 못 버티거든.",
+          "아연이랑 비스무트라는 애들이 이 대륙에 있대. 나랑 인연이 있는 것 같아. 만나 보고 싶어!",
+        ],
+        choices: [
+          { text: "둘 다 만났어요", to: "met", effect: { codex: "nh" } },
+          { text: "찾아볼게요", to: null, effect: { codex: "nh" } },
+        ],
+      },
+      met: {
+        lines: [
+          "정말!? 어땠어? 아니, 말하지 마. 내가 직접 만날 거야.",
+          "…고마워. 내 힘 조금 가져가. 얼마 못 버티는 힘이지만, 그래서 더 세게 빛나.",
+        ],
+        choices: [{ text: "고마워요", to: null, effect: { element: "nh" } }],
+      },
+      repeat: {
+        lines: ["아연이랑 비스무트! 다시 만날 거야!"],
+        choices: [{ text: "그래요", to: null }],
+      },
+    },
+  },
 };
+
+// 주민 NPC의 짧은 대사. 파일이 너무 길어져 따로 뒀다
+Object.assign(DIALOGUES, RESIDENT_DIALOGUES);
 
 /** 이 원소와 대화할 수 있는가 */
 export function hasDialogue(id) {
   return id in DIALOGUES;
 }
 
+/** 플래그 조건 — 문자열 하나 또는 배열(전부 만족) */
+export function flagsMatch(cond, flags) {
+  if (!cond) return true;
+  return (Array.isArray(cond) ? cond : [cond]).every((f) => flags.has(f));
+}
+
 /**
- * 시작 노드를 고른다. 이미 만난 적이 있으면 repeat 노드로.
+ * 시작 노드를 고른다.
+ * starts의 조건부 시작이 먼저, 그다음 이미 만났으면 repeat, 아니면 start.
  * @param {string} id 원소 id
  * @param {Set<string>} flags 진행 플래그
  */
 export function startNode(id, flags) {
   const d = DIALOGUES[id];
   if (!d) return null;
+  for (const s of d.starts ?? []) {
+    if (!flagsMatch(s.when, flags)) continue;
+    if (s.unless && (Array.isArray(s.unless) ? s.unless : [s.unless]).some((f) => flags.has(f))) continue;
+    return s.node;
+  }
   const metFlag = `talked_${id}`;
   if (flags.has(metFlag) && d.nodes.repeat) return "repeat";
   return d.start;
