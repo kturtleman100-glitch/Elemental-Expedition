@@ -448,12 +448,12 @@ html, body {
   align-items: center;
   justify-content: center;
   background: rgba(5, 6, 10, 0.82);
-  padding: 2vmin;
+  padding: 1vmin;
   pointer-events: auto;
 }
 .cx-panel {
-  width: min(1320px, 97vw);
-  height: min(880px, 95dvh);
+  width: min(1480px, 98vw);
+  height: min(1000px, 97dvh);
   display: flex;
   flex-direction: column;
   background: #0e1218;
@@ -487,20 +487,24 @@ html, body {
 .cx-body {
   flex: 1;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, auto) minmax(52%, 1fr);
   min-height: 0;
+  overflow: hidden;
 }
 /* 주기율표 모양 그대로 — 18열 고정.
    창이 좁으면 칸을 줄이지 말고 가로로 넘긴다. 세로로 접으면 표가 아니게 되고,
    주기율표에서 배울 것은 대부분 '자리'에 있다. */
 #codex-grid {
   display: grid;
-  max-height: 38vh;
-  grid-template-columns: repeat(18, minmax(30px, 1fr));
+  /* 10줄(란타넘·악티늄족 포함)이 다 들어가야 한눈에 보인다.
+     높이를 막지 않고 내용만큼 쓰게 두되, 칸을 작게 잡아 전체가 들어오게 한다 */
+  flex: none;
+  grid-template-columns: repeat(18, minmax(20px, min(40px, 4.1vh)));
   grid-auto-rows: min-content;
-  gap: 3px;
-  padding: 0.9rem;
+  gap: 2px;
+  padding: 0.7rem 0.9rem;
   overflow: auto;
+  justify-content: center;
   align-content: start;
   min-width: 0;
 }
@@ -533,13 +537,13 @@ html, body {
   z-index: 2;
   box-shadow: 0 0 14px rgba(242, 201, 76, 0.5);
 }
-.cx-z { position: absolute; top: 1px; left: 3px; font-size: 0.5rem; opacity: 0.6; }
-.cx-sym { font-size: 0.9rem; font-weight: 700; line-height: 1; color: var(--cell, #eae6da); }
-.cx-ko { font-size: 0.5rem; opacity: 0.75; text-align: center; line-height: 1.1; }
+.cx-z { position: absolute; top: 1px; left: 3px; font-size: 0.46rem; opacity: 0.55; }
+.cx-sym { font-size: 0.92rem; font-weight: 700; line-height: 1; color: var(--cell, #eae6da); }
+.cx-ko { font-size: 0.7rem; opacity: 0.92; text-align: center; line-height: 1.05; letter-spacing: -0.04em; }
 
 #codex-detail {
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.9rem 1rem;
+  padding: 0.8rem 1rem 1rem;
   overflow-y: auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
@@ -563,20 +567,20 @@ html, body {
 }
 .cx-head h3 { margin: 0; font-size: 1.1rem; }
 .cx-head h3 em { font-style: normal; font-size: 0.8rem; opacity: 0.55; margin-left: 0.3rem; }
-.cx-role { margin: 0.2rem 0 0; font-size: 0.8rem; opacity: 0.7; }
+.cx-role { margin: 0.2rem 0 0; font-size: 0.9rem; opacity: 0.75; }
 
-.cx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem 0.8rem; margin: 0 0 1rem; }
+.cx-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem 0.7rem; margin: 0 0 0.55rem; }
 .cx-stats div { border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 0.3rem; }
-.cx-stats dt { font-size: 0.66rem; opacity: 0.55; }
-.cx-stats dd { margin: 0.1rem 0 0; font-size: 0.85rem; }
+.cx-stats dt { font-size: 0.74rem; opacity: 0.6; }
+.cx-stats dd { margin: 0.1rem 0 0; font-size: 0.95rem; }
 
 .cx-bio { font-size: 0.85rem; line-height: 1.7; opacity: 0.9; margin: 0 0 0.9rem; }
 .cx-quote {
-  margin: 0 0 1rem;
-  padding: 0.5rem 0.8rem;
+  margin: 0 0 0.6rem;
+  padding: 0.45rem 0.75rem;
   border-left: 2px solid #f2c94c;
   background: rgba(242, 201, 76, 0.07);
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   line-height: 1.65;
   font-style: italic;
   opacity: 0.9;
@@ -1382,8 +1386,8 @@ html, body {
 .cx-prog.done { background: rgba(110, 232, 90, 0.22); color: #9ff08a; opacity: 1; }
 
 .cx-reward {
-  margin-top: 0.7rem;
-  padding: 0.6rem 0.7rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.65rem;
   border-radius: 6px;
   border: 1px dashed rgba(242, 201, 76, 0.45);
   background: rgba(242, 201, 76, 0.07);
@@ -1393,11 +1397,11 @@ html, body {
   border-color: rgba(110, 232, 90, 0.55);
   background: rgba(110, 232, 90, 0.1);
 }
-.cx-reward-head { font-size: 0.76rem; font-weight: 700; color: #f2c94c; margin: 0 0 0.25rem; }
+.cx-reward-head { font-size: 0.87rem; font-weight: 700; color: #f2c94c; margin: 0 0 0.25rem; }
 .cx-reward.done .cx-reward-head { color: #9ff08a; }
-.cx-reward-desc { font-size: 0.74rem; margin: 0 0 0.3rem; }
-.cx-reward-why { font-size: 0.66rem; opacity: 0.6; font-style: italic; margin: 0 0 0.3rem; }
-.cx-reward-prog { font-size: 0.68rem; opacity: 0.8; margin: 0; font-variant-numeric: tabular-nums; }
+.cx-reward-desc { font-size: 0.85rem; margin: 0 0 0.3rem; }
+.cx-reward-why { font-size: 0.76rem; opacity: 0.6; font-style: italic; margin: 0 0 0.3rem; }
+.cx-reward-prog { font-size: 0.78rem; opacity: 0.8; margin: 0; font-variant-numeric: tabular-nums; }
 
 /* 족 해설 제목 — 접는 버튼이던 것을 그냥 제목으로 바꿨다.
    가장 밀도 높은 학습 내용이 숨어 있을 이유가 없다 */
@@ -1405,7 +1409,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 700;
   padding: 0.4rem 0.55rem;
   border-radius: 5px 5px 0 0;
@@ -1416,7 +1420,7 @@ html, body {
 
 /* 읽기 보상 — 모으기 보상 위에 한 줄 */
 .cx-reward-step {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   margin: 0 0 0.35rem;
   padding-bottom: 0.35rem;
   border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
@@ -1425,8 +1429,8 @@ html, body {
 .cx-reward-step.got { color: #7ec8e3; opacity: 1; }
 
 /* 아래 두 칸이 스크롤 없이 들어가도록 살짝 줄인다 */
-.cx-fam p { font-size: 0.74rem; line-height: 1.5; margin: 0 0 0.4rem; }
-.cx-bio { font-size: 0.78rem; line-height: 1.55; }
+.cx-fam p { font-size: 0.85rem; line-height: 1.55; margin: 0 0 0.42rem; }
+.cx-bio { font-size: 0.88rem; line-height: 1.62; }
 
 /* 게임에 없는 원소 — 자리만 지킨다.
    118칸이 다 있어야 주기율표 모양이 보이고, 빈 자리가 많다는 것 자체가

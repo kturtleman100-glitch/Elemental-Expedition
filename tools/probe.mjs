@@ -23,7 +23,7 @@ const chrome = spawn(CHROME, [
   "--remote-debugging-port=" + PORT,
   "--user-data-dir=" + process.env.TEMP + "\\chrome-probe",
   "--no-first-run",
-  "--window-size=1280,800",
+  "--window-size=1920,1080",
   URL_,
 ], { stdio: "ignore" });
 
