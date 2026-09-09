@@ -17,10 +17,16 @@ import os from "os";
 
 // src의 .js를 .mjs 사본으로 옮겨 import한다 (프로젝트에 package.json을 두지 않으려고)
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "terr-"));
+// src/data 도 함께 옮긴다. Terrain이 마을 좌표를 거기서 가져오기 때문이다.
+// 예전에는 world/ 셋만 옮겨서, data/를 참조하는 순간 검사가 통째로 죽었다
+fs.mkdirSync(path.join(tmp, "data"), { recursive: true });
+fs.writeFileSync(path.join(tmp, "data", "outposts.mjs"),
+  fs.readFileSync(path.join("src/data", "outposts.js"), "utf8"));
 for (const f of ["Noise.js", "Biome.js", "Terrain.js"]) {
   fs.writeFileSync(path.join(tmp, f.replace(/\.js$/, ".mjs")),
     fs.readFileSync(path.join("src/world", f), "utf8")
-      .replace(/(from\s+["']\.\/[^"']+)\.js(["'])/g, "$1.mjs$2"));
+      .replace(/(from\s+["']\.\/[^"']+)\.js(["'])/g, "$1.mjs$2")
+      .replace(/from\s+(["'])\.\.\/data\/([^"']+)\.js\1/g, 'from "./data/$2.mjs"'));
 }
 const { Terrain } = await import("file://" + path.join(tmp, "Terrain.mjs").replace(/\\/g, "/"));
 const { BIOMES } = await import("file://" + path.join(tmp, "Biome.mjs").replace(/\\/g, "/"));

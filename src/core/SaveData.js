@@ -132,7 +132,8 @@ export function listSlots() {
       level: d.player?.level ?? 1,
       chapter: d.player?.chapter ?? 1,
       owned: (d.player?.owned ?? []).length,
-      codex: (d.codex ?? []).length,
+      // codex는 옛 저장에서 배열, 새 저장에서 { found, read } 객체다
+      codex: (Array.isArray(d.codex) ? d.codex : d.codex?.found ?? []).length,
       playtime: d.playtime ?? 0,
       savedAt: d.savedAt ?? 0,
     } : { slot: i, empty: true });

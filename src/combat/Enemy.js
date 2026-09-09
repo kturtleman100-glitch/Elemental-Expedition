@@ -5,7 +5,7 @@ import { animateVRM, updateCharacter } from "../characters/CharacterLoader.js";
 import { statsFor, styleOf, canAttack } from "./CombatStyle.js";
 import { ElectronPool, electronRole, ELECTRON_ROLE } from "./Electron.js";
 import { computeDamage } from "./DamageCalc.js";
-import { makeNameplate, fadeNameplate } from "../fx/Nameplate.js";
+import { makeNameplate, fadeNameplate, disposeNameplate } from "../fx/Nameplate.js";
 
 // 적 — 원소가 적으로 나온다.
 //
@@ -322,6 +322,10 @@ export class Enemy {
   }
 
   dispose(scene) {
+    // 이름표 material은 개체마다 새로 만든 것이라 여기서 돌려준다.
+    // 적이 22초마다 되살아나므로 안 버리면 오래 할수록 쌓인다
+    disposeNameplate(this.plate);
+    this.plate = null;
     scene.remove(this.mesh);
     // VRM 자리를 돌려준다. 안 돌려주면 몇 마리 죽고 나서부터
     // 같은 원소가 전부 절차적 캐릭터로 나온다.

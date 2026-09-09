@@ -1,3 +1,5 @@
+import { OUTPOSTS } from "../data/outposts.js";
+
 // 화면 상단의 띠 나침반.
 //
 // 마을이 지름 130m에 구역이 5개라 "지금 어느 쪽을 보고 있는가"와
@@ -21,11 +23,9 @@ const CARDINALS = [
 
 // 마을의 주요 지점. 플레이어 위치에서의 방위를 계산해 표식으로 띄운다.
 const LANDMARKS = [
-  // 바깥 마을 넷 — 멀리서도 방향을 알 수 있어야 찾아간다
-  { x: 120, z: 8, label: "아르곤 마을", color: "#a89ad8" },
-  { x: -124, z: 6, label: "철의 요새", color: "#c2564a" },
-  { x: -16, z: -136, label: "쌍광 골짜기", color: "#8fa3b8" },
-  { x: 12, z: 150, label: "바닷가 나루", color: "#7ec8e3" },
+  // 바깥 마을 넷 — 멀리서도 방향을 알 수 있어야 찾아간다.
+  // 좌표는 outposts.js 한 곳에서만 관리한다
+  ...OUTPOSTS.map((o) => ({ x: o.x, z: o.z, label: o.name, color: o.color })),
   // 마을 안
   { x: 0, z: 0, label: "광장", color: "#e8c07a" },
   { x: 0, z: -50, label: "촌장 집", color: "#8fd1d4" },

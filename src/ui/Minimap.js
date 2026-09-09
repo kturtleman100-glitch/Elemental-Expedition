@@ -1,3 +1,5 @@
+import { OUTPOSTS } from "../data/outposts.js";
+
 // 미니맵 (Canvas 2D).
 //
 // 마을이 지름 130m에 구역이 5개라 나침반만으로는 부족하다.
@@ -120,6 +122,18 @@ export class Minimap {
     g.beginPath();
     g.arc(toX(STATIC.plaza.x), toY(STATIC.plaza.z), STATIC.plaza.r * px, 0, Math.PI * 2);
     g.fill();
+
+    // 바깥 마을 넷. 빠른 이동 목록에는 이름이 뜨는데 지도는 빈 땅이면
+    // 어디로 가는지 알 수가 없다 — 두 기능이 서로 어긋나 있었다
+    for (const o of OUTPOSTS) {
+      g.fillStyle = o.color + "33";     // 옅게 깔고
+      g.beginPath();
+      g.arc(toX(o.x), toY(o.z), o.r * px * 0.55, 0, Math.PI * 2);
+      g.fill();
+      g.strokeStyle = o.color + "88";   // 테두리로 경계를 준다
+      g.lineWidth = 2;
+      g.stroke();
+    }
 
     // 길
     g.strokeStyle = COLORS.road;

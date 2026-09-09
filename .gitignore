@@ -7,6 +7,7 @@ concept/
 
 # 내부 검토 문서 · 작업 로그. 로컬에서만 본다.
 docs/REVIEW-*.md
+docs/VERIFY-*.md
 docs/WORKLOG.md
 
 # 에디터

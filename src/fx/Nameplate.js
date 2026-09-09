@@ -93,6 +93,19 @@ export function makeNameplate(text, kind = "ENEMY", y = 2.05) {
   return sp;
 }
 
+/**
+ * 이름표를 버린다.
+ *
+ * 텍스처는 원소마다 하나를 돌려 쓰므로 건드리지 않는다 — 여기서 dispose하면
+ * 같은 원소의 다른 개체 이름표가 통째로 사라진다.
+ * 개체마다 새로 만드는 것은 material뿐이라 그것만 정리한다.
+ */
+export function disposeNameplate(sprite) {
+  if (!sprite) return;
+  sprite.parent?.remove(sprite);
+  sprite.material?.dispose();
+}
+
 /** 글자나 색을 바꿔 단다. 텍스처는 캐시에서 나오므로 매번 만들지 않는다 */
 export function setNameplate(sprite, text, kind = "ENEMY") {
   if (!sprite) return;

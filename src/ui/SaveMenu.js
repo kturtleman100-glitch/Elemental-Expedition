@@ -132,6 +132,14 @@ export class SaveMenu {
         <span>파티클</span>
         <input type="checkbox" id="set-particle" ${s.particles ? "checked" : ""}>
       </label>
+      <label class="sm-row">
+        <span>소리</span>
+        <input type="checkbox" id="set-sound" ${s.sound !== false ? "checked" : ""}>
+      </label>
+      <label class="sm-row">
+        <span>조작 안내 다시 보기</span>
+        <button type="button" id="set-tut" class="sm-mini">열기</button>
+      </label>
       <p class="sm-note">카메라 자동 추적은 3D 멀미의 흔한 원인입니다. 어지러우면 꺼주세요.</p>`;
 
     const bind = (id, key, get) => {
@@ -146,5 +154,11 @@ export class SaveMenu {
     bind("set-lock", "cameraLock", (el) => el.checked);
     bind("set-shadow", "shadows", (el) => el.checked);
     bind("set-particle", "particles", (el) => el.checked);
+    bind("set-sound", "sound", (el) => el.checked);
+    // 조작을 잊었을 때 다시 볼 수 있어야 한다. 한 번 보면 자동으로는 안 뜨므로
+    document.getElementById("set-tut")?.addEventListener("click", () => {
+      this.hide();
+      this.hooks.onTutorial?.();
+    });
   }
 }

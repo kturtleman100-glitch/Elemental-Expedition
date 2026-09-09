@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { familyInfo } from "./data/families.js";
 import { FastTravel } from "./ui/FastTravel.js";
+import { OUTPOSTS } from "./data/outposts.js";
 import { Sound } from "./fx/Sound.js";
 import { Tutorial } from "./ui/Tutorial.js";
 import { Device } from "./core/Device.js";
@@ -245,7 +246,7 @@ async function boot() {
       if (!travel.available) {
         hud.toast("쉼터나 마을 광장에서만 쓸 수 있어요", "#8fd1d4");
       } else {
-        input.exitPointerLock?.();
+        document.exitPointerLock?.();
         travel.show();
       }
     }
@@ -304,10 +305,7 @@ async function boot() {
   // 새 오브젝트를 만들지 않아도 "화덕에서 화덕으로"가 설명 없이 이해된다
   const travel = new FastTravel([
     { x: 0, z: 0, name: "석회 마을 광장" },
-    { x: 120, z: 8, name: "아르곤 고원 마을" },
-    { x: -124, z: 6, name: "철의 요새" },
-    { x: -16, z: -136, name: "쌍광 골짜기" },
-    { x: 12, z: 150, name: "바닷가 나루" },
+    ...OUTPOSTS.map((o) => ({ x: o.x, z: o.z, name: o.name })),
     ...(world.campsites ?? []).map((c, i) => ({
       ...c, name: ["남서쪽 쉼터", "북동쪽 쉼터", "북서쪽 쉼터", "남동쪽 쉼터"][i] ?? `쉼터 ${i + 1}`,
     })),
@@ -453,7 +451,7 @@ async function boot() {
     const el = getElement(id);
     if (!el) return false;
     const got = player.progress.acquire(id);
-    if (got) sound.gain();
+    if (got?.isNew) sound.gain();   // acquire()는 늘 객체를 준다. 새로 얻었을 때만
     codex.discover(id);
     if (!got.isNew) return false;
     hud.toast(`${el.ko}(${el.sym})이(가) ${verb}` + (got.autoEquipped ? "" : " — P 로 편성"), "#56ccf2");
@@ -595,6 +593,9 @@ async function boot() {
     renderer.shadowMap.enabled = s.shadows && device.tier.shadows;
     particles.points.visible = s.particles;
     particles.enabled = s.particles;
+    // 소리를 끌 방법이 없으면 접근성 문제이자 상업화에도 걸린다.
+    // 기본은 켜짐 — 옛 설정에는 이 항목이 없으므로 false만 끈 것으로 본다
+    sound.setEnabled(s.sound !== false);
   }
   applySettings(settings);
 
@@ -602,6 +603,7 @@ async function boot() {
     getContext: saveContext,
     toast: (m, c) => hud.toast(m, c),
     onSettings: applySettings,
+    onTutorial: () => tutorial.show(),
     // 지운 슬롯이 타이틀의 '이어하기'에 남아 있으면 안 된다
     onDeleted: () => refreshTitle(),
     onLoad: (data) => {
@@ -997,7 +999,7 @@ async function boot() {
   // 모바일 햄버거 — 여태 화면에 보이기만 하고 핸들러가 없었다
   document.getElementById("btn-menu")?.addEventListener("click", () => {
     sound.unlock();
-    input.exitPointerLock?.();
+    document.exitPointerLock?.();
     saveMenu.show();
   });
 

@@ -2,7 +2,7 @@ import { ELEMENTS, getElement, areBonded } from "./elements.js";
 
 // 인연(因緣)과 화합물.
 //
-// 인연은 참고자료의 "인연이 깊은 원소" 목록을 그대로 쓴다(elements.js의 bonds).
+// 인연은 elements.js의 bonds 목록을 쓴다.
 // 그 관계가 게임 안에서 실제 이득이 되어야 자료가 살아난다.
 //
 // 화합물은 전부 실제로 존재하는 물질이다. 임의로 만들지 않는 것이
@@ -105,7 +105,7 @@ export function bondBonuses(party) {
     if (b.unlock) unlocks.push(b.unlock);
   }
 
-  // 자료의 bonds 목록에 따른 기본 인연 — 짝마다 조금씩
+  // bonds 목록에 따른 기본 인연 — 짝마다 조금씩
   const list = [...set];
   const pairs = [];
   for (let i = 0; i < list.length; i++) {

@@ -1,10 +1,11 @@
 // 엘레멘타 대륙의 원소 38명 + 플레이어.
-// 수치(원자량·전기음성도·녹는점)는 실제 값이고, 성격·직업·인연은 참고자료 설정을 따랐다.
+// 수치(원자량·전기음성도·녹는점)는 실제 값이고, 직업·성격·대사는 그 원소의
+// 화학적 성질에서 도출했다 — 절차는 CLAUDE.md 「캐릭터를 짓는 법」에 있다.
 // 전기음성도는 폴링 척도이며 DamageCalc가 상성 배율 계산에 그대로 쓴다.
 //
 // family  : 상성·전투유형·모델 실루엣을 결정하는 족 분류
 // combat  : "striker"(무기형) | "caster"(마법형) | "hybrid"(하이브리드)
-// bonds   : 자료의 "인연이 깊은 원소" — 파티 보너스 판정에 쓰인다
+// bonds   : 함께 두면 힘이 붙는 원소 — 파티 보너스 판정에 쓰인다
 // colors  : 절차적 3D 모델 생성에 쓰는 색. main/sub/accent/hair 4색 구성
 // model   : assets/models/<id>.glb 가 있으면 그걸 쓰고, 없으면 절차적 생성으로 대체
 // exception: 족 규칙(금속=무기형, 비금속=마법형)을 어길 때 그 이유.
@@ -680,7 +681,7 @@ export function byFaction(faction) {
   return ELEMENTS.filter((e) => e.faction === faction);
 }
 
-/** 인연 관계인지 — 한쪽 목록에만 있어도 인연으로 친다 (자료의 관계가 일방향인 경우가 많다) */
+/** 인연 관계인지 — 한쪽 목록에만 있어도 인연으로 친다 (관계를 한 방향만 적어 둔 것이 많다) */
 export function areBonded(idA, idB) {
   const a = getElement(idA);
   const b = getElement(idB);
