@@ -32,4 +32,8 @@ echo ""
 echo "=== 지형 검사 ==="
 node tools/check-terrain.mjs | tail -3
 
+echo ""
+echo "=== 스토리 검사 ==="
+node tools/check-story.mjs | tail -3
+
 exit $fail
