@@ -452,8 +452,8 @@ html, body {
   pointer-events: auto;
 }
 .cx-panel {
-  width: min(1080px, 96vw);
-  height: min(760px, 92dvh);
+  width: min(1320px, 97vw);
+  height: min(880px, 95dvh);
   display: flex;
   flex-direction: column;
   background: #0e1218;
@@ -481,23 +481,31 @@ html, body {
 #codex-count { font-size: 0.82rem; opacity: 0.75; font-variant-numeric: tabular-nums; }
 #codex-close { margin-left: auto; }
 
-/* 표가 18열로 넓어져 왼쪽에 자리를 더 준다 */
-.cx-body { flex: 1; display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); min-height: 0; }
+/* 위에 표, 아래에 설명 두 칸.
+   예전에는 오른쪽에 세로로 길게 붙여 두어 스크롤해야 다 보였다.
+   위아래로 나누면 표는 넓게 쓰고 설명은 두 칸으로 펼쳐져 한눈에 들어온다. */
+.cx-body {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
 /* 주기율표 모양 그대로 — 18열 고정.
    창이 좁으면 칸을 줄이지 말고 가로로 넘긴다. 세로로 접으면 표가 아니게 되고,
    주기율표에서 배울 것은 대부분 '자리'에 있다. */
 #codex-grid {
   display: grid;
-  grid-template-columns: repeat(18, minmax(38px, 1fr));
+  max-height: 38vh;
+  grid-template-columns: repeat(18, minmax(30px, 1fr));
+  grid-auto-rows: min-content;
   gap: 3px;
   padding: 0.9rem;
   overflow: auto;
   align-content: start;
+  min-width: 0;
 }
 .cx-cell {
   position: relative;
-  grid-column: var(--g);
-  grid-row: var(--p);
   aspect-ratio: 1;
   min-width: 38px;
   border-radius: 5px;
@@ -529,7 +537,19 @@ html, body {
 .cx-sym { font-size: 0.9rem; font-weight: 700; line-height: 1; color: var(--cell, #eae6da); }
 .cx-ko { font-size: 0.5rem; opacity: 0.75; text-align: center; line-height: 1.1; }
 
-#codex-detail { border-left: 1px solid rgba(255, 255, 255, 0.1); padding: 1rem; overflow-y: auto; }
+#codex-detail {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.9rem 1rem;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 0 1.4rem;
+  align-content: start;
+}
+/* 왼쪽 칸: 인물. 오른쪽 칸: 족 설명과 보상 */
+.cx-col-a { grid-column: 1; }
+.cx-col-b { grid-column: 2; }
+.cx-empty { grid-column: 1 / -1; }
 .cx-empty { opacity: 0.5; font-size: 0.85rem; }
 .cx-head { display: flex; gap: 0.8rem; align-items: center; margin-bottom: 1rem; }
 .cx-big {
@@ -574,7 +594,8 @@ html, body {
 
 @media (max-width: 760px) {
   .cx-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
-  #codex-detail { border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+  #codex-detail { grid-template-columns: minmax(0, 1fr); }
+  .cx-col-a, .cx-col-b { grid-column: 1; }
   .dlg-box { padding: 0.8rem 0.9rem 0.9rem; }
   #dlg-text { font-size: 0.92rem; }
 }
@@ -1377,3 +1398,50 @@ html, body {
 .cx-reward-desc { font-size: 0.74rem; margin: 0 0 0.3rem; }
 .cx-reward-why { font-size: 0.66rem; opacity: 0.6; font-style: italic; margin: 0 0 0.3rem; }
 .cx-reward-prog { font-size: 0.68rem; opacity: 0.8; margin: 0; font-variant-numeric: tabular-nums; }
+
+/* 족 해설 제목 — 접는 버튼이던 것을 그냥 제목으로 바꿨다.
+   가장 밀도 높은 학습 내용이 숨어 있을 이유가 없다 */
+.cx-fam-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.4rem 0.55rem;
+  border-radius: 5px 5px 0 0;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 0;
+}
+
+/* 읽기 보상 — 모으기 보상 위에 한 줄 */
+.cx-reward-step {
+  font-size: 0.7rem;
+  margin: 0 0 0.35rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+  opacity: 0.7;
+}
+.cx-reward-step.got { color: #7ec8e3; opacity: 1; }
+
+/* 아래 두 칸이 스크롤 없이 들어가도록 살짝 줄인다 */
+.cx-fam p { font-size: 0.74rem; line-height: 1.5; margin: 0 0 0.4rem; }
+.cx-bio { font-size: 0.78rem; line-height: 1.55; }
+
+/* 게임에 없는 원소 — 자리만 지킨다.
+   118칸이 다 있어야 주기율표 모양이 보이고, 빈 자리가 많다는 것 자체가
+   "아직 이만큼 남았다"를 말해 준다 */
+.cx-cell.ghost {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.022);
+  color: rgba(255, 255, 255, 0.2);
+  cursor: default;
+  pointer-events: none;
+}
+.cx-cell.ghost .cx-sym { color: rgba(255, 255, 255, 0.26); font-weight: 500; }
+.cx-cell.ghost .cx-z { opacity: 0.3; }
+.cx-cell.ghost .cx-ko { opacity: 0.35; }
+
+/* 란타넘·악티늄족은 아래 두 줄로 빼되 한 칸 띄운다 (실제 주기율표와 같게) */
+#codex-grid { row-gap: 3px; }
+.cx-cell[style*="grid-row:9"], .cx-cell[style*="grid-row:10"] { margin-top: 0; }

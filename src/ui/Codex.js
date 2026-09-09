@@ -1,6 +1,7 @@
 import { ELEMENTS, getElement, getCombatType, FAMILY, FAMILY_LABEL, COMBAT_LABEL } from "../data/elements.js";
 import { getFaction } from "../data/factions.js";
 import { familyInfo, familyReward } from "../data/families.js";
+import { PERIODIC, tableSlot } from "../data/periodic.js";
 
 // 원소 도감 (K 키).
 //
@@ -8,59 +9,16 @@ import { familyInfo, familyReward } from "../data/families.js";
 // 아니라 진행도 그 자체다. 그래서 만나지 못한 원소도 칸은 보여준다 —
 // 몇 개가 남았는지 알아야 모으고 싶어진다.
 
-/**
- * 원자번호로 주기율표의 자리(주기·족)를 구한다.
- *
- * 원소 데이터에 period/group을 넣는 것이 정석이지만, 그건 43개를 손으로
- * 채워야 하는 일이라 재작성 단계에서 한다. 그때까지는 원자번호만으로
- * 자리를 구한다 — 주기율표는 원자번호 순으로 채워지므로 계산이 된다.
- *
- * 란타넘·악티늄족(57~71, 89~103)은 표 아래 두 줄로 빼는 것이 실제 모양인데,
- * 지금 게임에 그 구간 원소가 우라늄·아인슈타이늄뿐이라 8·9주기 자리에 둔다.
- */
-function tableSlot(z) {
-  // 각 주기의 시작 원자번호와, 그 주기가 몇 족부터 시작하는가
-  const ROWS = [
-    { start: 1, end: 2, period: 1 },
-    { start: 3, end: 10, period: 2 },
-    { start: 11, end: 18, period: 3 },
-    { start: 19, end: 36, period: 4 },
-    { start: 37, end: 54, period: 5 },
-    { start: 55, end: 86, period: 6 },
-    { start: 87, end: 118, period: 7 },
-  ];
-  const row = ROWS.find((r) => z >= r.start && z <= r.end);
-  if (!row) return { period: 7, group: 18 };
-
-  // 란타넘족·악티늄족은 아래 두 줄로
-  if ((z >= 57 && z <= 71) || (z >= 89 && z <= 103)) {
-    return { period: z <= 71 ? 8 : 9, group: 3 + ((z - (z <= 71 ? 57 : 89)) % 15) };
-  }
-
-  const period = row.period;
-  let offset = z - row.start;
-
-  if (period === 1) return { period, group: z === 1 ? 1 : 18 };
-  if (period === 2 || period === 3) {
-    // 8칸짜리 줄 — 1,2족 다음 13~18족으로 건너뛴다
-    return { period, group: offset < 2 ? offset + 1 : offset + 11 };
-  }
-  // 4주기 이후는 18칸이 이어지되, 6·7주기는 f블록 15개를 건너뛴다
-  if (period === 6 && z > 71) offset -= 14;
-  if (period === 7 && z > 103) offset -= 14;
-  return { period, group: Math.min(18, offset + 1) };
-}
-
 export class Codex {
   constructor() {
     this.root = document.getElementById("codex");
-    this.famOpen = false;   // 족 해설 펼침 여부
     this.gridEl = document.getElementById("codex-grid");
     this.detailEl = document.getElementById("codex-detail");
     this.countEl = document.getElementById("codex-count");
     this.barEl = document.getElementById("codex-bar");
 
     this.found = new Set();
+    this.readFamilies = new Set();   // 해설을 펼쳐 본 족
     this.selected = null;
     this.open = false;
 
@@ -99,27 +57,45 @@ export class Codex {
     this.countEl.textContent = `${this.found.size} / ${ELEMENTS.length}  (${pct}%)`;
     this.barEl.style.width = `${pct}%`;
 
-    // 진짜 주기율표 자리에 놓는다.
+    // 118칸을 전부 그린다.
     //
-    // 예전에는 원자번호 순으로 흘려보냈는데, 그러면 창 너비에 따라 한 줄에
-    // 다섯이 되기도 아홉이 되기도 해서 표가 아니라 목록이었다. 주기율표에서
-    // 배울 것은 대부분 '자리'에 있다 — 세로로 같은 족, 오른쪽 위로 갈수록
-    // 전자를 세게 당김. 자리를 흩뜨리면 그게 통째로 사라진다.
-    const sorted = [...ELEMENTS].sort((a, b) => a.z - b.z);
+    // 게임에 나오는 원소는 47종뿐이라 그것만 그리면 표가 듬성듬성해져
+    // 주기율표로 보이지 않는다. 세로로 같은 족, 오른쪽 위로 갈수록 전자를
+    // 세게 당김 — 그 모양은 칸이 다 있어야 눈에 들어온다.
+    // 없는 칸은 회색으로 자리만 채우고, 비어 보이는 것 자체가
+    // "여기 뭔가 더 있구나"를 알려 준다.
+    const byZ = new Map(ELEMENTS.map((e) => [e.z, e]));
+    const cells = [];
 
-    this.gridEl.innerHTML = sorted.map((el) => {
+    for (let z = 1; z <= 118; z++) {
+      const { period, group } = tableSlot(z);
+      const el = byZ.get(z);
+      const [sym, ko] = PERIODIC[z];
+      const pos = `grid-column:${group}; grid-row:${period}`;
+
+      if (!el) {
+        // 게임에 없는 원소 — 자리만 지킨다
+        cells.push(`<div class="cx-cell ghost" style="${pos}" title="${ko}">
+                      <span class="cx-z">${z}</span>
+                      <span class="cx-sym">${sym}</span>
+                      <span class="cx-ko">${ko}</span>
+                    </div>`);
+        continue;
+      }
+
       const known = this.found.has(el.id);
       const color = "#" + getFaction(el.faction).color.toString(16).padStart(6, "0");
-      const { period, group } = tableSlot(el.z);
       const sel = this.selected === el.id;
-      return `<button class="cx-cell${known ? "" : " locked"}${sel ? " sel" : ""}" type="button"
-                data-id="${el.id}" style="--cell:${color}; --p:${period}; --g:${group}"
-                aria-pressed="${sel}">
-                <span class="cx-z">${el.z}</span>
-                <span class="cx-sym">${known ? el.sym : "?"}</span>
-                <span class="cx-ko">${known ? el.ko : ""}</span>
-              </button>`;
-    }).join("");
+      cells.push(`<button class="cx-cell${known ? "" : " locked"}${sel ? " sel" : ""}" type="button"
+                    data-id="${el.id}" style="--cell:${color}; ${pos}"
+                    aria-pressed="${sel}">
+                    <span class="cx-z">${z}</span>
+                    <span class="cx-sym">${known ? sym : "?"}</span>
+                    <span class="cx-ko">${known ? ko : ""}</span>
+                  </button>`);
+    }
+
+    this.gridEl.innerHTML = cells.join("");
 
     for (const btn of this.gridEl.querySelectorAll(".cx-cell")) {
       btn.addEventListener("click", () => {
@@ -175,28 +151,29 @@ export class Codex {
       .filter(Boolean)
       .join("");
 
+    // 왼쪽 칸은 인물, 오른쪽 칸은 족 이야기. 위아래로 길게 늘어놓으면
+    // 스크롤해야 다 보이는데, 두 칸으로 나누면 한눈에 들어온다
     this.detailEl.innerHTML = `
-      <div class="cx-head">
-        <span class="cx-big" style="--cell:${color}">${el.sym}</span>
-        <div>
-          <h3>${el.ko} <em>${el.en}</em></h3>
-          <p class="cx-role">${el.role}</p>
+      <div class="cx-col-a">
+        <div class="cx-head">
+          <span class="cx-big" style="--cell:${color}">${el.sym}</span>
+          <div>
+            <h3>${el.ko} <em>${el.en}</em></h3>
+            <p class="cx-role">${el.role}</p>
+          </div>
         </div>
+        <dl class="cx-stats">
+          ${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}
+        </dl>
+        <p class="cx-bio">${el.bio}</p>
+        <blockquote class="cx-quote">${el.quote}</blockquote>
+        ${el.exception ? `<p class="cx-exc"><b>족 규칙의 예외</b>${el.exception}</p>` : ""}
+        ${bonds ? `<p class="cx-sub">${this._bondLabel(el)}</p><div class="cx-bonds">${bonds}</div>` : ""}
       </div>
-      <dl class="cx-stats">
-        ${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}
-      </dl>
-      <p class="cx-bio">${el.bio}</p>
-      <blockquote class="cx-quote">${el.quote}</blockquote>
-      ${el.exception ? `<p class="cx-exc"><b>족 규칙의 예외</b>${el.exception}</p>` : ""}
-      ${bonds ? `<p class="cx-sub">${this._bondLabel(el)}</p><div class="cx-bonds">${bonds}</div>` : ""}
-      ${this._familyBlock(el)}`;
+      <div class="cx-col-b">${this._familyBlock(el)}</div>`;
 
-    const toggle = this.detailEl.querySelector(".cx-fam-toggle");
-    toggle?.addEventListener("click", () => {
-      this.famOpen = !this.famOpen;
-      this._renderDetail();
-    });
+    // 해설을 열어 본 것을 기록한다. 아이가 "읽으면 뭐 줘?"라고 물어서 만든 것이다
+    this._markRead(el.family);
   }
 
   /**
@@ -221,6 +198,19 @@ export class Codex {
    * 아니라 '만나기'로 두었다 — 글은 훑고 넘어가도 읽은 게 되어 버리지만,
    * 만나려면 그 땅까지 가야 하고 그러면 어디에 무엇이 사는지가 몸에 남는다.
    */
+  /**
+   * 그 족 해설을 봤다고 기록한다.
+   *
+   * 아이가 "다 읽으면 보상이 있으면 좋겠다"고 해서 만들었다. 다만 읽었는지는
+   * 코드가 알 수 없으니 '펼쳐 봤다'까지만 센다. 그래서 이쪽 보상은 작게 두고,
+   * 큰 보상은 '그 족을 다 만나기'에 걸었다 — 만나려면 실제로 돌아다녀야 한다.
+   */
+  _markRead(family) {
+    if (!family || this.readFamilies.has(family)) return;
+    this.readFamilies.add(family);
+    this.onRead?.(family);
+  }
+
   _familyProgress(family) {
     const all = ELEMENTS.filter((e) => e.family === family);
     const got = all.filter((e) => this.found.has(e.id));
@@ -233,29 +223,28 @@ export class Codex {
 
     const prog = this._familyProgress(el.family);
     const reward = familyReward(el.family);
-    // 몇 개 남았는지는 접혀 있을 때도 보여야 모으고 싶어진다
     const badge = reward
       ? `<span class="cx-prog${prog.done ? " done" : ""}">${prog.got}/${prog.total}${prog.done ? " ✓" : ""}</span>`
       : "";
-
-    if (!this.famOpen) {
-      return `<button class="cx-fam-toggle" type="button">
-                ${info.label}은 어떤 족인가? ${badge} <span class="cx-caret">▾</span>
-              </button>`;
-    }
-    // 다 모으면 무엇을 주는지 미리 보여 준다. 받고 나서 알면 목표가 되지 않는다
+    // 보상은 두 단계다.
+    //   읽기 — 여기까지 펼쳐 본 것만으로 작은 것을 준다 (아이가 바란 것)
+    //   모으기 — 그 족을 다 만나면 족의 힘을 준다 (진짜 목표)
+    // 읽기만으로 큰 것을 주면 훑고 넘어가도 다 받게 되고, 모으기만 있으면
+    // "읽으면 뭐 줘?"라는 물음에 답이 없다. 그래서 둘 다 둔다.
+    const read = this.readFamilies.has(el.family);
     const rewardBlock = reward
       ? `<div class="cx-reward${prog.done ? " done" : ""}">
-           <p class="cx-reward-head">${prog.done ? "얻었다" : "다 모으면"} · ${reward.name}</p>
+           <p class="cx-reward-step${read ? " got" : ""}">
+             ${read ? "✓ 읽었다" : "읽으면"} · 전자 조금 회복
+           </p>
+           <p class="cx-reward-head">${prog.done ? "✓ 얻었다" : "다 모으면"} · ${reward.name}</p>
            <p class="cx-reward-desc">${reward.desc}</p>
            <p class="cx-reward-why">${reward.why}</p>
            <p class="cx-reward-prog">${prog.got} / ${prog.total} 만남</p>
          </div>`
       : "";
 
-    return `<button class="cx-fam-toggle open" type="button">
-              ${info.label} ${badge} <span class="cx-caret">▴</span>
-            </button>
+    return `<div class="cx-fam-head">${info.label} ${badge}</div>
             <div class="cx-fam">
               <p class="cx-fam-group">${info.group}</p>
               <p class="cx-fam-trait">${info.trait}</p>
@@ -268,6 +257,11 @@ export class Codex {
             </div>`;
   }
 
-  toJSON() { return [...this.found]; }
-  fromJSON(arr) { this.found = new Set(arr || []); }
+  // 옛 저장은 배열이었다. 배열이면 그대로 읽고, 새 저장은 객체로 쓴다
+  toJSON() { return { found: [...this.found], read: [...this.readFamilies] }; }
+  fromJSON(data) {
+    if (Array.isArray(data)) { this.found = new Set(data); this.readFamilies = new Set(); return; }
+    this.found = new Set(data?.found || []);
+    this.readFamilies = new Set(data?.read || []);
+  }
 }

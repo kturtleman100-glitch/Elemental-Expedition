@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { familyInfo } from "./data/families.js";
 import { Device } from "./core/Device.js";
 import { Input } from "./core/Input.js";
 import { Loop } from "./core/Loop.js";
@@ -267,6 +268,15 @@ async function boot() {
   const flags = new Set();
   const reputation = new Reputation();
   const codex = new Codex();
+  // 족 해설을 처음 펼쳐 보면 전자를 조금 준다.
+  // 아이가 "읽으면 보상이 있으면 좋겠다"고 해서 넣었다. 작게 두는 이유는
+  // 펼치기만 해도 받을 수 있어서다 — 큰 보상은 그 족을 다 만나야 준다.
+  codex.onRead = (family) => {
+    if (!player) return;
+    player.electrons.gain(6);
+    const info = familyInfo(family);
+    hud.toast(`${info?.label ?? "족"} 해설을 봤다 · 전자 +6`, "#7ec8e3");
+  };
   const questLog = new QuestLog();
   const cine = new Cinematic();
   // 익힌 화합물을 실제로 쓰는 장치. 인벤토리에서 고르고 R로 쓴다.

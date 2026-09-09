@@ -516,6 +516,62 @@ export const ELEMENTS = [
     bonds: ["cl", "ca", "br"],
     colors: { main: 0xc9e86a, sub: 0x8fae3a, accent: 0xf0ff9a, hair: 0xb8dc58 },
   },
+
+  // ---------------- 1~20번을 채우는 넷 ----------------
+  // 학교에서 실제로 외우는 구간인데 비어 있었다. 표에 구멍이 나 있으면
+  // "주기율표를 익힌다"는 목표에 정면으로 걸린다.
+  //
+  // 넷 다 CLAUDE.md 「캐릭터를 짓는 법」을 따랐다 — 판타지 직업에서 고르고,
+  // 화학 근거로 검증하고, 과장했다.
+
+  {
+    id: "he", z: 2, sym: "He", ko: "헬륨", en: "Helium",
+    family: FAMILY.NOBLE, combat: COMBAT.CASTER, silhouette: "floating",
+    mass: 4.0, electroneg: null, melt: null, boil: -268.9,
+    faction: "noble_gas", role: "하늘에 먼저 이름을 올린 점성술사",
+    // 근거 D — 지구가 아니라 태양빛을 뜯어보다 먼저 찾아낸 유일한 원소다.
+    // 이름도 그리스어로 해를 뜻하는 헬리오스에서 왔다.
+    bio: "별을 보고 앞일을 점치는 일을 한다. 땅에서 찾기 전에 해에서 먼저 발견된 사람이라, 늘 하늘을 제 고향처럼 말한다. 아무하고도 안 붙어서 친구는 없다.",
+    quote: "나? 여기서 찾은 게 아니야. 저 위에서 먼저 봤지.",
+    bonds: ["ne", "ar"],
+    colors: { main: 0xf5d76e, sub: 0x8a7530, accent: 0xfff3c4, hair: 0xe8c85a },
+  },
+  {
+    id: "li", z: 3, sym: "Li", ko: "리튬", en: "Lithium",
+    family: FAMILY.ALKALI, combat: COMBAT.STRIKER, silhouette: "civilian",
+    mass: 6.9, electroneg: 0.98, melt: 180.5, boil: 1342,
+    faction: "neutral", role: "짐을 옮기는 심부름꾼",
+    // 근거 A — 배터리. 금속 중에 가장 가벼워서 전기를 담아 나르는 데 쓴다.
+    bio: "힘을 담아 이 끝에서 저 끝으로 나른다. 금속 가운데 가장 가벼워서 하루 종일 뛰어다녀도 지치지 않는다. 물가에는 절대 가지 않는다.",
+    quote: "가볍다고 얕보지 마. 그만큼 멀리 간다고.",
+    bonds: ["na", "k"],
+    colors: { main: 0xc45a7a, sub: 0x6b2838, accent: 0xf2a0b8, hair: 0xd4708c },
+  },
+  {
+    id: "b", z: 5, sym: "B", ko: "붕소", en: "Boron",
+    family: FAMILY.METALLOID, combat: COMBAT.HYBRID, silhouette: "civilian",
+    mass: 10.8, electroneg: 2.04, melt: 2076, boil: 3927,
+    faction: "neutral", role: "깨지지 않는 그릇을 굽는 도공",
+    // 근거 A — 붕규산 유리. 갑자기 뜨거워지거나 식어도 깨지지 않아
+    // 실험실 유리와 오븐 그릇에 쓴다.
+    bio: "불에 넣었다 찬물에 담가도 멀쩡한 그릇을 굽는다. 남들 그릇은 그러면 쩍 갈라진다. 무뚝뚝하지만 제 물건에는 자부심이 대단하다.",
+    quote: "뜨겁든 차갑든 내 그릇은 안 깨져. 한번 해 봐.",
+    bonds: ["si", "o"],
+    colors: { main: 0x5a6b7a, sub: 0x2a333d, accent: 0x9fb8c9, hair: 0x6e8296 },
+  },
+  {
+    id: "al", z: 13, sym: "Al", ko: "알루미늄", en: "Aluminium",
+    family: FAMILY.POST_TRANSITION, combat: COMBAT.STRIKER, silhouette: "armored",
+    mass: 27.0, electroneg: 1.61, melt: 660.3, boil: 2470,
+    faction: "neutral", role: "제 갑옷을 스스로 짓는 방패병",
+    // 근거 B — 겉에 산화막이 저절로 생겨 속을 지킨다. 그래서 철처럼
+    // 벌겋게 녹슬어 무너지지 않는다.
+    bio: "다치면 그 자리에 얇은 껍질이 저절로 돋아 상처를 덮는다. 그래서 오래 서 있어도 무너지지 않는다. 가벼워서 하루 종일 방패를 들고 있어도 팔이 안 아프다.",
+    quote: "긁혀도 괜찮아. 금방 새 살이 돋거든.",
+    bonds: ["o", "si", "cu"],
+    colors: { main: 0xa8b4bd, sub: 0x59636b, accent: 0xdce4ea, hair: 0x8e9aa3 },
+  },
+
 ];
 
 /** 플레이어 캐릭터. 주기율표에 자리가 없어 별도로 둔다. */
