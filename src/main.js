@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { familyInfo } from "./data/families.js";
 import { FastTravel } from "./ui/FastTravel.js";
+import { Sound } from "./fx/Sound.js";
+import { Tutorial } from "./ui/Tutorial.js";
 import { Device } from "./core/Device.js";
 import { Input } from "./core/Input.js";
 import { Loop } from "./core/Loop.js";
@@ -94,9 +96,23 @@ async function boot() {
 
   const input = new Input({ canvas, device });
   let uiRefs = null; // 아래에서 대화·도감이 만들어진 뒤 채운다
+  // 소리. 브라우저가 첫 입력 전에는 소리를 막으므로 아무 동작에서나 풀어 준다
+  const sound = new Sound();
+
+  // 조작 안내. 처음 하는 사람에게만 뜨고, 언제든 건너뛸 수 있다
+  const tutorial = new Tutorial();
+  tutorial.onClose = () => { sound.unlock(); sound.ui(false); };
+
   // 표시 갱신을 값이 바뀔 때만 하도록 마지막 값을 기억해둔다
   const lastHud = { hp: -1, e: -1, exp: -1, talk: null, target: null };
   input.onAction((action) => {
+    sound.unlock();
+    // 안내가 떠 있으면 그것부터 넘긴다
+    if (tutorial.open) {
+      if (action === "menu") tutorial.close();
+      else if (action === "interact" || action === "jump" || action === "attack") tutorial.next();
+      return;
+    }
     // 대화 중에는 진행/종료만 받는다
     if (uiRefs?.dialogue.active) {
       if (action === "interact" || action === "attack" || action === "jump") uiRefs.dialogue.advance();
@@ -160,6 +176,7 @@ async function boot() {
 
       if (r.kind === "melee" && r.hit) {
         hud.popDamage({ x: r.hit.position.x, y: r.hit.position.y + 1.4, z: r.hit.position.z }, r.result);
+        sound.hit(r.result?.mult ?? 1);
         particles.burst({ x: r.hit.position.x, y: r.hit.position.y + 1.1, z: r.hit.position.z },
           player.element.family, r.result.mult >= 1.7 ? 1.5 : 1);
         if (r.died) onEnemyDown(r.hit);
@@ -179,6 +196,7 @@ async function boot() {
         aimYaw: cameraRig.yawRadians,
         onHit: (enemy, result, died) => {
           hud.popDamage({ x: enemy.position.x, y: enemy.position.y + 1.4, z: enemy.position.z }, result);
+          sound.hit(result?.mult ?? 1);
           if (died) onEnemyDown(enemy);
         },
       });
@@ -223,6 +241,7 @@ async function boot() {
     }
     if (action === "view") cameraRig.toggleView();
     else if (action === "travel") {
+    sound.ui(true);
       if (!travel.available) {
         hud.toast("쉼터나 마을 광장에서만 쓸 수 있어요", "#8fd1d4");
       } else {
@@ -231,6 +250,7 @@ async function boot() {
       }
     }
     else if (action === "codex") {
+    sound.ui(true);
       document.exitPointerLock?.();
       uiRefs?.codex.show();
     } else if (action === "interact") {
@@ -433,6 +453,7 @@ async function boot() {
     const el = getElement(id);
     if (!el) return false;
     const got = player.progress.acquire(id);
+    if (got) sound.gain();
     codex.discover(id);
     if (!got.isNew) return false;
     hud.toast(`${el.ko}(${el.sym})이(가) ${verb}` + (got.autoEquipped ? "" : " — P 로 편성"), "#56ccf2");
@@ -445,6 +466,7 @@ async function boot() {
     const done = questLog.checkComplete({ flags, codexSize: codex.found.size });
     for (const q of done) {
       hud.toast("[완료] " + q.title, "#8fe388");
+      sound.complete();
       const rw = q.reward ?? {};
       if (rw.exp) {
         const g = player.progress.addExp(rw.exp);
@@ -488,11 +510,13 @@ async function boot() {
     // 쓰러뜨린 원소를 얻는다 — 이 게임의 성장은 원소 수집이다
     grantElement(enemy.element.id, "힘을 넘겼다");
     questLog.onDefeat(enemy.element.id);
+    sound.defeat();
     checkQuests();
   }
 
   player.onDamaged = (result) => {
     hud.popDamage({ x: player.position.x, y: player.position.y + 1.2, z: player.position.z }, result);
+    sound.hurt();
   };
   player.onDeath = () => {
     hud.toast("쓰러졌다… 마을로 돌아간다", "#eb5757");
@@ -528,6 +552,7 @@ async function boot() {
     if (!hasDialogue(npc.element.id)) return;
     codex.discover(npc.element.id);
     npc.markTalked?.();   // 이름표에 체크 — 누구와 말했는지 보여야 한다
+    sound.talk();
     document.exitPointerLock?.();
     dialogue.open(npc.element.id, flags);
   }
@@ -966,6 +991,26 @@ async function boot() {
     targetLock.clear();
   }
 
+  // 눌러도 아무 일이 없던 버튼 셋을 잇는다.
+  // 첫인상에서 죽은 버튼만큼 신뢰를 깎는 것이 없다.
+
+  // 모바일 햄버거 — 여태 화면에 보이기만 하고 핸들러가 없었다
+  document.getElementById("btn-menu")?.addEventListener("click", () => {
+    sound.unlock();
+    input.exitPointerLock?.();
+    saveMenu.show();
+  });
+
+  // 멀티플레이는 아직 없다. 없는 것을 없다고 말하는 편이 낫다
+  document.getElementById("btn-multiplayer")?.addEventListener("click", () => {
+    alert("멀티플레이는 아직 준비 중입니다.");
+  });
+
+  // 설정은 메뉴 안에 이미 있다. 타이틀에서도 바로 열리게 한다
+  document.getElementById("btn-settings")?.addEventListener("click", () => {
+    saveMenu.show();
+  });
+
   document.getElementById("btn-new-game").addEventListener("click", () => {
     betaMode = false;
     const slot = Save.latestSlot();
@@ -1006,6 +1051,8 @@ async function boot() {
     minimap.resize();
     spawnBosses();
     loop.start();
+    // 처음 하는 사람에게만. 베타는 검증용이라 띄우지 않는다
+    if (!opts.beta) tutorial.showIfFirstTime();
   }
 }
 

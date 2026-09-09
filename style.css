@@ -1567,3 +1567,30 @@ html, body {
 .tv-name { font-weight: 600; }
 .tv-note { margin-left: auto; font-size: 0.72rem; opacity: 0.6; font-variant-numeric: tabular-nums; }
 .tv-empty { margin: 0; font-size: 0.82rem; opacity: 0.6; }
+
+/* ---------- 조작 안내 ---------- */
+/* 조작표가 개발 문서에만 있어 P(파티)를 모르면 원소를 영영 장착 못 했다.
+   건너뛰기를 늘 띄워 둔다 — 두 번째 플레이부터는 안내가 방해물이다 */
+#tut {
+  position: absolute; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(5, 6, 10, 0.86); padding: 2vmin; pointer-events: auto;
+}
+.tut-panel {
+  width: min(430px, 92vw);
+  background: #121821; border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 12px; padding: 1.4rem 1.5rem 1.2rem; text-align: center;
+}
+#tut-step { font-size: 0.72rem; opacity: 0.5; font-variant-numeric: tabular-nums; }
+#tut-title { margin: 0.4rem 0 0.7rem; font-size: 1.15rem; color: #f2c94c; }
+#tut-body { margin: 0 0 1.3rem; font-size: 0.92rem; line-height: 1.75; }
+#tut-body b { color: #8fd1d4; }
+.tut-btns { display: flex; gap: 0.6rem; justify-content: center; }
+.tut-btns button {
+  padding: 0.55rem 1.4rem; border-radius: 6px; font-family: inherit;
+  font-size: 0.88rem; cursor: pointer;
+}
+#tut-skip { border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #aab4bb; }
+#tut-skip:hover { background: rgba(255,255,255,0.07); }
+#tut-next { border: 0; background: #f2c94c; color: #1a1a1a; font-weight: 700; }
+#tut-next:hover { background: #ffd964; }
