@@ -64,7 +64,7 @@ export const ENDING_DATA = {
       "임계에 도달한 폴로늄이 연쇄 반응을 일으켰다.",
       "전자가 원자에서 떨어져 나가고, 원자핵이 흩어졌다.",
       "집도 나무도 사람도 형태를 잃었다.",
-      "아스티온 대륙은 아무것도 아닌 것 — 균질한 플라스마로 되돌아갔다.",
+      "엘레멘타 대륙은 아무것도 아닌 것 — 균질한 플라스마로 되돌아갔다.",
       "이름을 얻기 전에, 이름 붙일 세계가 사라졌다.",
     ],
   },
@@ -105,7 +105,7 @@ export function resolveEnding(ctx) {
   }
 
   if (sidedLegion && rep.get("legion") >= 50) {
-    return { id: ENDINGS.EQUALITY, data: ENDING_DATA[ENDINGS.EQUALITY], reasons: ["전이 금속 군단을 지지했다"] };
+    return { id: ENDINGS.EQUALITY, data: ENDING_DATA[ENDINGS.EQUALITY], reasons: ["화로 연합을 지지했다"] };
   }
   if (sidedNoble && rep.get("noblesse") >= 50) {
     return { id: ENDINGS.ORDER, data: ENDING_DATA[ENDINGS.ORDER], reasons: ["귀금속 귀족을 지지했다"] };

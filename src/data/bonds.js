@@ -21,7 +21,7 @@ export const NAMED_BONDS = [
     name: "합금 단조",
     desc: "망가니즈가 철을 벼려 특수 합금을 만든다.",
     effect: { attack: 0.18, defense: 0.10 },
-    flavor: "안 쓰는 무기는 내게 팔아요. 재활용하게~",
+    flavor: "부러졌다고? 그건 내가 만든 게 아니야.",
   },
   {
     id: "group11",
@@ -30,15 +30,15 @@ export const NAMED_BONDS = [
     desc: "수천 년 만에 다시 만난 금·은·구리. 전용 합체기가 열린다.",
     effect: { attack: 0.25, electrons: 0.20 },
     unlock: "combo_group11",
-    flavor: "금속으로서의 가치 따윈 아무래도 좋아, 저 아이가 웃어준다면….",
+    flavor: "제일 빠른 길을 알아. 다들 안 쓸 뿐이지.",
   },
   {
     id: "steel_corps",
     members: ["co", "ni"],
-    name: "강철부대 진형",
+    name: "덧씌움 진형 진형",
     desc: "공격받을수록 단단해지는 니켈이 코발트를 지킨다.",
     effect: { defense: 0.28 },
-    flavor: "코발트는 대식가가 분명해!",
+    flavor: "긁히는 건 내 쪽이면 돼. 너는 안에서 멀쩡하면 되고.",
   },
   {
     id: "underworld",
@@ -47,7 +47,7 @@ export const NAMED_BONDS = [
     desc: "나이오븀과 탄탈럼은 서로가 쓰러지면 한 번 일으켜 세운다.",
     effect: { hp: 0.15 },
     unlock: "revive_once",
-    flavor: "나이오븀은 정말 착한 아이야.",
+    flavor: "같은 돌에서 나왔으니 떨어질 수가 없지.",
   },
   {
     id: "organic",
@@ -55,15 +55,15 @@ export const NAMED_BONDS = [
     name: "생명의 뼈대",
     desc: "탄소·산소·질소. 살아있는 것을 이루는 세 원소.",
     effect: { hp: 0.20, electrons: 0.15 },
-    flavor: "세계는 끝없이 순환하지, 생명도 순환해.",
+    flavor: "손이 넷이면 할 수 있는 게 많아.",
   },
   {
     id: "affinity_team",
     members: ["cl", "br"],
-    name: "전자 친화팀",
+    name: "결원단",
     desc: "빼앗은 전자를 서로 나눈다.",
     effect: { electrons: 0.25 },
-    flavor: "어머나, 또 할로젠의 폭주 사고야?",
+    flavor: "이미 찍혔어. 지워 달라고 해도 소용없고.",
   },
   {
     id: "noble_court",
@@ -71,7 +71,7 @@ export const NAMED_BONDS = [
     name: "귀족 기체 회의",
     desc: "반응하지 않는 둘이 나란히 서면 아무것도 뚫지 못한다.",
     effect: { defense: 0.35 },
-    flavor: "곤란하기도 하지, 아무 일도 안 하는데 모두에게 도움이 되고 있다니~",
+    flavor: "내가 뭘 하냐고? 아무것도 안 해. 그게 일이야.",
   },
   {
     id: "exiled",
@@ -79,7 +79,7 @@ export const NAMED_BONDS = [
     name: "추방된 자들",
     desc: "대륙에서 쫓겨난 둘. 위력은 크지만 스스로를 갉아먹는다.",
     effect: { attack: 0.35, hp: -0.12 },
-    flavor: "우리는 혜택받은 존재지?",
+    flavor: "이 정도 열이면 마을 전체가 밝아져.",
   },
 ];
 

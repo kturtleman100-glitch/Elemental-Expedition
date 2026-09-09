@@ -102,7 +102,7 @@ export const BOSSES = [
     tier: BOSS_TIER.MID,
     chapter: 3,
     name: "철",
-    epithet: "전이 금속 군단 대장",
+    epithet: "화로 연합 대장",
     level: 14,
     hpMult: 4.6,
     x: -120, z: -70,
@@ -140,7 +140,7 @@ export const BOSSES = [
     tier: BOSS_TIER.MID,
     chapter: 5,
     name: "염소",
-    epithet: "전자 친화팀 팀장",
+    epithet: "결원단 팀장",
     level: 18,
     hpMult: 5.4,
     x: -84, z: -112,   // 석회암 고원 깊은 곳

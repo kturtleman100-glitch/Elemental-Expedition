@@ -5,7 +5,7 @@ import { ChunkManager } from "./ChunkManager.js";
 import { toonMaterial, makeOutline, setupLighting, makeSky, InstancedBatch, MergedBatch } from "../fx/Style.js";
 import { woodGrain, plaster, roofTile, grassField, dirtPath, stoneBlock, foliage } from "../fx/Textures.js";
 
-// 토룡마을 — 대륙 동쪽 끝, 칼슘 촌장이 다스리는 시작 지역.
+// 석회 마을 — 대륙 동쪽 끝, 칼슘 촌장이 다스리는 시작 지역.
 // 자료에 "석회암 동굴"이 나오므로 석회암 노두를 지역 정체성으로 삼았다.
 //
 // 이전 판이 "장난감 같다"는 지적을 받아 세 가지를 바꿨다.
@@ -179,7 +179,7 @@ export class World {
   // ================= 마을 =================
 
   /**
-   * 토룡마을 — 지름 130m, 22채, 5개 구역.
+   * 석회 마을 — 지름 130m, 22채, 5개 구역.
    *
    * 구역을 나누는 이유는 심부름에 거리와 목적지를 주기 위해서다.
    * 광장 하나에 NPC가 몰려 서 있으면 인(P)의 택배 배송 퀘스트가 성립하지 않는다.
@@ -190,7 +190,7 @@ export class World {
    *                   ╲  [광장]   ╱
    *                   ╱          ╲
    *          [공방 구역]        [농경지]
-   *          대안통운·대장간      밭·헛간
+   *          불씨 운송·대장간      밭·헛간
    */
   _buildVillage() {
     this._plazaDistrict();
@@ -240,7 +240,7 @@ export class World {
 
   // ---- 공방 구역 (서남, x −26 ~ −52) ----
   _workshopDistrict() {
-    // 대안통운 물류창고 — 인(P)의 일터. 배송 퀘스트의 출발점이다
+    // 불씨 운송 물류창고 — 인(P)의 일터. 배송 퀘스트의 출발점이다
     this._warehouse(-40, 26, 0.3);
 
     this._house(-30, 14, 5.0, 3.2, 4.6, 0.4);   // 대장간
@@ -507,7 +507,7 @@ export class World {
     this.batch.add(geo, woodM, [x, 0.28, z], [0, Math.random() * 3, 0]);
   }
 
-  /** 대안통운 물류창고 — 인(P)의 일터. 배송 퀘스트가 여기서 시작된다 */
+  /** 불씨 운송 물류창고 — 인(P)의 일터. 배송 퀘스트가 여기서 시작된다 */
   _warehouse(x, z, ry) {
     const p = new THREE.Group();
     p.position.set(x, 0, z);
@@ -791,7 +791,7 @@ export class World {
   // ================= 마을 밖 =================
 
   /**
-   * 토룡마을을 둘러싼 야외.
+   * 석회 마을을 둘러싼 야외.
    *
    * 마을만 있으면 나갈 이유가 없다. 밖에도 갈 곳이 있어야 탐험이 성립한다.
    * 다만 아직 다른 지역(7단계)은 없으므로, 사방의 길 끝에 이정표를 세워

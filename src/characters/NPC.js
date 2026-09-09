@@ -92,7 +92,7 @@ export class NPC {
 }
 
 /**
- * 토룡마을 NPC 배치.
+ * 석회 마을 NPC 배치.
  *
  * 구역별로 흩어놓아야 심부름에 거리가 생긴다. 좌표는 World.js의 구역 배치를 따른다.
  * yaw는 그 인물이 평소 바라보는 방향 — 광장 쪽이나 자기 일터 쪽을 향한다.
@@ -101,12 +101,12 @@ export const NPC_PLACEMENTS = [
   // 광장 — 처음 마주치는 인물
   { elementId: "mg", x: 4.5, z: 6.0, yaw: Math.PI * 0.9 },
 
-  // 공방 구역 — 대안통운 앞. 전이 금속 군단 대장이 마을에 들렀다는 설정
+  // 공방 구역 — 불씨 운송 앞. 화로 연합 대장이 마을에 들렀다는 설정
   { elementId: "fe", x: -34, z: 21, yaw: 1.1 },
 
   // 아래는 아직 .vrm 이 없어 절차적 생성으로 나온다
   { elementId: "ca", x: 0, z: -46, yaw: 0 },          // 촌장 집 앞
-  { elementId: "p", x: -38, z: 32, yaw: 0.3 },        // 대안통운 하역장
+  { elementId: "p", x: -38, z: 32, yaw: 0.3 },        // 불씨 운송 하역장
   { elementId: "c", x: -8.0, z: 9.5, yaw: -0.5 },     // 광장 좌판 근처
   { elementId: "si", x: -13, z: 15, yaw: -0.9 },      // 광장 서쪽, 혼자 떨어져
 
@@ -137,7 +137,7 @@ export const NPC_PLACEMENTS = [
   { elementId: "h", x: -4, z: 70, yaw: 0.2 },         // 남쪽 길 — 방랑자
   { elementId: "s", x: -80, z: -8, yaw: 1.2 },        // 서쪽 — 온천 냄새
   { elementId: "bi", x: -90, z: 2, yaw: 0.9 },        // 폐허 입구 — 자기가 지은 것을 본다
-  { elementId: "ag", x: 98, z: -8, yaw: -1.4 },       // 강 건너 숲 — 거울 나라 입구
+  { elementId: "ag", x: 98, z: -8, yaw: -1.4 },       // 강 건너 숲 — 은선 공방 입구
   { elementId: "rn", x: 66, z: -46, yaw: -1.0 },      // 동북 — 온천 리조트
   { elementId: "ne", x: 128, z: -2, yaw: 2.4 },       // 아르곤 마을 — 회의소       // 북쪽 — 순회 재판
   { elementId: "ar", x: 118, z: 14, yaw: Math.PI },   // 아르곤 마을 광장    // 북쪽 길 — 낮잠

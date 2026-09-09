@@ -122,7 +122,7 @@ export class Boss extends Enemy {
       player.rustTimer = 2.0;   // Player가 이 값을 보고 방어를 깎는다
     }
 
-    // 염소의 전자 탈취 — 맞지 않아도 빨려 나간다. 이것이 전자 친화팀의 수법이다
+    // 염소의 전자 탈취 — 맞지 않아도 빨려 나간다. 이것이 결원단의 수법이다
     if (this.gimmicks.has("drain") && dist < DRAIN_RADIUS && player.electrons) {
       const stolen = Math.min(player.electrons.value, 4);
       player.electrons.value -= stolen;

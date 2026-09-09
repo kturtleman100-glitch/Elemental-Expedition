@@ -29,7 +29,7 @@ const LANDMARKS = [
   // 마을 안
   { x: 0, z: 0, label: "광장", color: "#e8c07a" },
   { x: 0, z: -50, label: "촌장 집", color: "#8fd1d4" },
-  { x: -40, z: 26, label: "대안통운", color: "#d9a441" },
+  { x: -40, z: 26, label: "불씨 운송", color: "#d9a441" },
   { x: 40, z: 30, label: "농경지", color: "#9fd17a" },
   { x: -43, z: -34, label: "석회암 동굴", color: "#d8cfb8" },
   // 마을 밖 — 이정표가 선 곳

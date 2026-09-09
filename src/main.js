@@ -76,7 +76,7 @@ async function boot() {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 600);
 
-  setLoadingProgress(55, "아스티온 대륙을 그리는 중...");
+  setLoadingProgress(55, "엘레멘타 대륙을 그리는 중...");
   const world = new World(scene, device);
 
   setLoadingProgress(75, "플레이어 준비 중...");
@@ -838,7 +838,7 @@ async function boot() {
   {
     // 지역 콜백은 경계를 넘을 때만 불린다. 시작하자마자 "—"가 뜨지 않게 채워 둔다
     const el = document.getElementById("map-place");
-    if (el) el.textContent = world.biomeAt(player.position.x, player.position.z)?.name ?? "토룡마을";
+    if (el) el.textContent = world.biomeAt(player.position.x, player.position.z)?.name ?? "석회 마을";
   }
   let lastCoord = "";
   function updateWhere() {

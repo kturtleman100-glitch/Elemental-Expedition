@@ -23,7 +23,7 @@ export const QUESTS = [
     chapter: 1,
     title: "이름 없는 자",
     giver: "ca",
-    summary: "토룡마을 촌장 칼슘에게 이야기를 듣는다.",
+    summary: "석회 마을 촌장 칼슘에게 이야기를 듣는다.",
     objectives: [
       { kind: "flag", flag: "met_calcium", who: "ca", text: "칼슘과 대화한다" },
     ],
@@ -62,7 +62,7 @@ export const QUESTS = [
     chapter: 2,
     title: "전자 도둑",
     giver: "ca",
-    summary: "마을 남쪽 길목에 전자 친화팀 하수인이 있다. 쫓아낸다.",
+    summary: "마을 남쪽 길목에 결원단 하수인이 있다. 쫓아낸다.",
     objectives: [
       { kind: "defeat", elementId: "br", count: 2, text: "브로민을 2마리 물리친다" },
       { kind: "defeat", elementId: "cl", count: 1, text: "염소를 1마리 물리친다" },
@@ -73,11 +73,11 @@ export const QUESTS = [
   {
     id: "ch2_delivery",
     chapter: 2,
-    title: "대안통운 긴급 배송",
+    title: "불씨 운송 긴급 배송",
     giver: "p",
     summary: "길이 위험해져 배송이 밀렸다. 인 대신 물건을 옮긴다.",
     objectives: [
-      { kind: "reach", x: -40, z: 26, radius: 6, text: "대안통운 물류창고로 간다" },
+      { kind: "reach", x: -40, z: 26, radius: 6, text: "불씨 운송 물류창고로 간다" },
       { kind: "reach", x: 38, z: 38, radius: 6, text: "농경지 헛간에 배달한다" },
       { kind: "reach", x: 0, z: -52, radius: 7, text: "촌장 집에 배달한다" },
     ],
@@ -89,7 +89,7 @@ export const QUESTS = [
     chapter: 2,
     title: "1면 기사",
     giver: "ca",
-    summary: "전자 친화팀의 기자 브로민과 유산을 지키는 비소가 마을 밖 길목을 막고 있다.",
+    summary: "결원단의 기자 브로민과 유산을 지키는 비소가 마을 밖 길목을 막고 있다.",
     objectives: [
       { kind: "flag", flag: "boss_done_boss_br", at: [26, 74], text: "남동쪽 길의 기자 브로민을 물리친다" },
       { kind: "flag", flag: "boss_done_boss_as", at: [-70, 62], text: "서남쪽 언덕의 암살자 비소를 물리친다" },

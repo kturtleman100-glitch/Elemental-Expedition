@@ -5,7 +5,7 @@
 //   붉은 대지  — 철이 산소에 전자를 빼앗긴 Fe2O3, 즉 녹슨 땅
 //   수정 지대  — 규소와 산소가 그물처럼 이어진 SiO2. 그물 구조라 기둥으로 선다
 //   석회암 고원 — 칼슘의 CaCO3. 물에 녹아 동굴이 뚫린다
-//   유황 온천  — 황이 물에 녹아 끓는다. 라돈이 함께 나와 호르메시스 온천이 된다
+//   유황 온천  — 황이 물에 녹아 끓는다. 라돈이 함께 나와 김 오르는 골 온천이 된다
 //   방사성 황무지 — 우라늄·폴로늄이 붕괴하며 스스로 빛난다
 //
 // 그래서 돌아다니는 것만으로 화합물과 원소의 성질을 보게 된다.
@@ -34,7 +34,7 @@ export const BIOME = {
  */
 export const BIOMES = {
   [BIOME.PLAIN]: {
-    id: BIOME.PLAIN, name: "초원", sub: "아스티온 대륙",
+    id: BIOME.PLAIN, name: "초원", sub: "엘레멘타 대륙",
     ground: 0x7d9455, groundAlt: 0x94a865, tex: "grass",
     height: 1, rough: 0.15, danger: 0,
     props: { tree: 2.5, rock: 1.5, grass: 30, flower: 10 },
@@ -93,7 +93,7 @@ export const BIOMES = {
   },
 
   [BIOME.SULFUR]: {
-    id: BIOME.SULFUR, name: "유황 온천", sub: "호르메시스 지대",
+    id: BIOME.SULFUR, name: "유황 온천", sub: "김 오르는 골",
     ground: 0xc4a94a, groundAlt: 0x9c8430, tex: "dirt",
     height: 0.9, rough: 0.3, danger: 2,
     props: { spring: 3, rock: 4, grass: 6, sulfurvent: 5 },
