@@ -481,18 +481,25 @@ html, body {
 #codex-count { font-size: 0.82rem; opacity: 0.75; font-variant-numeric: tabular-nums; }
 #codex-close { margin-left: auto; }
 
-.cx-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); min-height: 0; }
+/* 표가 18열로 넓어져 왼쪽에 자리를 더 준다 */
+.cx-body { flex: 1; display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); min-height: 0; }
+/* 주기율표 모양 그대로 — 18열 고정.
+   창이 좁으면 칸을 줄이지 말고 가로로 넘긴다. 세로로 접으면 표가 아니게 되고,
+   주기율표에서 배울 것은 대부분 '자리'에 있다. */
 #codex-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(74px, 1fr));
-  gap: 0.4rem;
+  grid-template-columns: repeat(18, minmax(38px, 1fr));
+  gap: 3px;
   padding: 0.9rem;
-  overflow-y: auto;
+  overflow: auto;
   align-content: start;
 }
 .cx-cell {
   position: relative;
+  grid-column: var(--g);
+  grid-row: var(--p);
   aspect-ratio: 1;
+  min-width: 38px;
   border-radius: 5px;
   border: 1px solid var(--cell, #555);
   background: color-mix(in srgb, var(--cell, #555) 18%, #0e1218);
@@ -507,10 +514,20 @@ html, body {
   padding: 0.2rem;
 }
 .cx-cell.locked { opacity: 0.28; border-style: dashed; }
-.cx-cell[aria-pressed="true"] { outline: 2px solid #f2c94c; outline-offset: 1px; }
-.cx-z { position: absolute; top: 3px; left: 5px; font-size: 0.55rem; opacity: 0.7; }
-.cx-sym { font-size: 1.15rem; font-weight: 700; line-height: 1; color: var(--cell, #eae6da); }
-.cx-ko { font-size: 0.6rem; opacity: 0.8; text-align: center; line-height: 1.2; }
+
+/* 어느 칸을 눌렀는지 한눈에. 테두리만으로는 42칸 사이에서 묻힌다 */
+.cx-cell.sel,
+.cx-cell[aria-pressed="true"] {
+  outline: 3px solid #f2c94c;
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--cell, #555) 42%, #0e1218);
+  transform: scale(1.14);
+  z-index: 2;
+  box-shadow: 0 0 14px rgba(242, 201, 76, 0.5);
+}
+.cx-z { position: absolute; top: 1px; left: 3px; font-size: 0.5rem; opacity: 0.6; }
+.cx-sym { font-size: 0.9rem; font-weight: 700; line-height: 1; color: var(--cell, #eae6da); }
+.cx-ko { font-size: 0.5rem; opacity: 0.75; text-align: center; line-height: 1.1; }
 
 #codex-detail { border-left: 1px solid rgba(255, 255, 255, 0.1); padding: 1rem; overflow-y: auto; }
 .cx-empty { opacity: 0.5; font-size: 0.85rem; }
@@ -1330,3 +1347,33 @@ html, body {
 #compound-name { color: #dcd6c8; }
 #compound-cd { margin-left: auto; color: #9a9488; font-family: Consolas, monospace; }
 #compound-slot.cooling { opacity: 0.55; border-color: rgba(255, 255, 255, 0.15); }
+
+/* 족을 다 모으면 주는 힘.
+   "다 읽으면 뭐 줘?"라는 물음에 답하는 자리다. 받기 전부터 보여야 목표가 된다 */
+.cx-prog {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+.cx-prog.done { background: rgba(110, 232, 90, 0.22); color: #9ff08a; opacity: 1; }
+
+.cx-reward {
+  margin-top: 0.7rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 6px;
+  border: 1px dashed rgba(242, 201, 76, 0.45);
+  background: rgba(242, 201, 76, 0.07);
+}
+.cx-reward.done {
+  border-style: solid;
+  border-color: rgba(110, 232, 90, 0.55);
+  background: rgba(110, 232, 90, 0.1);
+}
+.cx-reward-head { font-size: 0.76rem; font-weight: 700; color: #f2c94c; margin: 0 0 0.25rem; }
+.cx-reward.done .cx-reward-head { color: #9ff08a; }
+.cx-reward-desc { font-size: 0.74rem; margin: 0 0 0.3rem; }
+.cx-reward-why { font-size: 0.66rem; opacity: 0.6; font-style: italic; margin: 0 0 0.3rem; }
+.cx-reward-prog { font-size: 0.68rem; opacity: 0.8; margin: 0; font-variant-numeric: tabular-nums; }
