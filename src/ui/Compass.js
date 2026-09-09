@@ -155,8 +155,10 @@ export class Compass {
       ctx.fillText(c.label, x, baseY - 11);
     }
 
-    // 지점 표식 — 플레이어 위치 기준 방위
-    for (const m of LANDMARKS) {
+    // 지점 표식 — 플레이어 위치 기준 방위.
+    // 퀘스트 목표(marks)를 먼저 그려 눈에 먼저 들어오게 한다
+    const quest = (this.marks ?? []).map((m) => ({ ...m, color: "#f2c94c", quest: true }));
+    for (const m of [...quest, ...LANDMARKS]) {
       const dx = m.x - px;
       const dz = m.z - pz;
       const dist = Math.hypot(dx, dz);
@@ -170,8 +172,15 @@ export class Compass {
       const x = w / 2 + off * pxPerDeg;
       const fade = 1 - Math.min(1, Math.abs(off) / (VIEW_SPAN / 2)) * 0.6;
 
-      ctx.globalAlpha = fade;
+      ctx.globalAlpha = m.quest ? 1 : fade;
       ctx.fillStyle = m.color;
+
+      // 목표까지 몇 미터인지 — 방향만 알고 거리를 모르면 여전히 헤맨다
+      if (m.quest) {
+        ctx.font = "700 10px 'Noto Sans KR', system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`${Math.round(dist)}m`, x, baseY - 13);
+      }
 
       // 아래를 가리키는 작은 삼각형
       ctx.beginPath();

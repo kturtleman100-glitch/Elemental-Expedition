@@ -14,7 +14,12 @@ const KEY_TO_ACTION = {
   KeyJ: "quest",
   KeyM: "travel",  // 쉼터에서 다른 쉼터로
   KeyV: "view",
-  KeyF: "interact", // 트랙패드 두 손가락 탭 대체 키
+  // 상호작용을 여러 키에 둔다. 화살표로 움직이다 말을 걸려고 마우스까지
+  // 손을 옮기는 것이 불편하다는 지적이 있었다. 오른손이 화살표에 있으면
+  // Enter가, WASD면 F나 Space가 가깝다
+  KeyF: "interact",
+  Enter: "interact",
+  NumpadEnter: "interact",
   Tab: "targetNext",
   KeyT: "stance", // 하이브리드 원소의 무기/마법 자세 전환
   KeyR: "compound", // 인벤토리에서 고른 화합물을 쓴다

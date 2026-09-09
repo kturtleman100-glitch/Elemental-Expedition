@@ -26,6 +26,40 @@ export class QuestUI {
   }
 
   /**
+   * 지금 해야 할 목표가 어디인지 좌표로 알려준다.
+   *
+   * "Fe에게 가라"는데 Fe가 어디 있는지 알 방법이 없었다. 퀘스트 글만 있고
+   * 지도에 표시가 없으면 플레이어는 대륙을 헤맬 수밖에 없다.
+   *
+   * @param {{flags:Set<string>, codexSize:number}} ctx
+   * @param {(id:string) => {x:number,z:number}|null} npcPos 원소 id로 NPC 위치를 찾는다
+   * @returns {{x:number,z:number,label:string}[]}
+   */
+  markers(ctx, npcPos) {
+    const active = this.log.active;
+    if (!active.length) return [];
+    const q = active.slice().sort((a, b) => a.chapter - b.chapter)[0];
+    const out = [];
+
+    for (let i = 0; i < q.objectives.length; i++) {
+      const o = q.objectives[i];
+      // 이미 끝낸 목표는 가리키지 않는다
+      if (this.log.progressOf(q, i, ctx) >= this.log.targetOf(o)) continue;
+
+      if (o.kind === "reach" && o.x != null) {
+        out.push({ x: o.x, z: o.z, label: o.text });
+      } else if (o.at) {
+        // 보스처럼 사람이 아닌 목표는 좌표를 직접 적어 둔다
+        out.push({ x: o.at[0], z: o.at[1], label: o.text });
+      } else if (o.who) {
+        const pos = npcPos?.(o.who);
+        if (pos) out.push({ x: pos.x, z: pos.z, label: o.text });
+      }
+    }
+    return out;
+  }
+
+  /**
    * @param {{flags:Set<string>, codexSize:number}} ctx
    */
   render(ctx) {

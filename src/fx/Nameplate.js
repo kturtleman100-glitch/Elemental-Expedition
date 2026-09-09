@@ -93,6 +93,19 @@ export function makeNameplate(text, kind = "ENEMY", y = 2.05) {
   return sp;
 }
 
+/** 글자나 색을 바꿔 단다. 텍스처는 캐시에서 나오므로 매번 만들지 않는다 */
+export function setNameplate(sprite, text, kind = "ENEMY") {
+  if (!sprite) return;
+  const { tex, w, h } = makeTexture(text, kind);
+  sprite.material.map = tex;
+  sprite.material.needsUpdate = true;
+  const scale = 0.0125;
+  sprite.scale.set(w * scale, h * scale, 1);
+}
+
+/** 이미 이야기를 나눈 사람 — 눈에 덜 띄게 */
+PLATE.DONE = { bg: "rgba(30, 36, 42, 0.72)", line: "#5f6b73", text: "#aab4bb" };
+
 /**
  * 멀면 흐려지고 아주 멀면 숨긴다.
  * 표식이 화면을 뒤덮으면 오히려 아무것도 안 보인다.

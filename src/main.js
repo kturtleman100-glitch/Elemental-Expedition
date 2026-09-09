@@ -523,6 +523,7 @@ async function boot() {
   function talkTo(npc) {
     if (!hasDialogue(npc.element.id)) return;
     codex.discover(npc.element.id);
+    npc.markTalked?.();   // 이름표에 체크 — 누구와 말했는지 보여야 한다
     document.exitPointerLock?.();
     dialogue.open(npc.element.id, flags);
   }
@@ -540,7 +541,9 @@ async function boot() {
   const interactHint = document.getElementById("interact-hint");
   const interactName = document.getElementById("interact-name");
   const interactKey = document.getElementById("interact-key");
-  interactKey.textContent = device.isTouch ? "대화" : "우클릭";
+  // 우클릭만 적어 두면 화살표로 다니는 사람이 손을 옮겨야 한다.
+  // 실제로 되는 키를 다 보여 준다
+  interactKey.textContent = device.isTouch ? "대화" : "Enter · F · 우클릭";
 
   player.setModel(await playerModelPromise, scene);
   cameraRig.refreshModel();
@@ -609,6 +612,7 @@ async function boot() {
   // style.width 하나만 써도 브라우저가 레이아웃을 다시 계산한다.
   // 초당 600번이면 화면이 멈춘다 — 실제로 그렇게 됐었다.
   let lockTarget = null;
+  let questMarks = [];
   let questTick = 0;
 
   /**
@@ -730,6 +734,18 @@ async function boot() {
       const found = travel.update(player.position.x, player.position.z);
       if (found) hud.toast(`쉼터를 찾았다 · ${found} (M)`, "#8fd1d4");
       questUI.render({ flags, codexSize: codex.found.size });
+
+      // 지금 할 일이 어디인지 지도에 찍는다.
+      // 퀘스트 글에 "Fe에게 가라"고만 적혀 있으면 대륙을 헤매게 된다
+      questMarks = questUI.markers(
+        { flags, codexSize: codex.found.size },
+        (id) => {
+          const n = npcs.find((q) => q.element.id === id);
+          return n ? { x: n.x, z: n.z } : null;
+        }
+      );
+      minimap.markers = questMarks;
+      compass.marks = questMarks;
       renderCompoundSlot();
       renderPersuadeHint();
       cine.update(dt);

@@ -25,7 +25,7 @@ export const QUESTS = [
     giver: "ca",
     summary: "토룡마을 촌장 칼슘에게 이야기를 듣는다.",
     objectives: [
-      { kind: "flag", flag: "met_calcium", text: "칼슘과 대화한다" },
+      { kind: "flag", flag: "met_calcium", who: "ca", text: "칼슘과 대화한다" },
     ],
     reward: { element: "ca", exp: 40, rep: ["neutral", 10] },
     next: "ch1_villagers",
@@ -37,8 +37,8 @@ export const QUESTS = [
     giver: "ca",
     summary: "마을 사람들과 이야기해 전자 도둑의 단서를 모은다.",
     objectives: [
-      { kind: "flag", flag: "clue_halogen", text: "인(P)에게 목격담을 듣는다" },
-      { kind: "flag", flag: "learned_chlorine", text: "탄소(C)에게 상성을 배운다" },
+      { kind: "flag", flag: "clue_halogen", who: "p", text: "인(P)에게 목격담을 듣는다" },
+      { kind: "flag", flag: "learned_chlorine", who: "c", text: "탄소(C)에게 상성을 배운다" },
     ],
     reward: { element: "p", exp: 60, rep: ["neutral", 15] },
     next: "ch1_oracle",
@@ -91,8 +91,8 @@ export const QUESTS = [
     giver: "ca",
     summary: "전자 친화팀의 기자 브로민과 유산을 지키는 비소가 마을 밖 길목을 막고 있다.",
     objectives: [
-      { kind: "flag", flag: "boss_done_boss_br", text: "남동쪽 길의 기자 브로민을 물리친다" },
-      { kind: "flag", flag: "boss_done_boss_as", text: "서남쪽 언덕의 암살자 비소를 물리친다" },
+      { kind: "flag", flag: "boss_done_boss_br", at: [26, 74], text: "남동쪽 길의 기자 브로민을 물리친다" },
+      { kind: "flag", flag: "boss_done_boss_as", at: [-70, 62], text: "서남쪽 언덕의 암살자 비소를 물리친다" },
     ],
     reward: { exp: 200, rep: ["neutral", 15], flag: "chapter3" },
     next: "ch3_mercury",
@@ -106,7 +106,7 @@ export const QUESTS = [
     giver: "c",
     summary: "강 건너 숲에 상온 액체 마법사 수은이 무대를 차렸다. 근접으로는 벨 수 없다.",
     objectives: [
-      { kind: "flag", flag: "boss_done_boss_hg", text: "동북쪽 숲의 수은을 물리친다 (마법으로)" },
+      { kind: "flag", flag: "boss_done_boss_hg", at: [96, -84], text: "동북쪽 숲의 수은을 물리친다 (마법으로)" },
     ],
     reward: { exp: 250, rep: ["neutral", 10] },
     next: "ch3_crossroads",
@@ -118,7 +118,7 @@ export const QUESTS = [
     giver: "fe",
     summary: "군단과 귀족이 충돌 직전이다. 양쪽 말을 듣고 어디에 설지 정한다. 되돌릴 수 없다.",
     objectives: [
-      { kind: "flag", flag: "heard_noblesse", text: "서쪽 폐허의 황금 용(Au)에게 귀족의 말을 듣는다" },
+      { kind: "flag", flag: "heard_noblesse", who: "au", text: "서쪽 폐허의 황금 용(Au)에게 귀족의 말을 듣는다" },
       {
         kind: "anyflag",
         flags: ["sided_legion", "sided_noblesse", "stayed_neutral"],
@@ -165,7 +165,7 @@ export const QUESTS = [
     giver: "si",
     summary: "데이터가 모였다. 규소에게 돌아가 계산 결과를 듣는다.",
     objectives: [
-      { kind: "flag", flag: "heard_prophecy", text: "규소(Si)에게 예언을 듣는다" },
+      { kind: "flag", flag: "heard_prophecy", who: "si", text: "규소(Si)에게 예언을 듣는다" },
     ],
     reward: { exp: 120, flag: "chapter5" },
     next: "ch5_chlorine",
@@ -179,7 +179,7 @@ export const QUESTS = [
     giver: "si",
     summary: "염소가 석회암 고원 깊은 곳에 있다. 무너지기 직전에 공격을 멈추고 다가가면 설득할 수 있다.",
     objectives: [
-      { kind: "flag", flag: "boss_done_boss_cl", text: "서북쪽 고원의 염소를 멈춘다 — 쓰러뜨리거나, 설득하거나" },
+      { kind: "flag", flag: "boss_done_boss_cl", at: [-84, -112], text: "서북쪽 고원의 염소를 멈춘다 — 쓰러뜨리거나, 설득하거나" },
     ],
     reward: { exp: 400, rep: ["neutral", 20], flag: "chapter6" },
     next: "ch6_island",
@@ -193,7 +193,7 @@ export const QUESTS = [
     giver: "og",
     summary: "남쪽 해변의 항해자 오가네손이 염소의 결말을 듣고 싶어 한다. 그의 배에 탈지 답한다.",
     objectives: [
-      { kind: "flag", flag: "og_decided", text: "남쪽 모래사장의 오가네손(Og)에게 답한다" },
+      { kind: "flag", flag: "og_decided", who: "og", text: "남쪽 모래사장의 오가네손(Og)에게 답한다" },
     ],
     reward: { exp: 250, flag: "chapter7" },
     next: "ch7_doom",
@@ -207,7 +207,7 @@ export const QUESTS = [
     giver: "og",
     summary: "폴로늄이 고원 끝에서 자신을 무기로 만들고 있다. 임계에 이르기 전에 멈춘다.",
     objectives: [
-      { kind: "flag", flag: "boss_done_boss_po", text: "북쪽 고원 끝의 폴로늄을 멈춘다 — 90초 안에" },
+      { kind: "flag", flag: "boss_done_boss_po", at: [18, -142], text: "북쪽 고원 끝의 폴로늄을 멈춘다 — 90초 안에" },
     ],
     reward: { exp: 800 },
     next: null,

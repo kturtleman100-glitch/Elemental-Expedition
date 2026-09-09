@@ -2,15 +2,17 @@ import * as THREE from "three";
 import { animateCharacter } from "./CharacterBuilder.js";
 import { updateCharacter, animateVRM } from "./CharacterLoader.js";
 import { getElement } from "../data/elements.js";
-import { makeNameplate, fadeNameplate } from "../fx/Nameplate.js";
+import { makeNameplate, fadeNameplate, setNameplate } from "../fx/Nameplate.js";
 
 // 마을에 서 있는 원소 캐릭터.
 //
 // 지금은 제자리에서 숨쉬고 플레이어를 바라보는 것까지만 한다.
 // 대화·퀘스트는 Dialogue/Quest가 붙으면서 여기에 연결된다.
 
-const LOOK_RANGE = 9; // 이 거리 안에 들어오면 플레이어 쪽으로 몸을 돌린다
-const TALK_RANGE = 3.6; // 대화가 가능한 거리
+const LOOK_RANGE = 11; // 이 거리 안에 들어오면 플레이어 쪽으로 몸을 돌린다
+// 대화 거리. 3.6m는 너무 좁아 조금만 떨어져도 반응이 없었고,
+// 그래서 "말이 안 걸린다"고 느껴졌다. 사람 키의 세 배쯤이면 자연스럽다
+const TALK_RANGE = 5.4;
 const TURN_SPEED = 3.5;
 const SLEEP_RANGE = 30;
 
@@ -38,6 +40,18 @@ export class NPC {
     // 이름표. 적은 붉고 이쪽은 푸르러서 색만으로 먼저 구분된다
     this.plate = makeNameplate(this.element.ko, "NPC");
     model.add(this.plate);
+    this.talked = false;
+  }
+
+  /**
+   * 이야기를 나눈 사람으로 표시한다.
+   * 누구와 이미 말했는지 보이지 않으면 마을을 한 바퀴 돌 때마다 처음부터
+   * 다시 말을 걸어 보게 된다
+   */
+  markTalked() {
+    if (this.talked) return;
+    this.talked = true;
+    setNameplate(this.plate, `${this.element.ko} ✓`, "DONE");
   }
 
   /** @param {THREE.Vector3} playerPos */
